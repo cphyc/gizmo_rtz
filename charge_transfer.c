@@ -31,6 +31,13 @@ void load_ct_rates(){
     // Close the file
     fclose(file);
 
+    // Zero our helium
+    for (int j = 0; j < 3; j++) {
+        for (int k = 0; k < 7; k++) {
+            CTIon[k][j][2] = 0.0;
+        }
+    }
+
     // Ionization
     file = fopen("./data/charge_transfer/ct_recombination.dat", "r");
     if (file == NULL) {
@@ -64,6 +71,12 @@ double charge_transfer_recombination(int ion, int nelem, double T){
         return ct_recomb;
     }
 
+    if (ion == 0)
+    {
+        return ct_recomb;
+    }
+
+
     // Deal with helium separately
     // He+ + H --> He + H+
     if (nelem == 2 && ion ==2)
@@ -73,42 +86,42 @@ double charge_transfer_recombination(int ion, int nelem, double T){
     }
 
     // deal with oxygen separately 
-    if (nelem == 8) 
-    {            
-        if (ion == 2)
-        {
-            if (T < 10.0)
-            {
-                ct_recomb = 3.744E-10;
-                return ct_recomb;
-            }
-            double a_op = 2.3344302E-10;
-            double b_op = 2.3651505E-10;
-            double c_op = -1.3146803E-10;
-            double d_op = 2.9979994E-11;
-            double e_op = -2.8577012E-12;
-            double f_op = 1.1963502E-13;
-            double logT = log(T);
-            ct_recomb = ((((f_op*logT + e_op)*logT + d_op)*logT + c_op)*logT + b_op)*logT + a_op;
-            return ct_recomb; 
-        } else if (ion == 3)
-        {
-            if (T <= 1500.0) 
-            {
-                ct_recomb = 0.5337E-9 * pow(T/100.0,-0.076);
-            } else {
-                ct_recomb = 0.4344E-9 + 0.6340E-9 * pow(log10(T/1500.0),2.06);
+    // if (nelem == 8) 
+    // {            
+    //     if (ion == 1)
+    //     {
+    //         if (T < 10.0)
+    //         {
+    //             ct_recomb = 3.744E-10;
+    //             return ct_recomb;
+    //         }
+    //         double a_op = 2.3344302E-10;
+    //         double b_op = 2.3651505E-10;
+    //         double c_op = -1.3146803E-10;
+    //         double d_op = 2.9979994E-11;
+    //         double e_op = -2.8577012E-12;
+    //         double f_op = 1.1963502E-13;
+    //         double logT = log(T);
+    //         ct_recomb = ((((f_op*logT + e_op)*logT + d_op)*logT + c_op)*logT + b_op)*logT + a_op;
+    //         return ct_recomb; 
+    //     } else if (ion == 2)
+    //     {
+    //         if (T <= 1500.0) 
+    //         {
+    //             ct_recomb = 0.5337E-9 * pow(T/100.0,-0.076);
+    //         } else {
+    //             ct_recomb = 0.4344E-9 + 0.6340E-9 * pow(log10(T/1500.0),2.06);
 
-            } 
-            return ct_recomb; 
-        }
-    }
+    //         } 
+    //         return ct_recomb; 
+    //     }
+    // }
 
-    int ipIon = ion - 2; //TODO(code) - double check this for correct index!!!
+    int ipIon = ion - 1; //TODO(code) - double check this for correct index!!!
     //  use statistical charge transfer for ion > 4
-    if( ion > 3 ) //TODO(code) - double check this for correct index!!!
+    if( ion > 4 ) //TODO(code) - double check this for correct index!!!
     {
-        ct_recomb = 1.92E-9 * ipIon;
+        ct_recomb = 1.92E-9 * (ipIon+1);
         return ct_recomb;
     }
     
@@ -140,57 +153,57 @@ double charge_transfer_ionization(int ion, int nelem, double T){
 
     // Deal with helium separately
     // He + H+ --> He+ + H
-    if (nelem == 2 && ion ==1)
-    {
-        // ! This particular rate seems to get very small at low te
-        if (T < 3E3)
-        {
-            ct_ion = 0.0;
-            return ct_ion;
-        }
+    // if (nelem == 2 && ion ==1)
+    // {
+    //     // ! This particular rate seems to get very small at low te
+    //     if (T < 3E3)
+    //     {
+    //         ct_ion = 0.0;
+    //         return ct_ion;
+    //     }
 
-        if (T < 1E4)
-        { 
-            ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
-        } else {
-            ct_ion = 4E-37 * pow(T,4.74);
-        }
-        return ct_ion;
-    }
+    //     if (T < 1E4)
+    //     { 
+    //         ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
+    //     } else {
+    //         ct_ion = 4E-37 * pow(T,4.74);
+    //     }
+    //     return ct_ion;
+    // }
 
     // Deal with oxygen separately
-    if (nelem == 8 && ion == 1)
-    {
-        if (T <= 10.0) 
-        {
-            ct_ion = 4.749E-20;
-        } else if (T > 10.0 && T <= 190.0)
-        {
-            double a = -21.134531;
-            double b = -242.06831;
-            double c = 84.761441;
-            ct_ion = exp(a + (b/T) + (c/(T*T)));
-        } else if (T > 190.0 && T <= 200.0)
-        {
-            ct_ion = 2.18733E-12*(T-190.0) + 1.85823E-10;
-        } else
-        { 
-            double a_o = -7.6767404E-14;
-            double b_o = -3.7282001E-13;
-            double c_o = -1.488594E-12;
-            double d_o = -3.6606214E-12; 
-            double e_o = 2.0699463E-12;
-            double f_o = -2.6139493E-13;
-            double g_o = 1.1580844E-14;
-            double logT = log(T);
-            ct_ion = (((((g_o*logT + f_o)*logT + e_o)*logT + d_o)*logT + c_o)*logT + b_o)*logT + a_o;
-        }
+    // if (nelem == 8 && ion == 0)
+    // {
+    //     if (T <= 10.0) 
+    //     {
+    //         ct_ion = 4.749E-20;
+    //     } else if (T > 10.0 && T <= 190.0)
+    //     {
+    //         double a = -21.134531;
+    //         double b = -242.06831;
+    //         double c = 84.761441;
+    //         ct_ion = exp(a + (b/T) + (c/(T*T)));
+    //     } else if (T > 190.0 && T <= 200.0)
+    //     {
+    //         ct_ion = 2.18733E-12*(T-190.0) + 1.85823E-10;
+    //     } else
+    //     { 
+    //         double a_o = -7.6767404E-14;
+    //         double b_o = -3.7282001E-13;
+    //         double c_o = -1.488594E-12;
+    //         double d_o = -3.6606214E-12; 
+    //         double e_o = 2.0699463E-12;
+    //         double f_o = -2.6139493E-13;
+    //         double g_o = 1.1580844E-14;
+    //         double logT = log(T);
+    //         ct_ion = (((((g_o*logT + f_o)*logT + e_o)*logT + d_o)*logT + c_o)*logT + b_o)*logT + a_o;
+    //     }
 
-        return ct_ion;
-    }
+    //     return ct_ion;
+    // }
 
-    int ipIon = ion - 1;
-    if( ipIon > 2 )
+    int ipIon = ion;
+    if( ipIon > 1 )
     {
         ct_ion = 0.0;
         return ct_ion;

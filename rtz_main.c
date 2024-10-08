@@ -6,6 +6,8 @@
 #include "collisional_ionization.h"
 #include "cosmic_ray_ionization.h"
 #include "photoionization_UVB.h"
+#include "charge_transfer.h"
+#include "dust_recombination.h"
 
 const int MAX_ELEMENTS = 27;   // Define a constant named MAX_SIZE
 const double MIN_XION = 1E-12; // Minimum ion fraction
@@ -308,6 +310,50 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
                 if (j == 0) de += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor;
 
                 /////////////////////////
+                //   Charge Transfer   //
+                /////////////////////////
+                // Note, this was split off due to cross species
+                // coupling. Saves us an extra double loop
+                // Charge exchange
+                if (i == 1) {  // If element is hydrogen
+                    // Loop over all other elements
+                    for (int ii = 2; ii < MAX_ELEMENTS; ii++){
+                        if (elements[ii].atomic_number < 1) continue;
+
+                        // Loop over all other ionization states
+                        for (int jj = 0; jj < elements[ii].atomic_number+1; jj++) {
+                            double paired_ion_number_density = n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element;
+                            if (j == 0) { // H
+                                cr += charge_transfer_ionization(jj,ii,TK) * n_and_ion_fracs[i].ion_fracs_new[j+1] * paired_ion_number_density; //! Example:  O + H+ => O+ + H
+                                de += charge_transfer_recombination(jj,ii,TK) * paired_ion_number_density; //! Example:  O+ + H => O + H+
+                            } else { // H+
+                                de += charge_transfer_ionization(jj,ii,TK) * paired_ion_number_density; //! Example:  O + H+ => O+ + H
+                                cr += charge_transfer_recombination(jj,ii,TK) * n_and_ion_fracs[i].ion_fracs_new[j-1] * paired_ion_number_density; //! Example:  O+ + H => O + H+
+                            }
+                        } // end loop over ionization states
+                    } // end loop over other elements
+                } else { // All other elements
+                    double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element;
+                    double HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element;
+
+                    if (j > 0) {
+                        // Ionization from less excited state
+                        cr += charge_transfer_ionization(j-1,i,TK) * n_and_ion_fracs[i].ion_fracs_new[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H   
+
+                        // Charge exchange recombination 
+                        de += charge_transfer_recombination(j,i,TK) * HI_number_density; //! Example:  O+ + H => O + H+
+                    }    
+
+                    if (j < atomic_number) {
+                        // Charge exchange ionization
+                        de += charge_transfer_ionization(j,i,TK) * HII_number_density; //! Example:  O + H+ => O+ + H   
+
+                        // Charge exchange recombination from the more excited state
+                        cr += charge_transfer_recombination(j+1,i,TK) * n_and_ion_fracs[i].ion_fracs_new[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
+                    }           
+                } 
+
+                /////////////////////////
                 //       Update        //
                 /////////////////////////
                 // The update
@@ -388,7 +434,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 
         // Check if we are converged
         //TODO(code): make convergence number a parameter
-        if (convergence_counter > 100) model_converged = true;
+        if (convergence_counter > 1000) model_converged = true;
 
         // Update the success counters
         success_counter += 1;
@@ -396,7 +442,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
         // If we have had ten consecutive successes
         // double the time step and reset the counter
         //TODO(code): make success counter double ddt a parameter
-        if (success_counter >= 10){
+        if (success_counter >= 100){
             // printf("Success doubling dt: new dt %f\n",ddt*2.);
             ddt *= 2.0;
             success_counter = 0;
@@ -420,9 +466,9 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 }
 
 int main() {
-    double redshift = 2.5;          // Redshift of the calculation
-    double UV_background_G0 = 1.0;  // G0 (sub ionizing radiaiton field)
-    double generic_cosmic_ray_ionization_rate = 1.E-16; // Background CR ionization rate
+    double redshift = 20.5;          // Redshift of the calculation
+    double UV_background_G0 = 0.0;  // G0 (sub ionizing radiaiton field)
+    double generic_cosmic_ray_ionization_rate = 0.0; //1.E-16; // Background CR ionization rate
 
     // Declare an array (list) of 3 elements (structs)
     Element elements[MAX_ELEMENTS];
@@ -441,9 +487,31 @@ int main() {
     // Initialize cosmic ray rates
     initialize_cr_rates();
 
-    // Loop over temperature and get the ion fractions
-    for (int i = 0; i < 1000; i++) {
-        double TK = pow(10.0,3.0+((double)i*0.005));
+    // Initialize the charge transfer rates
+    load_ct_rates();
+
+    // for (int i = 0; i < 9; i++) {
+    //     printf("%e ",charge_transfer_recombination(i,2,8E4));
+    //     printf("%e ",charge_transfer_ionization(i,2,8E4));
+
+    //     printf("%e ",charge_transfer_recombination(i,6,1E4));
+    //     printf("%e ",charge_transfer_ionization(i,6,1E4));
+
+    //     printf("%e ",charge_transfer_recombination(i,7,1E4));
+    //     printf("%e ",charge_transfer_ionization(i,7,1E4));
+
+    //     printf("%e ",charge_transfer_recombination(i,8,8E4));
+    //     printf("%e ",charge_transfer_ionization(i,8,8E4));
+
+    //     printf("%e ",charge_transfer_recombination(i,10,1E4));
+    //     printf("%e ",charge_transfer_ionization(i,10,1E4));
+    //     printf("\n");
+    // }
+
+    // // Loop over temperature and get the ion fractions
+    for (int i = 0; i < 100; i++) {
+        double TK = pow(10.0,3.5+((double)i*0.01));
+        // double TK = pow(10.0,8.45-((double)i*0.05));
         get_chemical_eqm(elements, n_and_ion_fracs, TK, -1.0, UV_background_G0,
                          generic_cosmic_ray_ionization_rate);
         // printf("%e %e\n",n_and_ion_fracs[1].ion_fracs[0],n_and_ion_fracs[1].ion_fracs[1]);

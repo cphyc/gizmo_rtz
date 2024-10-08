@@ -2,7 +2,6 @@
 #ifndef PHOTOIONIZATION_UVB
 #define PHOTOIONIZATION_UVB
 
-// Declaration of recombination functions
 void load_UVB_data();
 void update_UVB(double redshift);
 

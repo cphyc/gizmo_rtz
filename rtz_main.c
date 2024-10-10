@@ -169,7 +169,8 @@ void copyArray(double src[], double dest[], int size) {
 
 void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, double TK, 
                       double total_dt, double UV_background_G0,
-                      double primary_cosmic_ray_ionization_rate) {
+                      double primary_cosmic_ray_ionization_rate,
+                      double dust_to_gas_mass_ratio_over_mw) {
     /*
     Computes chemical equilibrium
 
@@ -232,7 +233,6 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
         // Now calculate the total CR ionization rate
         total_cosmic_ray_ionization_rate = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
 
-
         // Initialize the X percent rule
         x_percent_rule = true;
 
@@ -263,6 +263,10 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
             // Loop over the number of ions
             for (int j = 0; j < n_ions; j++) {
 
+                // Update the HI number density in case it has change e.g. due to charge exchange
+                double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element;
+                double dust_effective_number_density = HI_number_density * dust_to_gas_mass_ratio_over_mw;
+
                 /////////////////////////
                 //       Creation      //
                 /////////////////////////
@@ -286,6 +290,9 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
                 // Cosmic ray ionization of the less excited state from induced UV
                 if (j == 1) cr += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
 
+                // Recombination on dust for the more excited state
+                if (j < atomic_number) cr += dust_recombination_rates(j+1, i, TK, UV_background_G0, ne) * dust_effective_number_density * n_and_ion_fracs[i].ion_fracs_new[j+1];
+
                 /////////////////////////
                 //     Destruction     //
                 /////////////////////////
@@ -308,6 +315,9 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 
                 // Cosmic ray ionization from induced UV
                 if (j == 0) de += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor;
+
+                // Recombination on dust
+                if (j > 0) de += dust_recombination_rates(j, i, TK, UV_background_G0, ne) * dust_effective_number_density;
 
                 /////////////////////////
                 //   Charge Transfer   //
@@ -469,6 +479,7 @@ int main() {
     double redshift = 20.5;          // Redshift of the calculation
     double UV_background_G0 = 0.0;  // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 0.0; //1.E-16; // Background CR ionization rate
+    double dust_to_gas_mass_ratio_over_mw = 1.0; // dust to gas mass ratio normalized to the MW
 
     // Declare an array (list) of 3 elements (structs)
     Element elements[MAX_ELEMENTS];
@@ -490,30 +501,12 @@ int main() {
     // Initialize the charge transfer rates
     load_ct_rates();
 
-    // for (int i = 0; i < 9; i++) {
-    //     printf("%e ",charge_transfer_recombination(i,2,8E4));
-    //     printf("%e ",charge_transfer_ionization(i,2,8E4));
-
-    //     printf("%e ",charge_transfer_recombination(i,6,1E4));
-    //     printf("%e ",charge_transfer_ionization(i,6,1E4));
-
-    //     printf("%e ",charge_transfer_recombination(i,7,1E4));
-    //     printf("%e ",charge_transfer_ionization(i,7,1E4));
-
-    //     printf("%e ",charge_transfer_recombination(i,8,8E4));
-    //     printf("%e ",charge_transfer_ionization(i,8,8E4));
-
-    //     printf("%e ",charge_transfer_recombination(i,10,1E4));
-    //     printf("%e ",charge_transfer_ionization(i,10,1E4));
-    //     printf("\n");
-    // }
-
     // // Loop over temperature and get the ion fractions
     for (int i = 0; i < 100; i++) {
-        double TK = pow(10.0,3.5+((double)i*0.01));
-        // double TK = pow(10.0,8.45-((double)i*0.05));
+        //double TK = pow(10.0,3.5+((double)i*0.01));
+        double TK = pow(10.0,8.45-((double)i*0.05));
         get_chemical_eqm(elements, n_and_ion_fracs, TK, -1.0, UV_background_G0,
-                         generic_cosmic_ray_ionization_rate);
+                         generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw);
         // printf("%e %e\n",n_and_ion_fracs[1].ion_fracs[0],n_and_ion_fracs[1].ion_fracs[1]);
         // printf("%e %e %e %e\n",TK,n_and_ion_fracs[2].ion_fracs[0],n_and_ion_fracs[2].ion_fracs[1],n_and_ion_fracs[2].ion_fracs[2]);
         printf("%e ",TK);

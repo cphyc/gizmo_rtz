@@ -10,8 +10,10 @@
 #include "dust_recombination.h"
 
 const int MAX_ELEMENTS = 27;   // Define a constant named MAX_SIZE
-const double MIN_XION = 1E-12; // Minimum ion fraction
+const double MIN_XION = 1E-20; // Minimum ion fraction
 const double MIN_XION_FLOOR = 1E-10; // Minimum ion fraction
+const double CONV_ABS = 1E-2; // Value required for convergence
+const double X_PCT_RULE = 0.1; // Value required for convergence
 
 // Define the struct
 typedef struct {
@@ -139,7 +141,7 @@ double get_ne(Element *elements, ParticleIonData *n_and_ion_fracs, bool use_new)
         } //End loop ion fracs
     } //End loop elements
 
-    return ne;
+    return fmax(ne,MIN_XION);
 }
 
 void reduce_xion(double ion_fracs[], int size) {
@@ -192,11 +194,14 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
     bool convergence_bool   = true;
     bool x_percent_rule     = true;
     double total_time       = 0.E0;
-    double residual;    
-    double max_residual;   
+    double residual;  
+    double ne_residual;  
+    double max_residual;
+    double max_residual_all;  
 
     //Physical variables
     double ne; //Electron number density
+    double ne_initial; //Electron number density for convergence
     double cr; //Creation rate
     double de; //Destruction rate
     double xe; //Electron fraction (n_electron/nH)
@@ -238,6 +243,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 
         // Convergence
         convergence_bool = true;
+        max_residual_all = -999.;
 
         // Make sure the timestep isn't larger than how long we
         // need to evolve for, otherwise shorten it
@@ -374,6 +380,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
                 reduce_xion(n_and_ion_fracs[i].ion_fracs_new, size);
 
                 // Get the new electron fraction
+                ne_initial = ne;
                 ne = get_ne(elements,n_and_ion_fracs,true);
                 xe = ne / n_and_ion_fracs[1].n_element;
                 phi_s = secondary_cr_rates(xe);
@@ -383,18 +390,20 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
                 //     Convergence     //
                 /////////////////////////
                 // X% rule
-                //TODO(code): make min_xion a parameter
-                residual = fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + MIN_XION_FLOOR);
+                residual = fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / fmax(n_and_ion_fracs[i].ion_fracs[j],MIN_XION_FLOOR);
+                
+                // electron density residual
+                ne_residual = fabs(ne - ne_initial) / fmax(ne,MIN_XION_FLOOR);
+                residual = fmax(residual,ne_residual);
 
                 // Update the max residual
                 max_residual = fmax(max_residual,residual);
 
+                // Max residual over all elements
+                max_residual_all = fmax(max_residual_all,max_residual);
 
                 //TODO(code): X percent rule a parameter
-                if (residual > 1E-1){
-                    // printf("Element %d broke 10 percent rule: new dt %f\n",i,ddt/2.);
-                    // If the timestep is too long, half the timestep
-                    ddt /= 2.;
+                if (residual > X_PCT_RULE){
                     // Declare the x-percent rule was violated
                     x_percent_rule = false;
                     // Break the loop over ions
@@ -411,13 +420,23 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
             }
 
             // Check if the model has converged
-            if (max_residual > 1E-2) convergence_bool = false;
+            if (max_residual > CONV_ABS) convergence_bool = false;
 
         } // End element loop
 
         /////////////////////////
         //   More Convergence  //
         /////////////////////////
+
+        // Set new dt --> Strategy from Nick Gnedin
+        max_residual_all /= X_PCT_RULE;
+        if (max_residual_all > 1.0) {
+            ddt = 0.9 * ddt / sqrt(2.+max_residual_all); 
+        } else {
+            ddt = 0.9 * ddt / pow(0.01+max_residual_all,0.3);
+        }
+        // ddt = ddt * fmin(0.9*pow(1E-1/max_residual_all,1.0/2.0),5.0);
+        ddt = fmin(ddt,1E20);
 
         // Check if the model has converged
         if (convergence_bool){
@@ -444,19 +463,8 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 
         // Check if we are converged
         //TODO(code): make convergence number a parameter
-        if (convergence_counter > 1000) model_converged = true;
+        if (convergence_counter > 100) model_converged = true;
 
-        // Update the success counters
-        success_counter += 1;
-
-        // If we have had ten consecutive successes
-        // double the time step and reset the counter
-        //TODO(code): make success counter double ddt a parameter
-        if (success_counter >= 100){
-            // printf("Success doubling dt: new dt %f\n",ddt*2.);
-            ddt *= 2.0;
-            success_counter = 0;
-        }
 
         // Update the total time
         total_time += ddt;
@@ -478,7 +486,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 int main() {
     double redshift = 20.5;          // Redshift of the calculation
     double UV_background_G0 = 0.0;  // G0 (sub ionizing radiaiton field)
-    double generic_cosmic_ray_ionization_rate = 0.0; //1.E-16; // Background CR ionization rate
+    double generic_cosmic_ray_ionization_rate = 0.0; // Background CR ionization rate
     double dust_to_gas_mass_ratio_over_mw = 1.0; // dust to gas mass ratio normalized to the MW
 
     // Declare an array (list) of 3 elements (structs)
@@ -502,13 +510,11 @@ int main() {
     load_ct_rates();
 
     // // Loop over temperature and get the ion fractions
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 500; i++) {
         //double TK = pow(10.0,3.5+((double)i*0.01));
-        double TK = pow(10.0,8.45-((double)i*0.05));
+        double TK = pow(10.0,8.0-((double)i*0.01));
         get_chemical_eqm(elements, n_and_ion_fracs, TK, -1.0, UV_background_G0,
                          generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw);
-        // printf("%e %e\n",n_and_ion_fracs[1].ion_fracs[0],n_and_ion_fracs[1].ion_fracs[1]);
-        // printf("%e %e %e %e\n",TK,n_and_ion_fracs[2].ion_fracs[0],n_and_ion_fracs[2].ion_fracs[1],n_and_ion_fracs[2].ion_fracs[2]);
         printf("%e ",TK);
         for (int j = 0; j < 9; j++) {
             printf("%e ",n_and_ion_fracs[8].ion_fracs[j]);

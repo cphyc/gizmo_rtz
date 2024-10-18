@@ -596,7 +596,7 @@ int main() {
     double redshift = 20.5;          // Redshift of the calculation
     double UV_background_G0 = 1.0;  // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 1.0E-16; // Background CR ionization rate
-    double dust_to_gas_mass_ratio_over_mw = 1.0; // dust to gas mass ratio normalized to the MW
+    double dust_to_gas_mass_ratio_over_mw = 0.01; // dust to gas mass ratio normalized to the MW
     bool include_H2 = true; // Whether to include molecular hydrogen
     bool include_CO = false; // Whether to include CO
 

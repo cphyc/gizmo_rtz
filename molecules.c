@@ -127,3 +127,29 @@ double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double n
 
     return destruction_rate;
 }
+
+double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO, double n){
+
+    //! see glover 2012
+    double k0 = 5.E-16; //! cm^3 s^-1
+    double k1 = 5.E-10; //! Rate coefficient for the formation of CO from O + CHx
+
+    //! Assuming CO formation is modulated by CH2+, https://home.strw.leidenuniv.nl/~ewine/photo/display_ch2+_65e31a07e69e64dbd64d37801983018f.html
+    double gammaCHx_cr = 8.88E-15 * (xi_cr_H2 / 1E-16); //! Cosmic rays
+    double gammaCHx = (1.41E-10 * G0) + gammaCHx_cr;
+
+    double beta = k1 * xO/(k1*xO + gammaCHx/n);
+    double formation_rate = k0 * nCII * nH2 * beta;
+
+    return formation_rate;
+}
+
+double beta_CO(double G0, double xi_cr_H2){
+    //! CO destruction
+    double gammaCO = 2.43E-10 * G0;
+    double gammaCO_cr = 4.62E-15 * (xi_cr_H2 / 1E-16);
+
+    double destruction_rate = gammaCO + gammaCO_cr;
+
+    return destruction_rate;
+}

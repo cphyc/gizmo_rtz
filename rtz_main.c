@@ -314,7 +314,6 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
 
             // Cosmic ray destruction
             de_H2 += H2_cosmic_ray_ionization_rate;
-            // printf("%e %e\n",de_H2,cr_H2);
 
             // Update xH2
             xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
@@ -325,9 +324,7 @@ void get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, doubl
             // Convergence
             // X% rule
             residual = fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / fmax(n_and_ion_fracs[1].ion_fracs[2],MIN_XION_FLOOR);
-            // printf("%e %e\n",TK,residual);
-            // printf("%e %e\n",n_and_ion_fracs[1].ion_fracs_new[2], n_and_ion_fracs[1].ion_fracs[2]);
-            // printf("------\n");
+
             // Update the max residual
             max_residual = fmax(max_residual,residual);
 

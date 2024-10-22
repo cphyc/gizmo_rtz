@@ -9,6 +9,7 @@
 #include "charge_transfer.h"
 #include "dust_recombination.h"
 #include "molecules.h"
+#include "cooling.h"
 
 const int MAX_ELEMENTS = 27;   // Define a constant named MAX_SIZE
 const double MIN_XION = 1E-20; // Minimum ion fraction
@@ -616,6 +617,10 @@ int main() {
 
     // Initialize the charge transfer rates
     load_ct_rates();
+
+    // Initialize high temperature cooling tables
+    initialize_high_temperature_metal_cooling();
+
 
     // // Loop over temperature and get the ion fractions
     for (int i = 0; i < 10; i++) {

@@ -621,6 +621,8 @@ int main() {
     // Initialize high temperature cooling tables
     initialize_high_temperature_metal_cooling();
 
+    // Initialize the low temperature cooling tables
+    init_fine_structure_tables();
 
     // // Loop over temperature and get the ion fractions
     for (int i = 0; i < 10; i++) {

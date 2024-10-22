@@ -1,5 +1,6 @@
 // cooling.c
 #include <stdio.h>
+#include <stdbool.h>
 #include <math.h>
 #include "constants.h"
 
@@ -10,6 +11,7 @@ const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooli
 const int N_HIGH_T_COOLING_TEMP = 121;
 double high_t_cooling_temp[N_HIGH_T_COOLING_TEMP];
 double high_t_cooling_rates[N_HIGH_T_COOLING_TEMP][27][27];
+double fs_cool_tab[27][160][8];  // Array for fine structure cooling rates
 
 double collisional_ionization_cooling_HI(double T){
     // From Cen 1992
@@ -283,9 +285,6 @@ void initialize_high_temperature_metal_cooling(){
     }
     // Close the file
     fclose(file);
-
-    // TODO(code): zero out the rates that we calculate analytically!!!
-
 }
 
 double get_high_t_cooling_rates(double T, double ne, 
@@ -338,6 +337,319 @@ double get_high_t_cooling_rates(double T, double ne,
     }
 
     return total_metal_cooling_rate;
+}
+
+void init_fine_structure_tables(){
+    // Initialization for fine structure cooling tables
+    printf("Initializing fine cooling tables\n");
+
+    const int N_LINES = 27; 
+    const char* file_names[N_LINES] = {
+        "CII_158um_rates.dat", "CI_609um_rates.dat", "CI_230um_rates.dat", "CI_370um_rates.dat",
+        "NII_205um_rates.dat", "NII_76um_rates.dat", "NII_122um_rates.dat", "OI_63um_rates.dat",
+        "OI_44um_rates.dat", "OI_145um_rates.dat", "NeII_13um_rates.dat", "SiII_35um_rates.dat",
+        "OIII_88um_rates.dat", "OIII_33um_rates.dat", "OIII_52um_rates.dat", "FeI_14um_rates.dat",
+        "FeI_24um_rates.dat", "FeI_35um_rates.dat", "FeII_26um_rates.dat", "FeII_15um_rates.dat",
+        "FeII_35um_rates.dat", "SiI_130um_rates.dat", "SiI_45um_rates.dat", "SiI_68um_rates.dat",
+        "SI_17um_rates.dat", "SI_25um_rates.dat", "SI_56um_rates.dat"
+    };
+
+    char fs_cooling_dir[256] = "./data/fine_structure_data/";
+
+    char file_path[512];
+    FILE* file;
+    bool ok;
+
+    // Check that all files exist and concatenate directory and filename
+    for (int i = 0; i < N_LINES; i++) {
+        snprintf(file_path, sizeof(file_path), "%s%s", fs_cooling_dir, file_names[i]);
+        file = fopen(file_path, "r");
+        ok = (file != NULL);
+        if (!ok) {
+            printf("Cannot access fine structure cooling file %s\n", file_path);
+        }
+        fclose(file);
+    }
+
+    // Read in the fine structure data
+    for (int j = 0; j < N_LINES; j++) {
+        snprintf(file_path, sizeof(file_path), "%s%s", fs_cooling_dir, file_names[j]);
+        file = fopen(file_path, "r");
+        if (!file) {
+            printf("Failed to open file %s\n", file_path);
+        }
+
+        // Loop over temperatures
+        for (int i = 0; i < 160; i++) {
+            for (int k = 0; k < 8; k++) {
+                if (fscanf(file, "%lf", &fs_cool_tab[j][i][k]) != 1) {
+                    printf("Error reading data from file %s\n", file_path);
+                    fclose(file);
+                }
+            }
+        }
+
+        fclose(file);
+    }
+}
+
+double three_level(double g_0, double g_1, double g_2, 
+                   double lam_10, double lam_20, double lam_21, 
+                   double A_10, double A_20, double A_21, 
+                   double z, double T, double n_ion, 
+                   double ne, double nH, double nHp, 
+                   double nHe, double nHep, double nHepp, 
+                   double nH2, 
+                   int idx_0, int idx_1, int idx_2){
+    // Harley's three-level ion solver
+
+    // ! Initialize the result
+    double three_level_cooling = 1E-50;
+
+    double T_cmb = 2.725 * (1.0 + z); //! CMB temperature
+
+    // ! Get log T and enforce bounds
+    double logT = log10(T);
+
+    // Enforce bounds on temperature
+    double tmin = 1.0;
+    double tmax = 4.975;
+    double delta_temp = 0.025;
+    logT = fmax(logT,1.0);
+    logT = fmin(logT,5.0);
+
+    double nu_10 = C_CGS / (lam_10 * 1E-4); //! Hz
+    double nu_20 = C_CGS / (lam_20 * 1E-4); //! Hz
+    double nu_21 = C_CGS / (lam_21 * 1E-4); //! Hz
+
+    double E_10 = (H_PLANCK * C_CGS / (lam_10 * 1E-4)) / KB; //! E/K (K)
+    double E_20 = (H_PLANCK * C_CGS / (lam_20 * 1E-4)) / KB; //! E/K (K)
+    double E_21 = (H_PLANCK * C_CGS / (lam_21 * 1E-4)) / KB; //! E/K (K)
+
+    double B_01 = A_10 * (pow(lam_10 * 1.E-4,3.0)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_02 = A_20 * (pow(lam_20 * 1.E-4,3.0)) * (g_2 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_12 = A_21 * (pow(lam_21 * 1.E-4,3.0)) * (g_2 / g_1) / (2.0 * H_PLANCK * C_CGS);
+
+    double B_10 = (g_0 / g_1) * B_01;
+    double B_20 = (g_0 / g_2) * B_02;
+    double B_21 = (g_1 / g_2) * B_12;
+
+    //! CMB black body spectrum
+    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+    double B_nu_20 = (2.0 * H_PLANCK * pow(nu_20,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_20 / (KB * T_cmb)) - 1.0);
+    double B_nu_21 = (2.0 * H_PLANCK * pow(nu_21,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_21 / (KB * T_cmb)) - 1.0);
+
+    // ! Find temperature index.
+    int itemp_low = (int)floor( ((logT - tmin) / (tmax - tmin)) * 160.0);
+    double frac_high = (logT - (tmin + ((float)itemp_low * delta_temp))) / delta_temp;
+    double frac_low = 1.0 - frac_high;
+
+    // ! All collison strengths are in cm^3 s^-1
+    // ! For collisions with o-H2
+    // !rate_electron,rate_HII,rate_HeII,rate_HeIII,rate_HI,rate_HeI,rate_oH2,rate_pH2
+    // double q10_oH2 = interp_coll_1d(fs_cool_tab(idx_0,:,7), logT);
+    // double q20_oH2 = interp_coll_1d(fs_cool_tab(idx_1,:,7), logT);
+    // double q21_oH2 = interp_coll_1d(fs_cool_tab(idx_2,:,7), logT);
+    double q10_oH2 = (fs_cool_tab[idx_0][itemp_low][6] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][6] * frac_high);
+    double q20_oH2 = (fs_cool_tab[idx_1][itemp_low][6] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][6] * frac_high);
+    double q21_oH2 = (fs_cool_tab[idx_2][itemp_low][6] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][6] * frac_high);
+
+    // ! For collisions with p-H2
+    // double q10_pH2 = interp_coll_1d(fs_cool_tab(idx_0,:,8), logT);
+    // double q20_pH2 = interp_coll_1d(fs_cool_tab(idx_1,:,8), logT);
+    // double q21_pH2 = interp_coll_1d(fs_cool_tab(idx_2,:,8), logT);
+    double q10_pH2 = (fs_cool_tab[idx_0][itemp_low][7] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][7] * frac_high);
+    double q20_pH2 = (fs_cool_tab[idx_1][itemp_low][7] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][7] * frac_high);
+    double q21_pH2 = (fs_cool_tab[idx_2][itemp_low][7] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][7] * frac_high);
+
+    // ! For collisions with H
+    // double q10_H = interp_coll_1d(fs_cool_tab(idx_0,:,5), logT);
+    // double q20_H = interp_coll_1d(fs_cool_tab(idx_1,:,5), logT);
+    // double q21_H = interp_coll_1d(fs_cool_tab(idx_2,:,5), logT);
+    double q10_H = (fs_cool_tab[idx_0][itemp_low][4] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][4] * frac_high);
+    double q20_H = (fs_cool_tab[idx_1][itemp_low][4] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][4] * frac_high);
+    double q21_H = (fs_cool_tab[idx_2][itemp_low][4] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][4] * frac_high);
+
+    // ! For collisions with H+
+    // double q10_Hp = interp_coll_1d(fs_cool_tab(idx_0,:,2), logT);
+    // double q20_Hp = interp_coll_1d(fs_cool_tab(idx_1,:,2), logT);
+    // double q21_Hp = interp_coll_1d(fs_cool_tab(idx_2,:,2), logT);
+    double q10_Hp = (fs_cool_tab[idx_0][itemp_low][1] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][1] * frac_high);
+    double q20_Hp = (fs_cool_tab[idx_1][itemp_low][1] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][1] * frac_high);
+    double q21_Hp = (fs_cool_tab[idx_2][itemp_low][1] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][1] * frac_high);
+
+    // ! For collisions with e
+    // double q10_e = interp_coll_1d(fs_cool_tab(idx_0,:,1), logT);
+    // double q20_e = interp_coll_1d(fs_cool_tab(idx_1,:,1), logT);
+    // double q21_e = interp_coll_1d(fs_cool_tab(idx_2,:,1), logT);
+    double q10_e = (fs_cool_tab[idx_0][itemp_low][0] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][0] * frac_high);
+    double q20_e = (fs_cool_tab[idx_1][itemp_low][0] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][0] * frac_high);
+    double q21_e = (fs_cool_tab[idx_2][itemp_low][0] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][0] * frac_high);
+
+    // ! For collisions with He
+    // double q10_He = interp_coll_1d(fs_cool_tab(idx_0,:,6), logT);
+    // double q20_He = interp_coll_1d(fs_cool_tab(idx_1,:,6), logT);
+    // double q21_He = interp_coll_1d(fs_cool_tab(idx_2,:,6), logT);
+    double q10_He = (fs_cool_tab[idx_0][itemp_low][5] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][5] * frac_high);
+    double q20_He = (fs_cool_tab[idx_1][itemp_low][5] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][5] * frac_high);
+    double q21_He = (fs_cool_tab[idx_2][itemp_low][5] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][5] * frac_high);
+
+    // ! For collisions with He+
+    // double q10_Hep = interp_coll_1d(fs_cool_tab(idx_0,:,3), logT);
+    // double q20_Hep = interp_coll_1d(fs_cool_tab(idx_1,:,3), logT);
+    // double q21_Hep = interp_coll_1d(fs_cool_tab(idx_2,:,3), logT);
+    double q10_Hep = (fs_cool_tab[idx_0][itemp_low][2] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][2] * frac_high);
+    double q20_Hep = (fs_cool_tab[idx_1][itemp_low][2] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][2] * frac_high);
+    double q21_Hep = (fs_cool_tab[idx_2][itemp_low][2] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][2] * frac_high);
+
+    // ! For collisions with He++
+    // double q10_Hepp = interp_coll_1d(fs_cool_tab(idx_0,:,4), logT);
+    // double q20_Hepp = interp_coll_1d(fs_cool_tab(idx_1,:,4), logT);
+    // double q21_Hepp = interp_coll_1d(fs_cool_tab(idx_2,:,4), logT);
+    double q10_Hepp = (fs_cool_tab[idx_0][itemp_low][3] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][3] * frac_high);
+    double q20_Hepp = (fs_cool_tab[idx_1][itemp_low][3] * frac_low) + (fs_cool_tab[idx_1][itemp_low+1][3] * frac_high);
+    double q21_Hepp = (fs_cool_tab[idx_2][itemp_low][3] * frac_low) + (fs_cool_tab[idx_2][itemp_low+1][3] * frac_high);
+
+    // ! Net collision strengths note the 75-25 ortho-para H2
+    double C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * 0.75 * nH2) + (q10_pH2 * 0.25 * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
+    double C_20 = (q20_e * ne) + (q20_H * nH) + (q20_Hp * nHp) + (q20_oH2 * 0.75 * nH2) + (q20_pH2 * 0.25 * nH2) + (q20_He * nHe) + (q20_Hep * nHep) + (q20_Hepp * nHepp);
+    double C_21 = (q21_e * ne) + (q21_H * nH) + (q21_Hp * nHp) + (q21_oH2 * 0.75 * nH2) + (q21_pH2 * 0.25 * nH2) + (q21_He * nHe) + (q21_Hep * nHep) + (q21_Hepp * nHepp);
+
+    double C_01 = C_10 * (g_1/g_0) * exp(-1.0 * E_10 / T);
+    double C_02 = C_20 * (g_2/g_0) * exp(-1.0 * E_20 / T);
+    double C_12 = C_21 * (g_2/g_1) * exp(-1.0 * E_21 / T);
+
+    C_01 += (B_01*B_nu_10);
+    C_02 += (B_02*B_nu_20);
+    C_12 += (B_12*B_nu_21);
+
+    C_10 += (B_10*B_nu_10);
+    C_20 += (B_20*B_nu_20);
+    C_21 += (B_21*B_nu_21);
+
+    // ! Analytic solution to the 3 level system (see paul goldsmith papers)
+    // ! Done this way to avoid numerical errors
+    double n2_n1_top = (C_12 * (C_01 + C_02)) + (C_02 * (A_10 + C_10));
+    double n2_n1_bot = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20 * C_02);
+    double n2_n1 = n2_n1_top / n2_n1_bot;
+
+    double n1_n0_top = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20*C_02);
+    double n1_n0_bot = ((A_21 + C_21 + C_20) * (A_10 + C_10)) + (C_20*C_12);
+    double n1_n0 = n1_n0_top / n1_n0_bot;
+
+    double n_0 = 1.0 / (1.0 + n1_n0 + (n2_n1 * n1_n0));
+    double n_1 = 1.0 / (1.0 + n2_n1 + (1.0/n1_n0));
+    double n_2 = 1.0 / (1.0 + (1.0/n2_n1) + ((1.0/n2_n1)*(1.0/n1_n0)));
+
+    // ! Cooling and heating rates
+    double cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * KB * n_1 * n_ion;
+    double cool_1 = (A_20 + (B_20 * B_nu_20)) * E_20 * KB * n_2 * n_ion;
+    double cool_2 = (A_21 + (B_21 * B_nu_21)) * E_21 * KB * n_2 * n_ion;
+
+    double heat_0 = B_01 * B_nu_10 * E_10 * KB * n_0 * n_ion;
+    double heat_1 = B_02 * B_nu_20 * E_20 * KB * n_0 * n_ion;
+    double heat_2 = B_12 * B_nu_21 * E_21 * KB * n_1 * n_ion;
+
+    // ! Total cooling rate
+    three_level_cooling = (cool_0 + cool_1 + cool_2) - (heat_0 + heat_1 + heat_2);
+
+    return three_level_cooling;
+}
+
+double two_level(double g_0, double g_1, double lam_10, double A_10,
+                double z, double T, double n_ion, double ne, 
+                double nH, double nHp, double nHe, double nHep, 
+                double nHepp, double nH2, int idx_0){
+    // Harley's two-level ion solver
+
+    // ! Initialize the result
+    double two_level_cooling = 1E-50;
+
+    double T_cmb = 2.725 * (1.0 + z); //! CMB temperature
+
+    // ! Get log T and enforce bounds
+    double logT = log10(T);
+
+    // Enforce bounds on temperature
+    double tmin = 1.0;
+    double tmax = 4.975;
+    double delta_temp = 0.025;
+    logT = fmax(logT,tmin);
+    logT = fmin(logT,tmax);
+
+    double nu_10 = C_CGS / (lam_10 * 1E-4); //! Hz
+
+    double E_10 = (H_PLANCK * C_CGS / (lam_10 * 1E-4)) / KB; //! E/K (K)
+
+    double B_01 = A_10 * (pow(lam_10 * 1.E-4,3.0)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+
+    double B_10 = (g_0 / g_1) * B_01;
+
+    //! CMB black body spectrum
+    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+
+    // ! Find temperature index.
+    int itemp_low = (int)floor( ((logT - tmin) / (tmax - tmin)) * 160.0);
+    double frac_high = (logT - (tmin + ((float)itemp_low * delta_temp))) / delta_temp;
+    double frac_low = 1.0 - frac_high;
+
+    // ! All collison strengths are in cm^3 s^-1
+    // ! For collisions with o-H2
+    // !rate_electron,rate_HII,rate_HeII,rate_HeIII,rate_HI,rate_HeI,rate_oH2,rate_pH2
+    // double q10_oH2 = interp_coll_1d(fs_cool_tab(idx_0,:,7), logT);
+    double q10_oH2 = (fs_cool_tab[idx_0][itemp_low][6] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][6] * frac_high);
+
+    // ! For collisions with p-H2
+    // double q10_pH2 = interp_coll_1d(fs_cool_tab(idx_0,:,8), logT);
+    double q10_pH2 = (fs_cool_tab[idx_0][itemp_low][7] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][7] * frac_high);
+
+    // ! For collisions with H
+    // double q10_H = interp_coll_1d(fs_cool_tab(idx_0,:,5), logT);
+    double q10_H = (fs_cool_tab[idx_0][itemp_low][4] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][4] * frac_high);
+
+    // ! For collisions with H+
+    // double q10_Hp = interp_coll_1d(fs_cool_tab(idx_0,:,2), logT);
+    double q10_Hp = (fs_cool_tab[idx_0][itemp_low][1] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][1] * frac_high);
+
+    // ! For collisions with e
+    // double q10_e = interp_coll_1d(fs_cool_tab(idx_0,:,1), logT);
+    double q10_e = (fs_cool_tab[idx_0][itemp_low][0] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][0] * frac_high);
+
+    // ! For collisions with He
+    // double q10_He = interp_coll_1d(fs_cool_tab(idx_0,:,6), logT);
+    double q10_He = (fs_cool_tab[idx_0][itemp_low][5] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][5] * frac_high);
+
+    // ! For collisions with He+
+    // double q10_Hep = interp_coll_1d(fs_cool_tab(idx_0,:,3), logT);
+    double q10_Hep = (fs_cool_tab[idx_0][itemp_low][2] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][2] * frac_high);
+
+    // ! For collisions with He++
+    // double q10_Hepp = interp_coll_1d(fs_cool_tab(idx_0,:,4), logT);
+    double q10_Hepp = (fs_cool_tab[idx_0][itemp_low][3] * frac_low) + (fs_cool_tab[idx_0][itemp_low+1][3] * frac_high);
+
+    // ! Net collision strengths note the 75-25 ortho-para H2
+    double C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * 0.75 * nH2) + (q10_pH2 * 0.25 * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
+
+    double C_01 = C_10 * (g_1/g_0) * exp(-1.0 * E_10 / T);
+
+    // ! Analytic solution to the 2 level system (modified version of paul goldsmith papers)
+    // ! Done this way to avoid numerical errors
+    double t1 = ( (B_01*B_nu_10) + C_01 );
+    double t2 = ( A_10 + (B_10*B_nu_10) + C_10 );
+
+    double nu_over_nl = t1 / t2;
+    double n_0 = 1.0 / (nu_over_nl + 1.0);
+    double n_1 = 1.0 / ((1.0/nu_over_nl) + 1.0);
+
+    // ! Cooling and heating rates
+    double cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * KB * n_1 * n_ion;
+
+    double heat_0 = B_01 * B_nu_10 * E_10 * KB * n_0 * n_ion;
+
+    // ! Total cooling rate
+    two_level_cooling = (cool_0 - heat_0);
+
+    return two_level_cooling;
 }
 
 

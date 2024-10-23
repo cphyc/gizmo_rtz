@@ -11,4 +11,7 @@ const double C_CGS = 299792458.0; // cm/s
 // Planck's constant
 const double H_PLANCK = 6.626196E-27; // erg * s
 
+// Conversion from eV to erg
+const double EV_2_ERG = 1.602E-12;
+
 #endif // CONSTANTS_H

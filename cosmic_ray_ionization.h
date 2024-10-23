@@ -12,5 +12,6 @@ double secondary_cr_rates(double xe);
 // Index is element number | Ion
 extern double cosmic_ray_ionization_rates[27][27];
 extern double cosmic_ray_ionization_rates_induced_UV[27];
+extern double cosmic_ray_ionization_rates_induced_UV_heat[27];
 
 #endif

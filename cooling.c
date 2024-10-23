@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include "constants.h"
+#include "cosmic_ray_ionization.h"
 
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling
@@ -1011,9 +1012,111 @@ double SI_fine_structure(double T, double n_ion, double nH, double nHp,
                       24, 25, 26);
 }
 
+double dust_recombination_cooling(double T, double G0, double ne, double f_dg, double nH){
+    // Dust recombination cooling
+    double beta_drc = 0.74 / pow(T,0.068);
+    double dust_recomb_cool= (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
+
+    return dust_recomb_cool;
+}
+
+double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp, double nH, double f_dg){
+    double dust_hc_const = 1.0E-33; //! For atomic dominated regions
+    dust_hc_const =  1.0E-33 + (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
+
+    double T_dust = 16.4 * pow(1.7 * G0,1.0/6.0);
+    T_dust = fmax( T_dust, 2.725 * ( (1.0/aexp) - 1.0 ) ); // ! Limit dust temp minimum to CMB temp
+
+    double dust_coll_cool = dust_hc_const * sqrt(T) * (T - T_dust) * ( 1.0 - ( 0.80 * exp(-75.0/T) ) );
+    return dust_coll_cool * nH * nH * f_dg;
+}
+
+double PE_efficiency(double G0, double T, double ne){
+    double phi_pah = 0.5; //! wolfire+(03)
+    double fact = G0 * sqrt(T) / (ne * phi_pah);
+    double PE_efficiency = (4.9E-2/(1.0 + 4E-3 * pow(fact,0.73))) + (3.7E-2 * pow(T/1E4,0.7) / (1.0 + 2E-4 * fact));
+    return PE_efficiency;
+}
+
+double photoelectric_heating(double T, double G0, double ne, double f_dg, double nH){
+    double eps_PE = PE_efficiency(G0, T, ne);
+    double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
+    return HratePE;
+}
+
+double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
+                          double ne, double xi_h_cr,
+                          double *element_number_densities,
+                          double *element_number_ions,
+                          double **element_ion_fractions){
+    double q_cr = 6.43 * ( 1.0 + 4.06 * sqrt( xe / (0.07 + xe) ) ) * EV_2_ERG; //! Bialy 2019
+
+    double phi_s = secondary_cr_rates(xe);
+    double total_cosmic_ray_ionization_rate = xi_h_cr * (1.0 + phi_s);
+
+    double HI_cosmic_ray_ionization_rate_primary = 1.0 * xi_h_cr;
+    double He_cosmic_ray_ionization_rate_primary = 1.1 * xi_h_cr;
+    double H2_cosmic_ray_ionization_rate_primary = 2.0 * xi_h_cr;
+
+    double cr_heating_tot = 0.0;
+
+    // HI
+    cr_heating_tot +=  ( n_HI * HI_cosmic_ray_ionization_rate_primary * q_cr );
+
+    // HeI
+    cr_heating_tot +=  ( n_HeI * He_cosmic_ray_ionization_rate_primary * q_cr );
+
+    // H2
+    cr_heating_tot += ( n_H2 * H2_cosmic_ray_ionization_rate_primary * q_cr );
+
+    // Direct heating of the electrons from cosmic rays
+    cr_heating_tot += (ne * xi_h_cr * 287.0 * EV_2_ERG);
+
+    // Cosmic ray heating on metals
+    // --> Here we skip H and He as it's done separately above
+    double induced_UV_heat_scale_fac = H2_cosmic_ray_ionization_rate_primary / 1E-16;
+    for (int i = 3; i < 27; i++) {
+        double n_element = element_number_densities[i];
+        if (n_element < MIN_COOL_ION) continue;
+
+        int n_ions = element_number_ions[i];
+        
+        for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
+            double x_ion = element_ion_fractions[i][j];
+
+            // This is the primary heating term from ionization
+            cr_heating_tot += (n_element * x_ion * xi_h_cr * q_cr * cosmic_ray_ionization_rates[i][j] * total_cosmic_ray_ionization_rate);
+
+            // This is the secondary heating term from induced UV emission
+            // Only happend for the ground state
+            if (j == 0){
+                cr_heating_tot += ( n_element * x_ion 
+                                    * cosmic_ray_ionization_rates_induced_UV_heat[i]
+                                    * cosmic_ray_ionization_rates_induced_UV[i] * EV_2_ERG
+                                    * induced_UV_heat_scale_fac );
+            }
+        }
+    }
+
+    return cr_heating_tot;
+}
+
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
-                   double *element_number_ions, double **element_ion_fractions){
+                   double *element_number_ions, double **element_ion_fractions,
+                   double G0, double f_dg, double xe, double xi_h_cr){
     // Main cooling driver
+    /*
+    T --> Temperature [K]
+    ne --> Electron number density [cm^-3]
+    aexp --> Scale factor
+    element_number_densities --> vector with element number densities [cm^-3]
+    element_number_ions --> vector with number of ions to compute
+    element_ion_fractions --> 2D array with ion fractions
+    G0 --> habing band radiation field (MW units)
+    f_dg --> dust to gas mass ratio normalized by MW value
+    xe --> electron fraction i.e. ne / (rho/mH)
+    xi_h_cr --> cosmic ray ionization rate
+    */
 
     double nH_I = element_number_ions[1] * element_ion_fractions[1][0];
     double nH_II = element_number_ions[1] * element_ion_fractions[1][1];
@@ -1154,9 +1257,27 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         }
         
     }
+
+    // Dust cooling
+    double dust_cooling = 0.0;
+    dust_cooling += dust_recombination_cooling(T, G0, ne, f_dg, element_number_densities[1]);
+    dust_cooling += dust_gas_collisional_cooling(T, G0, element_ion_fractions[1][2], aexp, element_number_densities[1], f_dg);
     
+    // Photoelectric heating
+    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
+
+    // Cosmic ray heating
+    double cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2,
+                                                ne, xi_h_cr,
+                                                element_number_densities,
+                                                element_number_ions,
+                                                element_ion_fractions);
+
     // Now sum all of the cooling rates
-    double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure;
+    double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
+
+    // Now subtract off the heating rate
+    total_cooling -= (photoelectric_heat + cosmic_ray_heat);
 
     return total_cooling;
 }

@@ -4,6 +4,7 @@
 #include <math.h>
 #include "constants.h"
 #include "cosmic_ray_ionization.h"
+#include "photoionization_UVB.h"
 
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling
@@ -14,6 +15,36 @@ const int N_HIGH_T_COOLING_TEMP = 121;
 double high_t_cooling_temp[N_HIGH_T_COOLING_TEMP];
 double high_t_cooling_rates[N_HIGH_T_COOLING_TEMP][27][27];
 double fs_cool_tab[27][160][8];  // Array for fine structure cooling rates
+
+double G0_heating_rates[27] = {
+    0.0, // 0 
+    0.0, // 1 - Hydrogen
+    0.0, // 2 - Helium
+    0.0, // 3
+    0.0, // 4
+    0.0, // 5
+    3.39E-10 * 0.8399 * EV_2_ERG, // 6 - Carbon
+    0.0, // 7 - Nitrogen
+    0.0, // 8 - Oxygen
+    0.0, // 9
+    0.0, // 10 - Neon
+    0.0, // 11
+    6.59E-11 * 2.0113 * EV_2_ERG, // 12 - Magnesium
+    0.0, // 13
+    4.47E-9 * 1.840 * EV_2_ERG, // 14 - Silicon
+    0.0, // 15
+    1.13E-9 * 1.126 * EV_2_ERG, // 16 - Sulfur
+    0.0, // 17
+    0.0, // 18
+    0.0, // 19
+    0.0, // 20
+    0.0, // 21
+    0.0, // 22
+    0.0, // 23
+    0.0, // 24
+    0.0, // 25
+    4.71E-10  * 1.924 * EV_2_ERG, // 26 - Iron
+};
 
 double collisional_ionization_cooling_HI(double T){
     // From Cen 1992
@@ -1101,6 +1132,71 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
     return cr_heating_tot;
 }
 
+double photoheating_UVB(double *element_number_densities, double *element_number_ions,
+                        double **element_ion_fractions){
+    // Photoheating contribution from a UVB
+
+    double heating_rate = 0.0;
+
+    // Loop over all elements
+    for (int i = 0; i < 27; i++) {
+        double n_element = element_number_densities[i];
+        if (n_element < MIN_COOL_ION) continue;
+
+        int n_ions = element_number_ions[i];
+        for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
+            heating_rate += (n_element * element_ion_fractions[i][j] * HM12_UVB_z[i][j][1]);
+        }
+    }
+
+    return heating_rate;
+}
+
+double photoheating_UVB_G0(double *element_number_densities,
+                           double **element_ion_fractions){
+    // Photoheating from the G0 background
+    // Note that this only impacts the ground state
+
+    double heating_rate = 0.0;
+
+    // Loop over all elements
+    for (int i = 0; i < 27; i++) {
+        double n_element = element_number_densities[i];
+        if (n_element < MIN_COOL_ION) continue;
+
+        heating_rate += n_element * element_ion_fractions[i][0] * G0_heating_rates[i];
+    }
+
+    return heating_rate;
+}
+
+double Epump(double nH, double T, double xH2, double xHI){
+    //! Energy converted to heat from UV pumping
+    //! see Appendix A http://articles.adsabs.harvard.edu/cgi-bin/nph-iarticle_query?1990ApJ...365..620B&amp;data_type=PDF_HIGH&amp;whole_paper=YES&amp;type=PRINTER&amp;filetype=.pdf
+    double Crad = 2.0E-7; //     !radiation de-excitation rate Burton 1990
+    double Cdex = (1.0E-12)*((1.4*xH2*exp(-18100.0/(T + 1200.0))) + (1.0*xHI*exp(-1000.0/T)))*sqrt(T)*nH; // !collisional de-excitation rate Burton 1990
+    double Cfrac = Cdex / (Cdex + Crad);
+    double Epump_loc = 2.0 * Cfrac * EV_2_ERG;  //!ergs
+    return Epump_loc;
+}
+
+double H2_heating(double G0, double nH2, double nH, double T, double xH2, double xHI){
+    // Heating from the formation and destruction of the H2 molecule
+
+    double heating_rate = 0.0;
+
+    double fpump = 6.94; // ! Pumping fraction in the ISM: Draine and Bertoldi 1996
+    double Ebpump = fmax(Epump(nH, T, xH2, xHI), 0.0); //! Pumping energy in ergs
+    double EUV = 0.4*(1.602E-12); //! Energy from photodissociation in ergs (Black and Dalgarno 1977)
+
+    double kUV = G0 * 5.8E-11; //! See Koyama 2000
+    double HrateLW = ((kUV*fpump*Ebpump) + (kUV*EUV))*nH2; //! [erg/s/cm3] = [#/s]*[erg/#]*[cm-3]
+
+    heating_rate += fmax(HrateLW, 0.0);
+
+    return heating_rate;
+}
+
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
                    double *element_number_ions, double **element_ion_fractions,
                    double G0, double f_dg, double xe, double xi_h_cr){
@@ -1273,11 +1369,20 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                                 element_number_ions,
                                                 element_ion_fractions);
 
+    // Photoheating from the UV background
+    double uvb_photoheat = photoheating_UVB(element_number_densities,
+                                            element_number_ions,
+                                            element_ion_fractions);
+
+    // Photoheating from the G0 FUV background
+    double uvb_photoheat_G0 = photoheating_UVB_G0(element_number_densities,
+                                                  element_ion_fractions);
+
     // Now sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
 
     // Now subtract off the heating rate
-    total_cooling -= (photoelectric_heat + cosmic_ray_heat);
+    total_cooling -= (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0);
 
     return total_cooling;
 }

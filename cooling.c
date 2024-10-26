@@ -4,6 +4,7 @@
 #include <math.h>
 #include "constants.h"
 #include "cosmic_ray_ionization.h"
+#include "molecules.h"
 #include "photoionization_UVB.h"
 
 // Constants
@@ -1180,11 +1181,13 @@ double Epump(double nH, double T, double xH2, double xHI){
     return Epump_loc;
 }
 
-double H2_heating(double G0, double nH2, double nH, double T, double xH2, double xHI){
+double H2_heating(double G0, double nH2, double nH, double T, double xH2, double xHI,
+                  double xHII, double xe, double f_dg, double xi_h2_cr){
     // Heating from the formation and destruction of the H2 molecule
 
     double heating_rate = 0.0;
 
+    // Heating from destructiona and pumping
     double fpump = 6.94; // ! Pumping fraction in the ISM: Draine and Bertoldi 1996
     double Ebpump = fmax(Epump(nH, T, xH2, xHI), 0.0); //! Pumping energy in ergs
     double EUV = 0.4*(1.602E-12); //! Energy from photodissociation in ergs (Black and Dalgarno 1977)
@@ -1194,12 +1197,17 @@ double H2_heating(double G0, double nH2, double nH, double T, double xH2, double
 
     heating_rate += fmax(HrateLW, 0.0);
 
+    // Heating from H2 formation
+    double H2_formation_rate = alpha_H2(T, f_dg, xe, xi_h2_cr, G0, xHI, xHII);
+    // TODO(code) double check the xHI here
+    heating_rate += (2.4E-12 * H2_formation_rate * xHI * nH * nH); // ! [cm3 s-1]
+
     return heating_rate;
 }
 
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
                    double *element_number_ions, double **element_ion_fractions,
-                   double G0, double f_dg, double xe, double xi_h_cr){
+                   double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr){
     // Main cooling driver
     /*
     T --> Temperature [K]

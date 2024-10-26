@@ -1229,6 +1229,11 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     double nHe_II = element_number_ions[2] * element_ion_fractions[2][1];
     double nHe_III = element_number_ions[2] * element_ion_fractions[2][2];
 
+    double nH = nH_I + nH_II + (2.0 * nH2);
+    double xHI = element_ion_fractions[1][0];
+    double xHII = element_ion_fractions[1][1];
+    double xH2 = element_ion_fractions[1][2] * 0.5;
+
     // Cooling from primordial species
     double cooling_HI = (collisional_ionization_cooling_HI(T) + collisional_excitation_cooling_HI(T)) * ne * nH_I;
     double cooling_HII = recombination_cooling_case_B_HII(T) * ne * nH_II; 
@@ -1386,11 +1391,15 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     double uvb_photoheat_G0 = photoheating_UVB_G0(element_number_densities,
                                                   element_ion_fractions);
 
+    // Heating from H2 formation and destruction
+    double h2_heat = H2_heating(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
+
+
     // Now sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
 
     // Now subtract off the heating rate
-    total_cooling -= (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0);
+    total_cooling -= (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat);
 
     return total_cooling;
 }

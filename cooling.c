@@ -192,10 +192,11 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Initialize high-temeprature cooling table to 0
+    // We use -50 because it's log
     for (int i = 0; i < N_HIGH_T_COOLING_TEMP; i++) {
         for (int j = 0; j < 27; j++) {
             for (int k = 0; k < 27; k++) {
-                high_t_cooling_rates[i][j][k] = 0.0;
+                high_t_cooling_rates[i][j][k] = -50.0;
             }
         }
     }
@@ -328,11 +329,13 @@ double get_high_t_cooling_rates(double T, double ne,
     // Computes the high-temperature cooling rates
     // derived from Harley's custom cloudy models
 
-    double log_T = log10(T);
+    double loc_T = fmax(T,1000.0);
+    double log_T = log10(loc_T);
     double t_min = 3.0;
     double t_max = 9.0;
     double dt = 0.05;
     double total_metal_cooling_rate = 0.0;
+    double t_scale_fac = exp(-1.0 * pow(2000.0/loc_T,5.0));
 
     // bounds for temperature --> no cooling
     if (log_T < t_min){
@@ -345,13 +348,13 @@ double get_high_t_cooling_rates(double T, double ne,
     }
 
     // Prepare for 1D interpolation
-    int idx_low = (int)floor((log_T - t_max)/dt);
+    int idx_low = (int)floor((log_T - t_min)/dt);
 
     double frac_high = (log_T - (3.0 + ((float)idx_low * dt))) / dt;
     double frac_low = 1.0 - frac_high;
 
-    // Loop over all ions
-    for (int i = 0; i < 27; i++) {
+    // Loop over all ions -- not including H and He
+    for (int i = 3; i < 27; i++) {
         if (element_number_densities[i] > MIN_METAL_COOL_DENS){
             // Get the element number density
             double n_element = element_number_densities[i];
@@ -360,22 +363,22 @@ double get_high_t_cooling_rates(double T, double ne,
                 double n_ion = element_ion_fractions[i][j];
 
                 // Interpolate the cooling rate for the ion
-                double loc_cooling_rate = frac_low * high_t_cooling_rates[idx_low][i][j];
-                loc_cooling_rate += frac_high * high_t_cooling_rates[idx_low+1][i][j];
+                double loc_cooling_rate = (frac_low * high_t_cooling_rates[idx_low][i][j]);
+                loc_cooling_rate += (frac_high * high_t_cooling_rates[idx_low+1][i][j]); 
                 loc_cooling_rate = pow(10.0,loc_cooling_rate);
 
                 // Multiply cooling rate by ion and electron number densities
-                total_metal_cooling_rate += n_element * n_ion * ne * total_metal_cooling_rate;
+                total_metal_cooling_rate += (n_element * n_ion * ne * loc_cooling_rate);
             }
         }
     }
-
-    return total_metal_cooling_rate;
+    // printf("%e %e\n",T,t_scale_fac);
+    return total_metal_cooling_rate * t_scale_fac;
 }
 
 void init_fine_structure_tables(){
     // Initialization for fine structure cooling tables
-    printf("Initializing fine cooling tables\n");
+    printf("Initializing fine structure cooling tables\n");
 
     const int N_LINES = 27; 
     const char* file_names[N_LINES] = {
@@ -685,9 +688,6 @@ double two_level(double g_0, double g_1, double lam_10, double A_10,
 
     return two_level_cooling;
 }
-
-/* Define double precision type for compatibility */
-typedef double dp;
 
 /* OI fine structure calculation function */
 double OI_fine_structure(double T, double n_ion, double nH, double nHp, 
@@ -1140,7 +1140,7 @@ double photoheating_UVB(double *element_number_densities, double *element_number
     double heating_rate = 0.0;
 
     // Loop over all elements
-    for (int i = 0; i < 27; i++) {
+    for (int i = 1; i < 27; i++) {
         double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
 
@@ -1161,7 +1161,7 @@ double photoheating_UVB_G0(double *element_number_densities,
     double heating_rate = 0.0;
 
     // Loop over all elements
-    for (int i = 0; i < 27; i++) {
+    for (int i = 1; i < 27; i++) {
         double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
 
@@ -1207,7 +1207,8 @@ double H2_heating(double G0, double nH2, double nH, double T, double xH2, double
 
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
                    double *element_number_ions, double **element_ion_fractions,
-                   double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr){
+                   double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
+                   double ss_factor){
     // Main cooling driver
     /*
     T --> Temperature [K]
@@ -1222,17 +1223,20 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     xi_h_cr --> cosmic ray ionization rate
     */
 
-    double nH_I = element_number_ions[1] * element_ion_fractions[1][0];
-    double nH_II = element_number_ions[1] * element_ion_fractions[1][1];
-    double nH2 = element_number_ions[1] * element_ion_fractions[1][2] * 0.5;
-    double nHe_I = element_number_ions[2] * element_ion_fractions[2][0];
-    double nHe_II = element_number_ions[2] * element_ion_fractions[2][1];
-    double nHe_III = element_number_ions[2] * element_ion_fractions[2][2];
+    double nH_I = element_number_densities[1] * element_ion_fractions[1][0];
+    double nH_II = element_number_densities[1] * element_ion_fractions[1][1];
+    double nH2 = element_number_densities[1] * element_ion_fractions[1][2] * 0.5;
+    double nHe_I = element_number_densities[2] * element_ion_fractions[2][0];
+    double nHe_II = element_number_densities[2] * element_ion_fractions[2][1];
+    double nHe_III = element_number_densities[2] * element_ion_fractions[2][2];
 
     double nH = nH_I + nH_II + (2.0 * nH2);
     double xHI = element_ion_fractions[1][0];
     double xHII = element_ion_fractions[1][1];
     double xH2 = element_ion_fractions[1][2] * 0.5;
+
+    xH2 = 0.0;
+    nH2 = 0.0;
 
     // Cooling from primordial species
     double cooling_HI = (collisional_ionization_cooling_HI(T) + collisional_excitation_cooling_HI(T)) * ne * nH_I;
@@ -1243,6 +1247,7 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     double cooling_bremmstrahlung = bremmstrahlung(T) * ne * (nH_II + nHe_II + (4.0 * nHe_III));
     double cooling_compton = compton_cooling(T,aexp) * ne;
     double cooling_H2 = H2_cooling(T, nH_I) * nH_I * nH2;
+    cooling_H2 = 0.0;
     double total_primordial_cooling = cooling_HI \
                                       + cooling_HII \
                                       + cooling_HeI \
@@ -1251,15 +1256,14 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                       + cooling_bremmstrahlung \
                                       + cooling_compton \
                                       + cooling_H2;
-
+    // printf("prine: %e %e %e %e %e %e %e %e\n",cooling_HI,cooling_HII,cooling_HeI,cooling_HeII,cooling_HeIII,cooling_bremmstrahlung,cooling_compton,cooling_H2);
+    // printf("ndens %e %e %e %e %e %e %e\n",ne,nH_I,nH_II,nH2,nHe_I,nHe_II,nHe_III);
     // Metal line cooling -- high temperature
     double high_T_metal_cooling = 0.0;
-    if (T > 1e3){
-        high_T_metal_cooling = get_high_t_cooling_rates(T, ne, 
-                                                        element_number_densities,
-                                                        element_number_ions,
-                                                        element_ion_fractions);
-    }
+    high_T_metal_cooling = get_high_t_cooling_rates(T, ne, 
+                                                    element_number_densities,
+                                                    element_number_ions,
+                                                    element_ion_fractions);
 
     // Metal line cooling -- low temperature (fine structure)
     double n_ion_fs;
@@ -1267,13 +1271,13 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     double total_fine_structure = 0.0;
     if (T < 1.1E4){
         // CI cooling
-        n_ion_fs = element_number_densities[6] * element_ion_fractions[6][0];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_CI = CI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                 ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z);
-            total_fine_structure += cooling_fine_structure_CI;
-        }
+        // n_ion_fs = element_number_densities[6] * element_ion_fractions[6][0];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_CI = CI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                          ne, nH2, nHe_I, nHe_II, 
+        //                                                          nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_CI;
+        // }
         
         // CII cooling
         n_ion_fs = element_number_densities[6] * element_ion_fractions[6][1];
@@ -1285,13 +1289,13 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         }
         
         // NII cooling
-        n_ion_fs = element_number_densities[7] * element_ion_fractions[7][1];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_NII = NII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
-            total_fine_structure += cooling_fine_structure_NII;
-        }
+        // n_ion_fs = element_number_densities[7] * element_ion_fractions[7][1];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_NII = NII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                            ne, nH2, nHe_I, nHe_II, 
+        //                                                            nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_NII;
+        // }
         
         // OI cooling
         n_ion_fs = element_number_densities[8] * element_ion_fractions[8][0];
@@ -1303,67 +1307,67 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         }
 
         // OIII cooling
-        n_ion_fs = element_number_densities[8] * element_ion_fractions[8][2];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_OI = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
-            total_fine_structure += cooling_fine_structure_OI;
-        }
+        // n_ion_fs = element_number_densities[8] * element_ion_fractions[8][2];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_OI = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                            ne, nH2, nHe_I, nHe_II, 
+        //                                                            nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_OI;
+        // }
 
         // NeII cooling
-        n_ion_fs = element_number_densities[10] * element_ion_fractions[10][1];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_NeII = NeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                     ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
-            total_fine_structure += cooling_fine_structure_NeII;
-        }
+        // n_ion_fs = element_number_densities[10] * element_ion_fractions[10][1];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_NeII = NeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                              ne, nH2, nHe_I, nHe_II, 
+        //                                                              nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_NeII;
+        // }
         
         // SiI cooling
-        n_ion_fs = element_number_densities[14] * element_ion_fractions[14][0];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_SiI = SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
-            total_fine_structure += cooling_fine_structure_SiI;
-        }
+        // n_ion_fs = element_number_densities[14] * element_ion_fractions[14][0];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_SiI = SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                            ne, nH2, nHe_I, nHe_II, 
+        //                                                            nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_SiI;
+        // }
         
         // SiII cooling
-        n_ion_fs = element_number_densities[14] * element_ion_fractions[14][1];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_SiII = SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                     ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
-            total_fine_structure += cooling_fine_structure_SiII;
-        }
+        // n_ion_fs = element_number_densities[14] * element_ion_fractions[14][1];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_SiII = SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                              ne, nH2, nHe_I, nHe_II, 
+        //                                                              nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_SiII;
+        // }
         
         // SI cooling
-        n_ion_fs = element_number_densities[16] * element_ion_fractions[16][0];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_SI = SI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                 ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z);
-            total_fine_structure += cooling_fine_structure_SI;
-        }
+        // n_ion_fs = element_number_densities[16] * element_ion_fractions[16][0];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_SI = SI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                          ne, nH2, nHe_I, nHe_II, 
+        //                                                          nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_SI;
+        // }
         
         // FeI cooling
-        n_ion_fs = element_number_densities[26] * element_ion_fractions[26][0];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_FeI = FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
-            total_fine_structure += cooling_fine_structure_FeI;
-        }
+        // n_ion_fs = element_number_densities[26] * element_ion_fractions[26][0];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_FeI = FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                            ne, nH2, nHe_I, nHe_II, 
+        //                                                            nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_FeI;
+        // }
         
         // FeII cooling
-        n_ion_fs = element_number_densities[26] * element_ion_fractions[26][1];
-        if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_FeII = FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                     ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
-            total_fine_structure += cooling_fine_structure_FeII;
-        }
+        // n_ion_fs = element_number_densities[26] * element_ion_fractions[26][1];
+        // if (n_ion_fs > MIN_COOL_ION) {
+        //     double cooling_fine_structure_FeII = FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+        //                                                              ne, nH2, nHe_I, nHe_II, 
+        //                                                              nHe_III, z);
+        //     total_fine_structure += cooling_fine_structure_FeII;
+        // }
         
     }
 
@@ -1386,6 +1390,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     double uvb_photoheat = photoheating_UVB(element_number_densities,
                                             element_number_ions,
                                             element_ion_fractions);
+    uvb_photoheat *= ss_factor; // Account for self-shielding
+    // printf("ss %e\n",ss_factor);
 
     // Photoheating from the G0 FUV background
     double uvb_photoheat_G0 = photoheating_UVB_G0(element_number_densities,
@@ -1394,12 +1400,24 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     // Heating from H2 formation and destruction
     double h2_heat = H2_heating(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
 
-
     // Now sum all of the cooling rates
+    // printf("Cooling: %e %e %e %e %e\n",T, total_fine_structure, high_T_metal_cooling, total_primordial_cooling, dust_cooling);
+    // high_T_metal_cooling = 0.0;
+    // total_primordial_cooling = 0.0;
+    dust_cooling = 0.0;
+    // total_fine_structure = 0.0;
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
 
     // Now subtract off the heating rate
-    total_cooling -= (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat);
+    // printf("Heating: %e %e %e %e %e %e\n",T, uvb_photoheat, photoelectric_heat, cosmic_ray_heat, uvb_photoheat_G0, h2_heat);
+    // uvb_photoheat = 0.0;
+    photoelectric_heat = 0.0;
+    // cosmic_ray_heat = 0.0;
+    // uvb_photoheat_G0 = 0.0;
+    // h2_heat = 0.0;
+    double total_heating = (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat);
 
-    return total_cooling;
+    // printf("Cooling/Heating %e %e %e\n",T,total_cooling,total_heating);
+
+    return total_heating - total_cooling;
 }

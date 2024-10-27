@@ -66,7 +66,8 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
 
     formation_rate += k1*k2*xe/(k2 + k5*xHII + k_hm_cr + k_hm_gamma + k13*xe + k14*xHI + k15*xHII); 
 
-    return formation_rate;
+    // return formation_rate;
+    return 0.0;
 }
 
 double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double ne, double nHI, double nH2, double nHeI){

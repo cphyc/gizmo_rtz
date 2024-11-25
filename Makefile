@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O3
 
 # Source files
 SRCS = charge_transfer.c \

@@ -28,6 +28,7 @@ typedef struct {
     double atomic_mass;
     double z_solar;
     double G0_photo_rate;
+    double depletion;
 } Element;
 
 // Structs for element properties
@@ -40,6 +41,7 @@ void initialize_elements(Element *elements) {
         elements[i].z_solar = -1.0;
         elements[i].G0_photo_rate = 0.0;
         elements[i].n_mol = 0;
+        elements[i].depletion = 1.0;
     }
 
     // Element 1: Hydrogen
@@ -49,6 +51,7 @@ void initialize_elements(Element *elements) {
     elements[1].G0_photo_rate = 0.0; // No subionizing PI
     elements[1].n_ions = elements[1].atomic_number + 1;
     elements[1].n_mol = 1;
+    elements[1].depletion = 1.0;
 
     // Element 2: Helium
     elements[2].atomic_number = 2;
@@ -56,6 +59,7 @@ void initialize_elements(Element *elements) {
     elements[2].z_solar = 8.51E-02;
     elements[2].G0_photo_rate = 0.0; // No subionizing PI
     elements[2].n_ions = elements[2].atomic_number + 1;
+    elements[2].depletion = 1.0;
 
     // Element 6: Carbon
     elements[6].atomic_number = 6;
@@ -63,6 +67,8 @@ void initialize_elements(Element *elements) {
     elements[6].z_solar = 2.69E-04;
     elements[6].G0_photo_rate = 3.39E-10;
     elements[6].n_ions = elements[6].atomic_number + 1;
+    elements[6].depletion = 0.5;
+    
 
     // Element 7: Nitrogen
     elements[7].atomic_number = 7;
@@ -70,6 +76,7 @@ void initialize_elements(Element *elements) {
     elements[7].z_solar = 6.76E-05;
     elements[7].G0_photo_rate = 0.0; // No subionizing PI
     elements[7].n_ions = elements[7].atomic_number + 1;
+    elements[7].depletion = 0.6;
 
     // Element 8: Oxygen
     elements[8].atomic_number = 8;
@@ -77,6 +84,7 @@ void initialize_elements(Element *elements) {
     elements[8].z_solar = 4.90E-04;
     elements[8].G0_photo_rate = 0.0; // No subionizing PI
     elements[8].n_ions = elements[8].atomic_number + 1;
+    elements[8].depletion = 0.73;
 
     // Element 10: Neon
     elements[10].atomic_number = 10;
@@ -84,6 +92,7 @@ void initialize_elements(Element *elements) {
     elements[10].z_solar = 8.51E-05;
     elements[10].G0_photo_rate = 0.0; // No subionizing PI
     elements[10].n_ions = elements[10].atomic_number + 1;
+    elements[10].depletion = 1.0;
 
     // Element 12: Magnesium
     elements[12].atomic_number = 12;
@@ -91,6 +100,7 @@ void initialize_elements(Element *elements) {
     elements[12].z_solar = 3.98E-05;
     elements[12].G0_photo_rate = 6.59E-11; 
     elements[12].n_ions = elements[12].atomic_number + 1;
+    elements[12].depletion = 0.16;
 
     // Element 14: Silicon
     elements[14].atomic_number = 14;
@@ -98,6 +108,7 @@ void initialize_elements(Element *elements) {
     elements[14].z_solar = 3.24E-05;
     elements[14].G0_photo_rate = 4.47E-09; 
     elements[14].n_ions = elements[14].atomic_number + 1;
+    elements[14].depletion = 0.1;
 
     // Element 16: Sulfur
     elements[16].atomic_number = 16;
@@ -105,6 +116,7 @@ void initialize_elements(Element *elements) {
     elements[16].z_solar = 1.32E-05;
     elements[16].G0_photo_rate = 1.13E-09; 
     elements[16].n_ions = elements[16].atomic_number + 1;
+    elements[16].depletion = 1.0;
 
     // Element 26: Iron
     elements[26].atomic_number = 26;
@@ -112,6 +124,7 @@ void initialize_elements(Element *elements) {
     elements[26].z_solar = 3.16E-05;
     elements[26].G0_photo_rate = 4.71E-10;
     elements[26].n_ions = elements[26].atomic_number + 1;
+    elements[26].depletion = 0.01;
 }
 
 typedef struct {
@@ -126,7 +139,7 @@ void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, d
     for (int i = 1; i < MAX_ELEMENTS; i++) { 
         if (elements[i].atomic_number < 1) continue;
 
-        n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar;
+        n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * elements[i].depletion;
         n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions+elements[i].n_mol) * sizeof(double));
         n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions+elements[i].n_mol) * sizeof(double));
         for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) { 
@@ -247,7 +260,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
     cosmic_ray_scale_factor = primary_cosmic_ray_ionization_rate / 1E-16;
 
     //# infinite loop
-    while (10) {  // Infinite loop
+    while (1) {  // Infinite loop
         total_iterations += 1;
         compute_atoms = true;
         compute_molecules = true;
@@ -373,7 +386,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         max_residual_all = fmax(max_residual_all,max_residual);
 
         if (residual > X_PCT_RULE){
-            printf("Broken temperature %e %e\n",TK,residual);
+            // printf("Broken temperature %e %e\n",TK,residual);
             // Declare the x-percent rule was violated
             x_percent_rule = false;
             // Dont compute molecules
@@ -424,6 +437,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
 
                 // Cosmic ray destruction
                 de_H2 += H2_cosmic_ray_ionization_rate;
+
 
                 // Update xH2
                 xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
@@ -625,7 +639,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
                     }
     
                     if (residual > loc_X_PCT_RULE){
-                        printf("Broken element %d %d %e\n",i,j,TK);
+                        // printf("Broken element %d %d %e\n",i,j,TK);
                         // Declare the x-percent rule was violated
                         x_percent_rule = false;
                         // Break the loop over ions
@@ -689,7 +703,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
 
         // Check if we are converged
         //TODO(code): make convergence number a parameter
-        if (convergence_counter > 10000) model_converged = true;
+        if (convergence_counter > 1000) model_converged = true;
 
 
         // Update the total time
@@ -712,7 +726,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
 }
 
 int main() {
-    double redshift = 0.0;          // Redshift of the calculation
+    double redshift = 1000.0;          // Redshift of the calculation
     double UV_background_G0 = 1.0;  // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 1.0E-16; // Background CR ionization rate
     double dust_to_gas_mass_ratio_over_mw = 1.0; // dust to gas mass ratio normalized to the MW
@@ -747,9 +761,10 @@ int main() {
 
     // // Loop over temperature and get the ion fractions
     
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 100; i++) {
         double TK = 1e5;
-        double rho = pow(10.0,-1.0+((double)i*0.1));
+        double rho = pow(10.0,-2.0+((double)i*0.06));
+        // rho = 10.0;
         initialize_ion_fracs(elements,n_and_ion_fracs,rho);
         //double TK = pow(10.0,3.5+((double)i*0.01));
         // double TK = pow(10.0,3.0-((double)i*0.01));

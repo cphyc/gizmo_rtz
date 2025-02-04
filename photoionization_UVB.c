@@ -341,7 +341,7 @@ void update_UVB(double redshift){
     double scale_low;
     double scale_high;
 
-    // No interpolation beyong redshift bounds --> set the UVB to zero
+    // No interpolation beyond redshift bounds --> set the UVB to zero
     if (redshift < HM12_UVB_redshifts[0] || redshift >= HM12_UVB_redshifts[N_UVB_POINTS-1]){
         for (int i = 0; i < 27; i++) {
             for (int j = 0; j < 27; j++) {
@@ -400,8 +400,7 @@ void update_UVB(double redshift){
                         HM12_UVB_z[26][j][0]  = (scale_low * HM12_UVB_iron[i][j][0])      + (scale_high * HM12_UVB_iron[i+1][j][0]);
                         HM12_UVB_z[26][j][1]  = (scale_low * HM12_UVB_iron[i][j][1])      + (scale_high * HM12_UVB_iron[i+1][j][1]);
                     }
-                }
-                
+                }                
             }
         }
     }

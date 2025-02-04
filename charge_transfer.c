@@ -78,11 +78,11 @@ double charge_transfer_recombination(int ion, int nelem, double T){
 
     // Deal with helium separately
     // He+ + H --> He + H+
-    // if (nelem == 2 && ion ==2)
-    // {
-    //     ct_recomb = 1.20E-15 * pow(T/300.0,0.25);
-    //     return ct_recomb;
-    // }
+    if (nelem == 2 && ion == 2)
+    {
+        ct_recomb = 1.20E-15 * pow(T/300.0,0.25);
+        return ct_recomb;
+    }
 
     // deal with oxygen separately 
     if (nelem == 8) 
@@ -163,23 +163,23 @@ double charge_transfer_ionization(int ion, int nelem, double T){
 
     // Deal with helium separately
     // He + H+ --> He+ + H
-    // if (nelem == 2 && ion ==1)
-    // {
-    //     // ! This particular rate seems to get very small at low te
-    //     if (T < 3E3)
-    //     {
-    //         ct_ion = 0.0;
-    //         return ct_ion;
-    //     }
+    if (nelem == 2 && ion == 1)
+    {
+        // ! This particular rate seems to get very small at low te
+        if (T < 3E3)
+        {
+            ct_ion = 0.0;
+            return ct_ion;
+        }
 
-    //     if (T < 1E4)
-    //     { 
-    //         ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
-    //     } else {
-    //         ct_ion = 4E-37 * pow(T,4.74);
-    //     }
-    //     return ct_ion;
-    // }
+        if (T < 1E4)
+        { 
+            ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
+        } else {
+            ct_ion = 4E-37 * pow(T,4.74);
+        }
+        return ct_ion;
+    }
 
     // Deal with oxygen separately
     if (nelem == 8 && ion == 0)

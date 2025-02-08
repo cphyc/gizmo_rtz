@@ -64,7 +64,7 @@ double alpha_H2_dust(double T, double dust_to_gas_mass_ratio_over_mw){
     // Formation on dust
     double clumping_factor = 1.0;
     double T2 = T / 100.0;
-    double formation_rate = dust_to_gas_mass_ratio_over_mw * (3.5E-17) * clumping_factor * sqrt(T2);
+    double formation_rate = dust_to_gas_mass_ratio_over_mw * (3.5E-17) * clumping_factor * sqrt(fmin(T2,5));
 
     return formation_rate;
 }
@@ -77,7 +77,7 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
     double formation_rate = 0.0;
 
     // Formation rate on dust. Consider only HI
-    formation_rate += alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) * xHI * nH;
+    formation_rate += alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) * xHI;
 
     // Primordial H- channel
     formation_rate += alpha_H2_prim(T, xe, H2_cosmic_ray_ionization_rate, G0, xHI, xHII) * xHI * nH;
@@ -86,6 +86,22 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
     formation_rate *= exp(-1.0 * pow(T / 1E5,2));
 
     return formation_rate;
+}
+
+double beta_H2_umist(double T, double nH, double ne, double nH2){
+    // H2 destrubtion from umist
+    // http://udfa.ajmarkwick.net/index.php?species=4
+
+    double destruction_rate = 0.0;
+
+    //H2 + H2 --> H2 + H + H
+    destruction_rate += 1.00e-8 * pow(T/300,0.00) * exp(-84100.00/T) * nH2;
+    //H2 + e- --> H + H + e-
+    destruction_rate += 3.22e-9 * pow(T/300,0.35) * exp(-102000.00/T) * ne;
+    //H2 + H --> H + H + H
+    destruction_rate += 4.67e-7 * pow(T/300,-1.00) * exp(-55000.00/T) * nH;
+
+    return destruction_rate;
 }
 
 double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double ne, double nHI, double nH2, double nHeI){
@@ -106,11 +122,10 @@ double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double n
     // ! prefactors for LTE and NLTE collision rates  see eqn 13
     double LTEfac = (nH*invncr)/(1.0 + (nH*invncr));
     double NLTEfac = 1.0/(1.0 + (nH*invncr));
-    // if (ne > nHI) {
-    //     LTEfac = 1.0;
-    //     NLTEfac = 0.0;
-    // }
-    // printf("%e %e %e %e %e %e\n",T,LTEfac,NLTEfac,ncrH,ncrH2,ncrHe);
+    if (ne > nHI) {
+        LTEfac = 1.0;
+        NLTEfac = 0.0;
+    }
 
     // !reaction rates from the appendix:
     // !H2 + e- --> H + H + e-
@@ -144,8 +159,6 @@ double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double n
 
     double destruction_rate = (ne*pow(10.0,lk8)) + (nHI*pow(10.0,lk9)) + (nH2*pow(10.0,lk10)) + (nHeI*pow(10.0,lk11));
     destruction_rate = fmax(destruction_rate, 1E-40);
-
-    // printf("Destruction rate %e %e\n",destruction_rate,T);
 
     return destruction_rate;
 }

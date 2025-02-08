@@ -172,7 +172,6 @@ double H2_cooling(double nH, double nH2, double T){
     double f4 = 1.7E-23 * (pow(T3,1.50)) * exp(-4.0 / T3);
     f4 = f4 * (((0.45 * x4) / (1.0 + (x4/n4))) + ((0.55 * x4)/(1.0 + (x4/(10.0*n4)))));
 
-
     return nH2 * (f1 + f2 + f3 + f4);
 }
 
@@ -185,7 +184,6 @@ double H2_cooling_GP98(double nH, double nH2, double T){
 
     //!low density limit in erg/s
     double LDL = pow(10.0,-103.0+97.590*logT-48.050*pow(logT,2) + 10.8*pow(logT,3)-0.90320*pow(logT,4))*nH;
-
 
     double cooling_H2GP = 0.0;
     //!this will avoid a division by zero and useless calculations
@@ -275,7 +273,7 @@ void initialize_high_temperature_metal_cooling(){
     }
 
     // Reading data from the file into the 2D array
-    for (int j = 0; j < 8; j++) { 
+    for (int j = 0; j < 9; j++) { 
         for (int i = 0; i < N_HIGH_T_COOLING_TEMP; i++) {
             fscanf(file, "%lf", &high_t_cooling_rates[i][8][j]);
         }
@@ -453,7 +451,7 @@ double get_high_t_cooling_rates(double T, double ne,
             }
         }
     }
-    // printf("%e %e\n",T,t_scale_fac);
+
     return total_metal_cooling_rate * t_scale_fac;
 }
 
@@ -1096,7 +1094,8 @@ double SI_fine_structure(double T, double n_ion, double nH, double nHp,
 double dust_recombination_cooling(double T, double G0, double ne, double f_dg, double nH){
     // Dust recombination cooling
     double beta_drc = 0.74 / pow(T,0.068);
-    double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
+    // double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
+    double dust_recomb_cool = 4.65E-30 * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
 
     return dust_recomb_cool;
 }
@@ -1134,7 +1133,8 @@ double PE_efficiency(double G0, double T, double ne){
 
 double photoelectric_heating(double T, double G0, double ne, double f_dg, double nH){
     double eps_PE = PE_efficiency(G0, T, ne);
-    double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
+    // double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
+    double HratePE = 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
     return HratePE;
 }
 
@@ -1451,8 +1451,7 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                       + cooling_bremmstrahlung \
                                       + cooling_compton \
                                       + cooling_H2;
-    // printf("prine: %e %e %e %e %e %e %e %e\n",cooling_HI,cooling_HII,cooling_HeI,cooling_HeII,cooling_HeIII,cooling_bremmstrahlung,cooling_compton,cooling_H2);
-    // printf("ndens %e %e %e %e %e %e %e\n",ne,nH_I,nH_II,nH2,nHe_I,nHe_II,nHe_III);
+
     // Metal line cooling -- high temperature
     double high_T_metal_cooling = 0.0;
     high_T_metal_cooling = get_high_t_cooling_rates(T, ne, 
@@ -1496,7 +1495,6 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         
         // OI cooling
         n_ion_fs = element_number_densities[8] * element_ion_fractions[8][0];
-        // printf("OI params: %e %e %e %e %e %e %e %e %e %e\n",T, n_ion_fs, nH_I, nH_II, ne, nH2, nHe_I, nHe_II, nHe_III, z);
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OI = OI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
@@ -1567,21 +1565,20 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                                                      nHe_III, z);
             total_fine_structure += cooling_fine_structure_FeII;
         }
-        
-        
+           
     }
     // Smooth the fine structure cooling with temeprature if needed
     total_fine_structure *= metal_cool_smooth_f2;
 
     // Dust cooling
     double dust_cooling = 0.0;
-    // dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, element_number_densities[1]);
-    dust_cooling += dust_recombination_cooling_WD01(T, G0, ne, f_dg, element_number_densities[1]);
+    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, element_number_densities[1]);
+    // dust_cooling += dust_recombination_cooling_WD01(T, G0, ne, f_dg, element_number_densities[1]);
     dust_cooling += dust_gas_collisional_cooling(T, G0, element_ion_fractions[1][2], aexp, element_number_densities[1], f_dg);
     
     // Photoelectric heating --> note factor of 1.7 is because IUV
-    // double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
-    double photoelectric_heat = photoelectric_heating_WD01(T, G0, ne, f_dg, element_number_densities[1]);
+    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
+    // double photoelectric_heat = photoelectric_heating_WD01(T, G0, ne, f_dg, element_number_densities[1]);
 
     // Cosmic ray heating
     double cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2,
@@ -1611,11 +1608,9 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                                     element_ion_fractions);
 
     // Sum all of the cooling rates
-    // printf("Cooling: %e %e %e %e %e\n",T, total_fine_structure, high_T_metal_cooling, total_primordial_cooling, dust_cooling);
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
 
     // Sum all of the heating rates
-    // printf("Heating: %e %e %e %e %e %e %e\n",T, uvb_photoheat, photoelectric_heat, cosmic_ray_heat, uvb_photoheat_G0, h2_heat, charge_transfer_heat_cool);
     double total_heating = (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat + charge_transfer_heat_cool);
 
     return total_heating - total_cooling;

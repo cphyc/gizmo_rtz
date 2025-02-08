@@ -7,19 +7,19 @@ const int N_UVB_POINTS = 60;
 
 // Initialize the UVB arrays
 double HM12_UVB_redshifts[N_UVB_POINTS];
-double HM12_UVB_hydrogen[N_UVB_POINTS][1];
-double HM12_UVB_helium[N_UVB_POINTS][2];
-double HM12_UVB_carbon[N_UVB_POINTS][6];
-double HM12_UVB_nitrogen[N_UVB_POINTS][7];
-double HM12_UVB_oxygen[N_UVB_POINTS][8];
-double HM12_UVB_neon[N_UVB_POINTS][10];
-double HM12_UVB_magnesium[N_UVB_POINTS][12];
-double HM12_UVB_silicon[N_UVB_POINTS][14];
-double HM12_UVB_sulfur[N_UVB_POINTS][16];
-double HM12_UVB_iron[N_UVB_POINTS][26];
+double HM12_UVB_hydrogen[N_UVB_POINTS][1][2];
+double HM12_UVB_helium[N_UVB_POINTS][2][2];
+double HM12_UVB_carbon[N_UVB_POINTS][6][2];
+double HM12_UVB_nitrogen[N_UVB_POINTS][7][2];
+double HM12_UVB_oxygen[N_UVB_POINTS][8][2];
+double HM12_UVB_neon[N_UVB_POINTS][10][2];
+double HM12_UVB_magnesium[N_UVB_POINTS][12][2];
+double HM12_UVB_silicon[N_UVB_POINTS][14][2];
+double HM12_UVB_sulfur[N_UVB_POINTS][16][2];
+double HM12_UVB_iron[N_UVB_POINTS][26][2];
 
 // Array that holds the UVB for each ion at a given redshift
-double HM12_UVB_z[27][27];
+double HM12_UVB_z[27][27][2];
 
 void load_UVB_data() {
     // Load in all of the UV background tables
@@ -50,7 +50,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 1; j++) {
-            fscanf(file, "%lf", &HM12_UVB_hydrogen[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_hydrogen[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/hydrogen_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Hydrogen UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 1; j++) {
+            fscanf(file, "%lf", &HM12_UVB_hydrogen[i][j][1]);
         }
     }
     // Close the file
@@ -65,7 +79,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 2; j++) {
-            fscanf(file, "%lf", &HM12_UVB_helium[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_helium[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/helium_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Helium UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 2; j++) {
+            fscanf(file, "%lf", &HM12_UVB_helium[i][j][1]);
         }
     }
     // Close the file
@@ -80,7 +108,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 6; j++) {
-            fscanf(file, "%lf", &HM12_UVB_carbon[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_carbon[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/carbon_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Carbon UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 6; j++) {
+            fscanf(file, "%lf", &HM12_UVB_carbon[i][j][1]);
         }
     }
     // Close the file
@@ -95,7 +137,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 7; j++) {
-            fscanf(file, "%lf", &HM12_UVB_nitrogen[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_nitrogen[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/nitrogen_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Nitrogen UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 7; j++) {
+            fscanf(file, "%lf", &HM12_UVB_nitrogen[i][j][1]);
         }
     }
     // Close the file
@@ -110,7 +166,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 8; j++) {
-            fscanf(file, "%lf", &HM12_UVB_oxygen[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_oxygen[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/oxygen_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Oxygen UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 8; j++) {
+            fscanf(file, "%lf", &HM12_UVB_oxygen[i][j][1]);
         }
     }
     // Close the file
@@ -125,7 +195,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 10; j++) {
-            fscanf(file, "%lf", &HM12_UVB_neon[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_neon[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/neon_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Neon UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 10; j++) {
+            fscanf(file, "%lf", &HM12_UVB_neon[i][j][1]);
         }
     }
     // Close the file
@@ -140,7 +224,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 12; j++) {
-            fscanf(file, "%lf", &HM12_UVB_magnesium[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_magnesium[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/magnesium_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Magnesium UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 12; j++) {
+            fscanf(file, "%lf", &HM12_UVB_magnesium[i][j][1]);
         }
     }
     // Close the file
@@ -155,7 +253,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 14; j++) {
-            fscanf(file, "%lf", &HM12_UVB_silicon[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_silicon[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/silicon_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Silicon UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 14; j++) {
+            fscanf(file, "%lf", &HM12_UVB_silicon[i][j][1]);
         }
     }
     // Close the file
@@ -170,7 +282,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 16; j++) {
-            fscanf(file, "%lf", &HM12_UVB_sulfur[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_sulfur[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/sulfur_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Sulfur UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 16; j++) {
+            fscanf(file, "%lf", &HM12_UVB_sulfur[i][j][1]);
         }
     }
     // Close the file
@@ -185,7 +311,21 @@ void load_UVB_data() {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 26; j++) {
-            fscanf(file, "%lf", &HM12_UVB_iron[i][j]);
+            fscanf(file, "%lf", &HM12_UVB_iron[i][j][0]);
+        }
+    }
+    // Close the file
+    fclose(file);
+
+    file = fopen("./data/HM12/iron_ph.dat", "r");
+    if (file == NULL) {
+        printf("Error: Could not open Iron UVB heat file\n");
+    }
+
+    // Reading data from the file into the 2D array
+    for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int j = 0; j < 26; j++) {
+            fscanf(file, "%lf", &HM12_UVB_iron[i][j][1]);
         }
     }
     // Close the file
@@ -201,11 +341,13 @@ void update_UVB(double redshift){
     double scale_low;
     double scale_high;
 
-    // No interpolation beyong redshift bounds --> set the UVB to zero
+    // No interpolation beyond redshift bounds --> set the UVB to zero
     if (redshift < HM12_UVB_redshifts[0] || redshift >= HM12_UVB_redshifts[N_UVB_POINTS-1]){
         for (int i = 0; i < 27; i++) {
             for (int j = 0; j < 27; j++) {
-                HM12_UVB_z[i][j]  = 0.0;
+                for (int k = 0; k < 2; k++) {
+                    HM12_UVB_z[i][j][k]  = 0.0;
+                }
             }
         }
     } else {
@@ -218,18 +360,47 @@ void update_UVB(double redshift){
                 scale_low  = 1.0 - scale_high;
 
                 for (int j = 0; j < 27; j++) {
-                    if (j<1)  HM12_UVB_z[1][j]  = (scale_low * HM12_UVB_hydrogen[i][j])  + (scale_high * HM12_UVB_hydrogen[i+1][j]);
-                    if (j<2)  HM12_UVB_z[2][j]  = (scale_low * HM12_UVB_helium[i][j])    + (scale_high * HM12_UVB_helium[i+1][j]);
-                    if (j<6)  HM12_UVB_z[6][j]  = (scale_low * HM12_UVB_carbon[i][j])    + (scale_high * HM12_UVB_carbon[i+1][j]);
-                    if (j<7)  HM12_UVB_z[7][j]  = (scale_low * HM12_UVB_nitrogen[i][j])  + (scale_high * HM12_UVB_nitrogen[i+1][j]);
-                    if (j<8)  HM12_UVB_z[8][j]  = (scale_low * HM12_UVB_oxygen[i][j])    + (scale_high * HM12_UVB_oxygen[i+1][j]);
-                    if (j<10) HM12_UVB_z[10][j] = (scale_low * HM12_UVB_neon[i][j])      + (scale_high * HM12_UVB_neon[i+1][j]);
-                    if (j<12) HM12_UVB_z[12][j] = (scale_low * HM12_UVB_magnesium[i][j]) + (scale_high * HM12_UVB_magnesium[i+1][j]);
-                    if (j<14) HM12_UVB_z[14][j] = (scale_low * HM12_UVB_silicon[i][j])   + (scale_high * HM12_UVB_silicon[i+1][j]);
-                    if (j<16) HM12_UVB_z[16][j] = (scale_low * HM12_UVB_sulfur[i][j])    + (scale_high * HM12_UVB_sulfur[i+1][j]);
-                    if (j<26) HM12_UVB_z[26][j]  = (scale_low * HM12_UVB_iron[i][j])      + (scale_high * HM12_UVB_iron[i+1][j]);
-                }
-                
+                    if (j<1){
+                        HM12_UVB_z[1][j][0]  = (scale_low * HM12_UVB_hydrogen[i][j][0])  + (scale_high * HM12_UVB_hydrogen[i+1][j][0]);
+                        HM12_UVB_z[1][j][1]  = (scale_low * HM12_UVB_hydrogen[i][j][1])  + (scale_high * HM12_UVB_hydrogen[i+1][j][1]);
+                    }
+                    if (j<2){
+                        HM12_UVB_z[2][j][0]  = (scale_low * HM12_UVB_helium[i][j][0])    + (scale_high * HM12_UVB_helium[i+1][j][0]);
+                        HM12_UVB_z[2][j][1]  = (scale_low * HM12_UVB_helium[i][j][1])    + (scale_high * HM12_UVB_helium[i+1][j][1]);
+                    }
+                    if (j<6){  
+                        HM12_UVB_z[6][j][0]  = (scale_low * HM12_UVB_carbon[i][j][0])    + (scale_high * HM12_UVB_carbon[i+1][j][0]);
+                        HM12_UVB_z[6][j][1]  = (scale_low * HM12_UVB_carbon[i][j][1])    + (scale_high * HM12_UVB_carbon[i+1][j][1]);
+                    }
+                    if (j<7){
+                        HM12_UVB_z[7][j][0]  = (scale_low * HM12_UVB_nitrogen[i][j][0])  + (scale_high * HM12_UVB_nitrogen[i+1][j][0]);
+                        HM12_UVB_z[7][j][1]  = (scale_low * HM12_UVB_nitrogen[i][j][1])  + (scale_high * HM12_UVB_nitrogen[i+1][j][1]);
+                    }
+                    if (j<8){
+                        HM12_UVB_z[8][j][0]  = (scale_low * HM12_UVB_oxygen[i][j][0])    + (scale_high * HM12_UVB_oxygen[i+1][j][0]);
+                        HM12_UVB_z[8][j][1]  = (scale_low * HM12_UVB_oxygen[i][j][1])    + (scale_high * HM12_UVB_oxygen[i+1][j][1]);
+                    }
+                    if (j<10){
+                        HM12_UVB_z[10][j][0] = (scale_low * HM12_UVB_neon[i][j][0])      + (scale_high * HM12_UVB_neon[i+1][j][0]);
+                        HM12_UVB_z[10][j][1] = (scale_low * HM12_UVB_neon[i][j][1])      + (scale_high * HM12_UVB_neon[i+1][j][1]);
+                    }
+                    if (j<12){
+                        HM12_UVB_z[12][j][0] = (scale_low * HM12_UVB_magnesium[i][j][0]) + (scale_high * HM12_UVB_magnesium[i+1][j][0]);
+                        HM12_UVB_z[12][j][1] = (scale_low * HM12_UVB_magnesium[i][j][1]) + (scale_high * HM12_UVB_magnesium[i+1][j][1]);
+                    }
+                    if (j<14){
+                        HM12_UVB_z[14][j][0] = (scale_low * HM12_UVB_silicon[i][j][0])   + (scale_high * HM12_UVB_silicon[i+1][j][0]);
+                        HM12_UVB_z[14][j][1] = (scale_low * HM12_UVB_silicon[i][j][1])   + (scale_high * HM12_UVB_silicon[i+1][j][1]);
+                    }
+                    if (j<16){
+                        HM12_UVB_z[16][j][0] = (scale_low * HM12_UVB_sulfur[i][j][0])    + (scale_high * HM12_UVB_sulfur[i+1][j][0]);
+                        HM12_UVB_z[16][j][1] = (scale_low * HM12_UVB_sulfur[i][j][1])    + (scale_high * HM12_UVB_sulfur[i+1][j][1]);
+                    }
+                    if (j<26){
+                        HM12_UVB_z[26][j][0]  = (scale_low * HM12_UVB_iron[i][j][0])      + (scale_high * HM12_UVB_iron[i+1][j][0]);
+                        HM12_UVB_z[26][j][1]  = (scale_low * HM12_UVB_iron[i][j][1])      + (scale_high * HM12_UVB_iron[i+1][j][1]);
+                    }
+                }                
             }
         }
     }

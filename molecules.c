@@ -4,15 +4,9 @@
 #include "molecules.h"  // Include the header file
 
 
-double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, double H2_cosmic_ray_ionization_rate, double G0, double xHI, double xHII){
-    // Creation rate of molecular hydrogen
-    // We consider both the primordial channel (via H-) as well
-    // as formation on dust
-
-    // Formation rate on dust
-    double clumping_factor = 10.0;
-    double T2 = T / 100.0;
-    double formation_rate = dust_to_gas_mass_ratio_over_mw * (3.5E-17) * clumping_factor * sqrt(T2);
+double alpha_H2_prim(double T, double xe, double H2_cosmic_ray_ionization_rate, double G0, double xHI, double xHII){
+    // H- channel for H2 formation
+    double formation_rate = 0.0;
 
     // Primordial channel
     double logT = log10(T);
@@ -26,10 +20,7 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
     }
 
     // ! H- + H -> H2 + e
-    double k2 = 4.0E-9*pow(T,-0.17);
-    if (T < 300.0) {
-        k2 = 4.0E-9*pow(300.0,-0.17);
-    }
+    double k2 = 4.0E-9*pow(fmax(T,300.0),-0.17);
 
     // ! H- + H+ -> H + H
     double k5 = 2.4E-6/sqrt(T)*(1.0 + T/20000.);
@@ -48,17 +39,17 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
 
     // ! H- + H --> H + H + e-
     // ! I think this reaction was broken in glover so I took the results from
-    // ! https://www.aanda.org/articles/aa/pdf/2016/02/aa27262-15.pdf: Table A1
-    double k14 = 2.5634E-15 * pow(T,1.78186);
+    // ! https://www.aanda.org/articles/aa/pdf/2016/02/aa27262-15.pdf Table A1
+    double k14 = 2.5634E-15 * pow(exp(lnTe),1.78186); // Note that T must be in eV for this reaction to make sense
     if (T > 1160.0) {
-        k14 = -2.0372609E1 + 1.13944933E0*lnTe - 1.4210135E-1*pow(lnTe,2.) \
+        k14 = -3.388464953E1 + 1.13944933E0*lnTe - 1.4210135E-1*pow(lnTe,2.) \
               + 8.4644554E-3*pow(lnTe,3.) - 1.4328641E-3*pow(lnTe,4.) + 2.0122503E-4*pow(lnTe,5.) \
               + 8.6639632E-5*pow(lnTe,6.) - 2.5850097E-5*pow(lnTe,7.) + 2.4555012E-6*pow(lnTe,8.) \
               - 8.0683825E-8*pow(lnTe,9.);
         k14 = exp(k14);
     }
 
-    // ! H- + H+ --> H2+ + e- --> H + H (via recomvinative dissociation)
+    // ! H- + H+ --> H2+ + e- --> H + H (via recombinative dissociation)
     double k15 = 6.9E-9 * pow(T,-0.35);
     if (T > 8000.0) {
         k15 = 9.6E-7 * pow(T,-0.90);
@@ -67,6 +58,50 @@ double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, doub
     formation_rate += k1*k2*xe/(k2 + k5*xHII + k_hm_cr + k_hm_gamma + k13*xe + k14*xHI + k15*xHII); 
 
     return formation_rate;
+}
+
+double alpha_H2_dust(double T, double dust_to_gas_mass_ratio_over_mw){
+    // Formation on dust
+    double clumping_factor = 1.0;
+    double T2 = T / 100.0;
+    double formation_rate = dust_to_gas_mass_ratio_over_mw * (3.5E-17) * clumping_factor * sqrt(fmin(T2,5));
+
+    return formation_rate;
+}
+
+double alpha_H2(double T, double dust_to_gas_mass_ratio_over_mw, double xe, double H2_cosmic_ray_ionization_rate, double G0, double xHI, double xHII, double nH){
+    // Creation rate of molecular hydrogen
+    // We consider both the primordial channel (via H-) as well
+    // as formation on dust
+
+    double formation_rate = 0.0;
+
+    // Formation rate on dust. Consider only HI
+    formation_rate += alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) * xHI;
+
+    // Primordial H- channel
+    formation_rate += alpha_H2_prim(T, xe, H2_cosmic_ray_ionization_rate, G0, xHI, xHII) * xHI * nH;
+
+    // Artificially down-weight creation at high T to prevent excess compute???
+    formation_rate *= exp(-1.0 * pow(T / 1E5,2));
+
+    return formation_rate;
+}
+
+double beta_H2_umist(double T, double nH, double ne, double nH2){
+    // H2 destrubtion from umist
+    // http://udfa.ajmarkwick.net/index.php?species=4
+
+    double destruction_rate = 0.0;
+
+    //H2 + H2 --> H2 + H + H
+    destruction_rate += 1.00e-8 * pow(T/300,0.00) * exp(-84100.00/T) * nH2;
+    //H2 + e- --> H + H + e-
+    destruction_rate += 3.22e-9 * pow(T/300,0.35) * exp(-102000.00/T) * ne;
+    //H2 + H --> H + H + H
+    destruction_rate += 4.67e-7 * pow(T/300,-1.00) * exp(-55000.00/T) * nH;
+
+    return destruction_rate;
 }
 
 double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double ne, double nHI, double nH2, double nHeI){
@@ -123,7 +158,7 @@ double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double n
     double lk11 = (LTEfac*log10(k11L)) + (NLTEfac*log10(k11));
 
     double destruction_rate = (ne*pow(10.0,lk8)) + (nHI*pow(10.0,lk9)) + (nH2*pow(10.0,lk10)) + (nHeI*pow(10.0,lk11));
-    destruction_rate = fmax(destruction_rate/nH, 1E-40); //! Taysun
+    destruction_rate = fmax(destruction_rate, 1E-40);
 
     return destruction_rate;
 }

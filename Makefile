@@ -2,11 +2,12 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O3
 
 # Source files
 SRCS = charge_transfer.c \
        collisional_ionization.c \
+       cooling.c \
        cosmic_ray_ionization.c \
        dust_recombination.c \
        molecules.c \

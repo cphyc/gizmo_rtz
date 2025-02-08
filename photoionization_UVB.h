@@ -9,6 +9,6 @@ void update_UVB(double redshift);
 // This is currently a bit of waste of space but it's small
 // enough that it shouldn't matter
 // Index is element number | Ion
-extern double HM12_UVB_z[27][27];
+extern double HM12_UVB_z[27][27][2];
 
 #endif

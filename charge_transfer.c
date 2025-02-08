@@ -78,7 +78,7 @@ double charge_transfer_recombination(int ion, int nelem, double T){
 
     // Deal with helium separately
     // He+ + H --> He + H+
-    // if (nelem == 2 && ion ==2)
+    // if (nelem == 2 && ion == 1)
     // {
     //     ct_recomb = 1.20E-15 * pow(T/300.0,0.25);
     //     return ct_recomb;
@@ -116,6 +116,25 @@ double charge_transfer_recombination(int ion, int nelem, double T){
         }
     }
 
+    // Deal with nitrogen separately
+    if (nelem == 7 && ion == 2)
+    {
+		/* N+2 + H -> N+ + H+ */
+		if( T <= 1500. )
+		{
+			ct_recomb = 0.8692e-9*pow( (T/1500.) ,0.17);
+		}
+		else if( T <= 20000. )
+		{
+			ct_recomb = 0.9703e-9*pow( (T/10000.) ,0.058);
+		}
+		else
+		{
+			ct_recomb = 1.0101e-9 + 1.4589e-9*pow( log10(T/20000.) ,2.06 );
+		}
+        return ct_recomb; 
+    }
+
     int ipIon = ion - 1; 
     //  use statistical charge transfer for ion > 4
     if( ion > 4 ) 
@@ -131,17 +150,6 @@ double charge_transfer_recombination(int ion, int nelem, double T){
 
     // The interpolation equation
     ct_recomb = CTRecomb[0][ipIon][nelem] * 1E-9 * pow(tused,CTRecomb[1][ipIon][nelem]) * (1. + CTRecomb[2][ipIon][nelem] * exp(CTRecomb[3][ipIon][nelem]*tused) );
-
-
-    // DIRECT FROM CLOUDY
-    /* The above included only the radiative charge transfer from
-    Stancil et al 1998.  must explicitly add on the ct fitted by Kingdon & Ferland,
-    // The process H0 + He+ -> He0 + H+ */
-    // if (nelem == 2 && ion == 1)
-    // {
-    //     ct_recomb += 7.47E-15*pow(T/1e4,2.06)*(1.+9.93*exp(3.89E-4*T) );
-    //     return ct_recomb;
-    // }
 
     return ct_recomb;
 }
@@ -163,23 +171,23 @@ double charge_transfer_ionization(int ion, int nelem, double T){
 
     // Deal with helium separately
     // He + H+ --> He+ + H
-    // if (nelem == 2 && ion ==1)
-    // {
-    //     // ! This particular rate seems to get very small at low te
-    //     if (T < 3E3)
-    //     {
-    //         ct_ion = 0.0;
-    //         return ct_ion;
-    //     }
+    if (nelem == 2 && ion == 1)
+    {
+        // ! This particular rate seems to get very small at low te
+        if (T < 3E3)
+        {
+            ct_ion = 0.0;
+            return ct_ion;
+        }
 
-    //     if (T < 1E4)
-    //     { 
-    //         ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
-    //     } else {
-    //         ct_ion = 4E-37 * pow(T,4.74);
-    //     }
-    //     return ct_ion;
-    // }
+        if (T < 1E4)
+        { 
+            ct_ion = 1.26E-9 * pow(T,-0.75) * exp(-1.275E5/T);
+        } else {
+            ct_ion = 4E-37 * pow(T,4.74);
+        }
+        return ct_ion;
+    }
 
     // Deal with oxygen separately
     if (nelem == 8 && ion == 0)
@@ -209,6 +217,38 @@ double charge_transfer_ionization(int ion, int nelem, double T){
             ct_ion = (((((g_o*logT + f_o)*logT + e_o)*logT + d_o)*logT + c_o)*logT + b_o)*logT + a_o;
         }
 
+        return ct_ion;
+    }
+
+    // Deal with iron separately
+    // Fe + H+ -> Fe+ + H
+    if (nelem == 26 && ion == 0)
+    {
+        ct_ion = 1.e-14;
+        return ct_ion;
+    }
+
+    // Deal with sulfur separately
+    // S + H+ -> S+ + H
+    if (nelem == 26 && ion == 0)
+    {
+        ct_ion = 5.4e-9;
+        return ct_ion;
+    }
+
+    // Deal with magnesium separately
+    // Mg + H+ -> Mg+ + H
+    if (nelem == 12 && ion == 0)
+    {
+        ct_ion = 9.76e-12*pow((T/1e4),3.14)*(1. + 55.54*exp(1.12*T/1e4));
+        return ct_ion;
+    }
+
+    // Deal with Silicon separately
+    // Si + H+ -> Si+ + H
+    if (nelem == 14 && ion == 0)
+    {
+        ct_ion = 0.92e-12*pow((T/1e4),1.15)*(1. + 0.80*exp(0.24*T/1e4));
         return ct_ion;
     }
 

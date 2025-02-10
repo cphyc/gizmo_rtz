@@ -134,13 +134,53 @@ typedef struct {
     double *ion_fracs_new; 
 } ParticleIonData;
 
+double get_dust_mass_and_depletion(
+    Element *elements, double metallicity)
+{
+    // Parameters for the RR14 dust-to-gas mass ratio
+    double a = 2.21;
+    double aH = 1.00;
+    double b = 0.96;
+    double aL = 3.10;
+    double xt = 8.10;
+    double xs = 8.69;
+    double x, y;
+
+    // Compute x (metallicity proxy)
+    x = 8.69 + log10(metallicity);
+
+    // Determine y (gas-to-dust mass ratio)
+    if (x > xt) {
+        y = a + (aH * (xs - x));
+    } else {
+        y = b + (aL * (xs - x));
+    }
+
+    y = pow(10.0, y); // Convert to actual ratio
+
+    // Set the depletion factors
+    double y_ratio = fmin(1.0, 162.0 / y);
+
+    for (int i = 1; i < MAX_ELEMENTS; i++) { 
+        if (elements[i].atomic_number < 1) continue;
+        elements[i].depletion = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
+    }
+
+    return y_ratio;
+}
+
 // Structs for element properties
-void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, double hdens, int itype) {
+void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, double hdens, double metallicity, int itype) {
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++) { 
         if (elements[i].atomic_number < 1) continue;
 
-        n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * elements[i].depletion;
+        // Only scale metals by metallicity
+        if (i < 3){
+            n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * elements[i].depletion;
+        } else {
+            n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * metallicity * elements[i].depletion;
+        }
         n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions+elements[i].n_mol) * sizeof(double));
         n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions+elements[i].n_mol) * sizeof(double));
 
@@ -918,8 +958,14 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         success_counter += 1;
 
         // Check if we are converged
-        if (convergence_counter > 50000) model_converged = true;
-        if (success_counter > 100000000) model_converged = true;
+        if (convergence_counter > 50000) {
+            printf("#Converged\n");
+            model_converged = true;
+        }
+        if (success_counter > 100000000) {
+            printf("#Success\n");
+            model_converged = true;
+        }
         
         // Update the total time
         total_time += ddt;
@@ -941,7 +987,7 @@ int main() {
     double redshift = 1000.0;          // Redshift of the calculation
     double UV_background_G0 = 1.0;  // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 1E-16; // Background CR ionization rate (primary + secondary) --> H
-    double dust_to_gas_mass_ratio_over_mw = 1.0; // dust to gas mass ratio normalized to the MW
+    double metallicity = 1E-5; // Gas phase metallicity (solar units)
     bool include_H2 = true; // Whether to include molecular hydrogen
     bool include_CO = false; // Whether to include CO
     bool ramses_rt_T_scheme = true;  // Whether to use the ramses-rt temperature update
@@ -955,8 +1001,8 @@ int main() {
     // Initialize the elements
     initialize_elements(elements);
 
-    // Initialize the ion fracs
-    // initialize_ion_fracs(elements,n_and_ion_fracs,1E3);
+    // Get the dust to gas mass ratio and the depletion factors
+    double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements,metallicity);
 
     // Initialize the UV background data
     load_UVB_data(); // First load the UVB data from files
@@ -977,9 +1023,10 @@ int main() {
     // Loop over temperature and get the ion fractions
     redshift = 0.0; //--> update redshift so not unrealistically high for cooling
     double TK = 1e6;
-    for (int i = 0; i < 70; i++) {
+    for (int i = 0; i < 48; i++) {
         double rho = pow(10.0,-2+((double)i*0.1));
-        initialize_ion_fracs(elements,n_and_ion_fracs,rho,1);
+        initialize_ion_fracs(elements,n_and_ion_fracs,rho,metallicity,1);
+
         TK = get_chemical_eqm(elements, n_and_ion_fracs, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
                          generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw,
                          include_H2, include_CO, ramses_rt_T_scheme, rosenbrock_T_scheme, constant_temperature);

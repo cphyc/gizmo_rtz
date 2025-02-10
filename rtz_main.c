@@ -134,10 +134,6 @@ typedef struct {
     double *ion_fracs_new; 
 } ParticleIonData;
 
-
-#include <math.h>
-#include <stdlib.h>
-
 double get_dust_mass_and_depletion(
     Element *elements, double metallicity)
 {

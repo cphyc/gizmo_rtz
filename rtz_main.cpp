@@ -438,6 +438,24 @@ double get_chemical_eqm(const Element *elements,
         element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
     }
 
+    Array2D recombination_table, collisional_ionization_table, charge_transfer_ionization_table, charge_transfer_recombination_table;
+
+    auto recompute_tables = [&](double TK) {
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1)
+                continue;
+
+            for (int j = 0; j < elements[i].n_ions; j++) {
+                recombination_table[i][j] = recombination(TK, j, i);
+                collisional_ionization_table[i][j] = collisional_ionization(TK, j, i);
+                charge_transfer_ionization_table[i][j] = charge_transfer_ionization(j, i, TK);
+                charge_transfer_recombination_table[i][j] = charge_transfer_recombination(j, i, TK);
+            }
+        }
+    };
+
+    recompute_tables(TK);
+
     // # infinite loop
     while (1)
     { // Infinite loop: TODO(code): put a max loop counter here and then call an error function
@@ -722,11 +740,11 @@ double get_chemical_eqm(const Element *elements,
 
                     // Recombinations of the more excited ionization state
                     if (j < (n_ions - 1))
-                        cr += recombination(TK, j + 1, i) * ne * n_and_ion_fracs[i].ion_fracs_new[j + 1];
+                        cr += recombination_table[i][j+1] * ne * n_and_ion_fracs[i].ion_fracs_new[j + 1];
 
                     // Collisional ionization of the less excited state
                     if (j > 0)
-                        cr += collisional_ionization(TK, j - 1, i) * ne * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                        cr += collisional_ionization_table[i][j-1] * ne * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Photoionization of the less excited state
                     if (j > 0)
@@ -761,7 +779,7 @@ double get_chemical_eqm(const Element *elements,
 
                     // Collisional ionization
                     if (j < (n_ions - 1))
-                        de += collisional_ionization(TK, j, i) * ne;
+                        de += collisional_ionization_table[i][j] * ne;
 
                     // Photoionization
                     if (j < (n_ions - 1))
@@ -773,7 +791,7 @@ double get_chemical_eqm(const Element *elements,
 
                     // Recombination
                     if (j > 0)
-                        de += recombination(TK, j, i) * ne;
+                        de += recombination_table[i][j] * ne;
 
                     // Cosmic ray ionization
                     if (j < (n_ions - 1))
@@ -807,13 +825,13 @@ double get_chemical_eqm(const Element *elements,
                                 double paired_ion_number_density = n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element;
                                 if (j == 0)
                                 {                                                                                                                       // H
-                                    cr += charge_transfer_ionization(jj, ii, TK) * n_and_ion_fracs[i].ion_fracs_new[j + 1] * paired_ion_number_density; //! Example:  O + H+ => O+ + H
-                                    de += charge_transfer_recombination(jj, ii, TK) * paired_ion_number_density;                                        //! Example:  O+ + H => O + H+
+                                    cr += charge_transfer_ionization_table[ii][jj] * n_and_ion_fracs[i].ion_fracs_new[j + 1] * paired_ion_number_density; //! Example:  O + H+ => O+ + H
+                                    de += charge_transfer_recombination_table[ii][jj] * paired_ion_number_density;                                        //! Example:  O+ + H => O + H+
                                 }
                                 else
                                 {                                                                                                                          // H+
-                                    de += charge_transfer_ionization(jj, ii, TK) * paired_ion_number_density;                                              //! Example:  O + H+ => O+ + H
-                                    cr += charge_transfer_recombination(jj, ii, TK) * n_and_ion_fracs[i].ion_fracs_new[j - 1] * paired_ion_number_density; //! Example:  O+ + H => O + H+
+                                    de += charge_transfer_ionization_table[ii][jj] * paired_ion_number_density;                                              //! Example:  O + H+ => O+ + H
+                                    cr += charge_transfer_recombination_table[ii][jj] * n_and_ion_fracs[i].ion_fracs_new[j - 1] * paired_ion_number_density; //! Example:  O+ + H => O + H+
                                 }
                             } // end loop over ionization states
                         } // end loop over other elements
@@ -826,19 +844,19 @@ double get_chemical_eqm(const Element *elements,
                         if (j > 0)
                         {
                             // Ionization from less excited state
-                            cr += charge_transfer_ionization(j - 1, i, TK) * n_and_ion_fracs[i].ion_fracs_new[j - 1] * HII_number_density; //! Example:  O + H+ => O+ + H
+                            cr += charge_transfer_ionization_table[i][j - 1] * n_and_ion_fracs[i].ion_fracs_new[j - 1] * HII_number_density; //! Example:  O + H+ => O+ + H
 
                             // Charge exchange recombination
-                            de += charge_transfer_recombination(j, i, TK) * HI_number_density; //! Example:  O+ + H => O + H+
+                            de += charge_transfer_recombination_table[i][j] * HI_number_density; //! Example:  O+ + H => O + H+
                         }
 
                         if (j < (n_ions - 1))
                         {
                             // Charge exchange ionization
-                            de += charge_transfer_ionization(j, i, TK) * HII_number_density; //! Example:  O + H+ => O+ + H
+                            de += charge_transfer_ionization_table[i][j] * HII_number_density; //! Example:  O + H+ => O+ + H
 
                             // Charge exchange recombination from the more excited state
-                            cr += charge_transfer_recombination(j + 1, i, TK) * n_and_ion_fracs[i].ion_fracs_new[j + 1] * HI_number_density; //! Example:  O+ + H => O + H+
+                            cr += charge_transfer_recombination_table[i][j + 1] * n_and_ion_fracs[i].ion_fracs_new[j + 1] * HI_number_density; //! Example:  O+ + H => O + H+
                         }
                     }
 
@@ -1019,6 +1037,7 @@ double get_chemical_eqm(const Element *elements,
                         TK = TK_new;
                     }
                 }
+                recompute_tables(TK);
             }
         }
 
@@ -1057,7 +1076,11 @@ double get_chemical_eqm(const Element *elements,
         if (x_percent_rule)
         {
             // Update temperature
-            TK = fmin(fmax(TK_new, T_MIN), T_MAX);
+            TK_new = fmin(fmax(TK_new, T_MIN), T_MAX);
+            if (TK != TK_new) {
+                TK = TK_new;
+                recompute_tables(TK);
+            }
             // Update atomic data
             for (int i = 1; i < MAX_ELEMENTS; i++)
             {
@@ -1181,7 +1204,7 @@ int main()
                     xions(i, iion) = n_and_ion_fracs_loc[ii].ion_fracs[jj];
                     iion++;
                 }
-                
+
             } });
 
         // Copy the data back to the host

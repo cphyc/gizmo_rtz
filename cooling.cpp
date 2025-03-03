@@ -8,6 +8,8 @@
 #include "photoionization_UVB.hpp"
 #include "charge_transfer.hpp"
 
+#include "cooling.hpp"
+
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling
 const double MIN_COOL_ION = 1.E-10; //minimum number density to calculate cooling for a particular ion
@@ -396,8 +398,8 @@ void initialize_high_temperature_metal_cooling(){
 
 double get_high_t_cooling_rates(double T, double ne, 
                                 double *element_number_densities,
-                                double *element_number_ions,
-                                double **element_ion_fractions,
+                                int *element_number_ions,
+                                Array2D& element_ion_fractions,
                                 double temp_smooth){
     // Computes the high-temperature cooling rates
     // derived from Harley's custom cloudy models
@@ -440,7 +442,7 @@ double get_high_t_cooling_rates(double T, double ne,
                 loc_cooling_rate += (frac_high * high_t_cooling_rates[idx_low+1][i][j]); 
                 loc_cooling_rate = pow(10.0,loc_cooling_rate);
 
-                // Smooth with temeprature if necessary
+                // Smooth with temperature if necessary
                 double loc_temp_smooth = 1.0;
                 if (high_t_cooling_rates_tflag[i][j]) {
                     loc_temp_smooth = temp_smooth;
@@ -1157,8 +1159,8 @@ double photoelectric_heating_WD01(double T, double G0, double ne, double f_dg, d
 double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
                           double *element_number_densities,
-                          double *element_number_ions,
-                          double **element_ion_fractions){
+                          int *element_number_ions,
+                          Array2D& element_ion_fractions){
     double q_cr = 6.43 * ( 1.0 + 4.06 * sqrt( xe / (0.07 + xe) ) ) * EV_2_ERG; //! Bialy 2019
 
     double phi_s = secondary_cr_rates(xe);
@@ -1211,8 +1213,8 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
     return cr_heating_tot;
 }
 
-double photoheating_UVB(double *element_number_densities, double *element_number_ions,
-                        double **element_ion_fractions){
+double photoheating_UVB(double *element_number_densities, int *element_number_ions,
+                        Array2D& element_ion_fractions){
     // Photoheating contribution from a UVB
 
     double heating_rate = 0.0;
@@ -1233,7 +1235,7 @@ double photoheating_UVB(double *element_number_densities, double *element_number
 
 double photoheating_UVB_G0(double G0,
                            double *element_number_densities,
-                           double **element_ion_fractions){
+                           Array2D& element_ion_fractions){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
 
@@ -1323,7 +1325,7 @@ double H2_heating(double G0, double nH2, double nH, double T, double xH2, double
 }
 
 double CT_heat_cool(double T, double *element_number_densities,
-                    double **element_ion_fractions){
+                    Array2D& element_ion_fractions){
     // Heating and cooling from charge exchange reactions
 
     double ct_hc_rate = 0.0;
@@ -1397,7 +1399,7 @@ double CT_heat_cool(double T, double *element_number_densities,
 
 
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
-                   double *element_number_ions, double **element_ion_fractions,
+                   int *element_number_ions, Array2D& element_ion_fractions,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor){
     // Main cooling driver

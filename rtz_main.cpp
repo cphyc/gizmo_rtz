@@ -13,7 +13,7 @@
 
 #include <Kokkos_Core.hpp>
 
-const int MAX_ELEMENTS = 27;           // Define a constant named MAX_SIZE
+#define MAX_ELEMENTS 27
 const double MIN_XION = 1E-20;         // Minimum ion fraction
 const double MIN_XION_FLOOR = 1E-10;   // Minimum ion fraction
 const double CONV_ABS = 1E-4;          // Value required for convergence
@@ -420,11 +420,13 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
     double cooling_rate_prime_2 = 0.0;
 
     double element_number_densities[MAX_ELEMENTS];
-    double element_number_ions[MAX_ELEMENTS];
-    double *element_ion_fractions[MAX_ELEMENTS];
+    int element_number_ions[MAX_ELEMENTS];
+    Array2D element_ion_fractions;
 
-    for (int i = 1; i < MAX_ELEMENTS; i++)
-        element_ion_fractions[i] = (double *)malloc(MAX_ELEMENTS * sizeof(double));
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        element_number_densities[i] = n_and_ion_fracs[i].n_element;
+        element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
+    }
 
     // # infinite loop
     while (1)
@@ -1092,8 +1094,8 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
     } // End infinite loop
 
     // Free the memory
-    for (int i = 1; i < MAX_ELEMENTS; i++)
-        free(element_ion_fractions[i]);
+    // for (int i = 1; i < MAX_ELEMENTS; i++)
+    //     free(element_ion_fractions[i]);
 
     return TK;
 }

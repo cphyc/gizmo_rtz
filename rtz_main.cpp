@@ -419,6 +419,13 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
     double cooling_rate_2 = 0.0;
     double cooling_rate_prime_2 = 0.0;
 
+    double element_number_densities[MAX_ELEMENTS];
+    double element_number_ions[MAX_ELEMENTS];
+    double *element_ion_fractions[MAX_ELEMENTS];
+
+    for (int i = 1; i < MAX_ELEMENTS; i++)
+        element_ion_fractions[i] = (double *)malloc(MAX_ELEMENTS * sizeof(double));
+
     // # infinite loop
     while (1)
     { // Infinite loop: TODO(code): put a max loop counter here and then call an error function
@@ -487,18 +494,10 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         /////////////////////////
         //     Temperature     //
         /////////////////////////
-        double *element_number_densities;
-        double *element_number_ions;
-        double **element_ion_fractions;
-
-        element_number_densities = (double *)malloc(MAX_ELEMENTS * sizeof(double));
-        element_number_ions = (double *)malloc(MAX_ELEMENTS * sizeof(double));
-        element_ion_fractions = (double **)malloc(MAX_ELEMENTS * sizeof(double *));
 
         // Loop over all elements
         for (int i = 1; i < MAX_ELEMENTS; i++)
         {
-            element_ion_fractions[i] = (double *)malloc(MAX_ELEMENTS * sizeof(double));
             element_number_densities[i] = n_and_ion_fracs[i].n_element;
             element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
             for (int j = 0; j < element_number_ions[i]; j++)
@@ -1091,6 +1090,10 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
             break; // break from infinite loop
 
     } // End infinite loop
+
+    // Free the memory
+    for (int i = 1; i < MAX_ELEMENTS; i++)
+        free(element_ion_fractions[i]);
 
     return TK;
 }

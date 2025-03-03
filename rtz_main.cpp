@@ -248,7 +248,7 @@ void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, d
     }
 }
 
-double get_ne(Element *elements, ParticleIonData *n_and_ion_fracs, bool use_new)
+double get_ne(const Element *elements, const ParticleIonData *n_and_ion_fracs, const bool use_new)
 {
     /*
     Returns the electron number density by looping over all elements
@@ -356,15 +356,25 @@ void copyArray(double src[], double dest[], int size)
     }
 }
 
+template <
+    bool constant_temperature,
+    bool ramses_rt_T_scheme=true,
+    bool rosenbrock_T_scheme=false,
+    bool include_H2=true,
+    bool include_CO=false
+>
 KOKKOS_FUNCTION
-double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, double TK,
-                        double aexp, double total_dt, double UV_background_G0,
-                        double total_cosmic_ray_ionization_rate,
-                        double dust_to_gas_mass_ratio_over_mw,
-                        bool include_H2, bool include_CO,
-                        bool ramses_rt_T_scheme, bool rosenbrock_T_scheme,
-                        bool constant_temperature)
+double get_chemical_eqm(const Element *elements,
+                        const ParticleIonData *n_and_ion_fracs,
+                        double TK,
+                        const double aexp,
+                        const double total_dt,
+                        const double UV_background_G0,
+                        const double total_cosmic_ray_ionization_rate,
+                        const double dust_to_gas_mass_ratio_over_mw)
 {
+    static_assert(constant_temperature || (ramses_rt_T_scheme ^ rosenbrock_T_scheme),
+                  "Exactly one temperature scheme must be selected");
     /*
     Computes chemical equilibrium
 
@@ -513,9 +523,9 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         double nH = n_and_ion_fracs[1].n_element / 0.76;      // TODO(code): hard coded at 0.76 -- need to calculate
         double X_nHkb = 1.0 / (1.5 * nH * 1.380649e-16 * mu); // TODO(code): double check mu goes here
         double TK_new = TK;
-        if (!constant_temperature)
+        if constexpr (!constant_temperature)
         {
-            if (ramses_rt_T_scheme)
+            if constexpr (ramses_rt_T_scheme)
             {
                 cooling_rate = all_cooling(TK, ne, aexp,
                                            element_number_densities,
@@ -585,7 +595,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         {
 
             // Molecular Hydrogen
-            if (include_H2)
+            if constexpr (include_H2)
             {
 
                 // H2 fraction --> Note that we actually store 2 * xH2
@@ -704,7 +714,7 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
                     cr = 0.E0;
 
                     // Account for molecular hydrogen
-                    if ((i == 1) & (j == 0) & include_H2)
+                    if constexpr (include_H2) if ((i == 1) & (j == 0))
                     { // select only HI
                         // Note: no factor of 2 needed since is 2*xH2
                         cr += de_H2 * n_and_ion_fracs[1].ion_fracs_new[2];
@@ -918,9 +928,9 @@ double get_chemical_eqm(Element *elements, ParticleIonData *n_and_ion_fracs, dou
         }
 
         // Update temeprature afterwards if using the rosenbrock T scheme
-        if (!constant_temperature)
+        if constexpr (!constant_temperature)
         {
-            if (rosenbrock_T_scheme)
+            if constexpr (rosenbrock_T_scheme)
             {
 
                 // Update mu
@@ -1106,11 +1116,11 @@ int main()
     double UV_background_G0 = 1.0;                     // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 1E-16; // Background CR ionization rate (primary + secondary) --> H
     double metallicity = 1E-5;                         // Gas phase metallicity (solar units)
-    bool include_H2 = true;                            // Whether to include molecular hydrogen
-    bool include_CO = false;                           // Whether to include CO
-    bool ramses_rt_T_scheme = true;                    // Whether to use the ramses-rt temperature update
-    bool rosenbrock_T_scheme = false;                  // Whether to use the rosenbrocat temperature update
-    bool constant_temperature = false;                 // Whether to compute at constant temperature
+    constexpr bool include_H2 = true;                            // Whether to include molecular hydrogen
+    constexpr bool include_CO = false;                           // Whether to include CO
+    constexpr bool ramses_rt_T_scheme = true;                    // Whether to use the ramses-rt temperature update
+    constexpr bool rosenbrock_T_scheme = false;                  // Whether to use the rosenbrocat temperature update
+    constexpr bool constant_temperature = false;                 // Whether to compute at constant temperature
 
     // Declare an array (list) of 3 elements (structs)
     Element elements[MAX_ELEMENTS];
@@ -1158,9 +1168,8 @@ int main()
             // Initialize the ion fractions
             initialize_ion_fracs(elements_loc,n_and_ion_fracs_loc,rho,metallicity,1);
 
-            get_chemical_eqm(elements_loc, n_and_ion_fracs_loc, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
-                              generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw,
-                              include_H2, include_CO, ramses_rt_T_scheme, rosenbrock_T_scheme, constant_temperature);
+            get_chemical_eqm<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>(elements_loc, n_and_ion_fracs_loc, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
+                            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw);
 
             // Loop over all elements
             int iion = 0;

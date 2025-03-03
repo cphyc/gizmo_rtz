@@ -2,8 +2,12 @@
 #ifndef COSMIC_RAY_IONIZATION
 #define COSMIC_RAY_IONIZATION
 
+#include <Kokkos_Core.hpp>
+
 // Initialization of cosmic ray rates tables
 void initialize_cr_rates();
+
+KOKKOS_FUNCTION
 double secondary_cr_rates(double xe);
 
 // Array that contains cosmic ray ionization values

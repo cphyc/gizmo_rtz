@@ -7,7 +7,7 @@
 #include "molecules.hpp"
 #include "photoionization_UVB.hpp"
 #include "charge_transfer.hpp"
-
+#include "types.hpp"
 #include "cooling.hpp"
 
 // Constants
@@ -1156,11 +1156,14 @@ double photoelectric_heating_WD01(double T, double G0, double ne, double f_dg, d
     return HratePE;
 }
 
+KOKKOS_FUNCTION
 double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
                           double *element_number_densities,
                           int *element_number_ions,
-                          Array2D& element_ion_fractions){
+                          Array2D& element_ion_fractions,
+                          const TabulatedData& tabData
+                        ){
     double q_cr = 6.43 * ( 1.0 + 4.06 * sqrt( xe / (0.07 + xe) ) ) * EV_2_ERG; //! Bialy 2019
 
     double phi_s = secondary_cr_rates(xe);
@@ -1197,14 +1200,14 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
             double x_ion = element_ion_fractions[i][j];
 
             // This is the primary heating term from ionization
-            cr_heating_tot += (n_element * x_ion * q_cr * cosmic_ray_ionization_rates[i][j] * total_cosmic_ray_ionization_rate); // erg/s/cm^3
+            cr_heating_tot += (n_element * x_ion * q_cr * tabData.cosmic_ray_ionization_rates(i, j) * total_cosmic_ray_ionization_rate); // erg/s/cm^3
 
             // This is the secondary heating term from induced UV emission
             // Only happend for the ground state
             if (j == 0){
                 cr_heating_tot += ( n_element * x_ion 
-                                    * cosmic_ray_ionization_rates_induced_UV_heat[i]
-                                    * cosmic_ray_ionization_rates_induced_UV[i] * EV_2_ERG
+                                    * tabData.cosmic_ray_ionization_rates_induced_UV_heat(i)
+                                    * tabData.cosmic_ray_ionization_rates_induced_UV(i) * EV_2_ERG
                                     * induced_UV_heat_scale_fac ); // erg/s/cm^3
             }
         }
@@ -1398,10 +1401,11 @@ double CT_heat_cool(double T, double *element_number_densities,
 }
 
 
+KOKKOS_FUNCTION
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
                    int *element_number_ions, Array2D& element_ion_fractions,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
-                   double ss_factor){
+                   double ss_factor, const TabulatedData& tabData){
     // Main cooling driver
     /*
     T --> Temperature [K]
@@ -1587,7 +1591,9 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                                 ne, xi_h_cr,
                                                 element_number_densities,
                                                 element_number_ions,
-                                                element_ion_fractions);
+                                                element_ion_fractions,
+                                                tabData
+                                            );
 
     // Photoheating from the UV background
     double uvb_photoheat = photoheating_UVB(element_number_densities,

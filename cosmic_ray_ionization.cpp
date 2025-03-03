@@ -83,6 +83,7 @@ void initialize_cr_rates(){
 
 }
 
+KOKKOS_FUNCTION
 double secondary_cr_rates(double xe){
     /*
     Secondary CR ionization rate

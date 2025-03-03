@@ -10,6 +10,7 @@
 #include "dust_recombination.hpp"
 #include "molecules.hpp"
 #include "cooling.hpp"
+#include "types.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -25,16 +26,6 @@ const double T_MIN = 2.725;
 const double T_MAX = 1E9;
 
 // Define the struct
-typedef struct
-{
-    int atomic_number;
-    int n_ions;
-    int n_mol;
-    double atomic_mass;
-    double z_solar;
-    double G0_photo_rate;
-    double depletion;
-} Element;
 
 // Structs for element properties
 void initialize_elements(Element *elements)
@@ -248,6 +239,7 @@ void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, d
     }
 }
 
+KOKKOS_FUNCTION
 double get_ne(const Element *elements, const ParticleIonData *n_and_ion_fracs, const bool use_new)
 {
     /*
@@ -283,6 +275,7 @@ double get_ne(const Element *elements, const ParticleIonData *n_and_ion_fracs, c
     return fmax(ne, MIN_XION);
 }
 
+KOKKOS_FUNCTION
 double get_mu(double xHI, double xHII, double xHeII, double xHeIII, double nH, double nHe)
 {
     /*
@@ -299,7 +292,8 @@ double get_mu(double xHI, double xHII, double xHeII, double xHeIII, double nH, d
     return mu;
 }
 
-void reduce_xion(double ion_fracs[], int size)
+KOKKOS_INLINE_FUNCTION
+void reduce_xion(double *ion_fracs, int size)
 {
     /*
     Makes sure that the ion fractions sum to one and that
@@ -321,7 +315,8 @@ void reduce_xion(double ion_fracs[], int size)
     }
 }
 
-void reduce_xion_max(double ion_fracs[], int size)
+KOKKOS_INLINE_FUNCTION
+void reduce_xion_max(double* ion_fracs, int size)
 {
     /*
     Makes sure that the ion fractions sum to one and that
@@ -348,13 +343,13 @@ void reduce_xion_max(double ion_fracs[], int size)
     ion_fracs[max_idx] -= (total_ion_frac - 1.0);
 }
 
-void copyArray(double src[], double dest[], int size)
-{
-    for (int i = 0; i < size; i++)
-    {
-        dest[i] = src[i];
-    }
-}
+// void copyArray(double src[], double dest[], int size)
+// {
+//     for (int i = 0; i < size; i++)
+//     {
+//         dest[i] = src[i];
+//     }
+// }
 
 template <
     bool constant_temperature,
@@ -371,7 +366,9 @@ double get_chemical_eqm(const Element *elements,
                         const double total_dt,
                         const double UV_background_G0,
                         const double total_cosmic_ray_ionization_rate,
-                        const double dust_to_gas_mass_ratio_over_mw)
+                        const double dust_to_gas_mass_ratio_over_mw,
+                        const TabulatedData& tabData
+                    )
 {
     static_assert(constant_temperature || (ramses_rt_T_scheme ^ rosenbrock_T_scheme),
                   "Exactly one temperature scheme must be selected");
@@ -554,7 +551,8 @@ double get_chemical_eqm(const Element *elements,
                                            xe,
                                            primary_cosmic_ray_ionization_rate,
                                            2.0 * primary_cosmic_ray_ionization_rate,
-                                           ss_factor);
+                                           ss_factor,
+                                           tabData);
 
                 cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
                                                  element_number_densities,
@@ -565,7 +563,8 @@ double get_chemical_eqm(const Element *elements,
                                                  xe,
                                                  primary_cosmic_ray_ionization_rate,
                                                  2.0 * primary_cosmic_ray_ionization_rate,
-                                                 ss_factor);
+                                                 ss_factor,
+                                                 tabData);
 
                 cooling_rate_prime = (cooling_rate - cooling_rate_prime) / (TK - (1.001 * TK));
 
@@ -748,7 +747,7 @@ double get_chemical_eqm(const Element *elements,
 
                     // Photoionization of the less excited state
                     if (j > 0)
-                        cr += HM12_UVB_z[i][j - 1][0] * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                        cr += tabData.HM12_UVB_z(i, j - 1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
                     if (j == 1)
@@ -756,15 +755,15 @@ double get_chemical_eqm(const Element *elements,
 
                     // Cosmic ray ionization of the less excited state
                     if (j > 0)
-                        cr += cosmic_ray_ionization_rates[i][j - 1] * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                        cr += tabData.cosmic_ray_ionization_rates(i, j - 1) * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Cosmic ray ionization of the less excited state from induced UV
                     if (j == 1)
-                        cr += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                        cr += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Recombination on dust for the more excited state
                     if (j < (n_ions - 1))
-                        cr += dust_recombination_rates(j + 1, i, TK, UV_background_G0, ne) * dust_effective_number_density * n_and_ion_fracs[i].ion_fracs_new[j + 1];
+                        cr += dust_recombination_rates(j + 1, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density * n_and_ion_fracs[i].ion_fracs_new[j + 1];
 
                     /////////////////////////
                     //     Destruction     //
@@ -783,7 +782,7 @@ double get_chemical_eqm(const Element *elements,
 
                     // Photoionization
                     if (j < (n_ions - 1))
-                        de += HM12_UVB_z[i][j][0] * ss_factor;
+                        de += tabData.HM12_UVB_z(i, j, 0) * ss_factor;
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
                     if (j == 0)
@@ -795,15 +794,15 @@ double get_chemical_eqm(const Element *elements,
 
                     // Cosmic ray ionization
                     if (j < (n_ions - 1))
-                        de += cosmic_ray_ionization_rates[i][j] * total_cosmic_ray_ionization_rate;
+                        de += tabData.cosmic_ray_ionization_rates(i,j) * total_cosmic_ray_ionization_rate;
 
                     // Cosmic ray ionization from induced UV
                     if (j == 0)
-                        de += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor;
+                        de += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor;
 
                     // Recombination on dust
                     if (j > 0)
-                        de += dust_recombination_rates(j, i, TK, UV_background_G0, ne) * dust_effective_number_density;
+                        de += dust_recombination_rates(j, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density;
 
                     /////////////////////////
                     //   Charge Transfer   //
@@ -974,7 +973,8 @@ double get_chemical_eqm(const Element *elements,
                                                xe,
                                                primary_cosmic_ray_ionization_rate,
                                                2.0 * primary_cosmic_ray_ionization_rate,
-                                               ss_factor);
+                                               ss_factor,
+                                               tabData);
 
                     cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
                                                      element_number_densities,
@@ -985,7 +985,8 @@ double get_chemical_eqm(const Element *elements,
                                                      xe,
                                                      primary_cosmic_ray_ionization_rate,
                                                      2.0 * primary_cosmic_ray_ionization_rate,
-                                                     ss_factor);
+                                                     ss_factor,
+                                                     tabData);
 
                     cooling_rate_prime = (cooling_rate - cooling_rate_prime) / (TK - (1.001 * TK));
 
@@ -1006,7 +1007,8 @@ double get_chemical_eqm(const Element *elements,
                                                  xe,
                                                  primary_cosmic_ray_ionization_rate,
                                                  2.0 * primary_cosmic_ray_ionization_rate,
-                                                 ss_factor);
+                                                 ss_factor,
+                                                 tabData);
 
                     cooling_rate_2 *= X_nHkb;
 
@@ -1177,6 +1179,60 @@ int main()
         int NT = 48;
         int Nions = 113;
         Kokkos::View<double **> xions("xions", NT, Nions);
+        Kokkos::View<double***> HM12_UVB_z_d("HM12_UVB_z_d", 27, 27, 2);
+        Kokkos::View<double**> cosmic_ray_ionization_rates_d("cosmic_ray_ionization_rates", 27, 27);
+        Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_d("cosmic_ray_ionization_rates_induced_UV", 27);
+        Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_heat_d("cosmic_ray_ionization_rates_induced_UV_heat", 27);
+        Kokkos::View<double**> dust_rec_coefs_d("dust_rec_coefs", 27, 7);
+
+        auto copy_data_3D = [&](auto& src, Kokkos::View<double ***> &dst) {
+            Kokkos::View<double ***>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+            for (int i = 0; i < dst.extent(0); i++)
+            {
+                for (int j = 0; j < dst.extent(1); j++)
+                {
+                    for (int k = 0; k < dst.extent(2); k++)
+                    {
+                        dst_h(i, j, k) = src[i][j][k];
+                    }
+                }
+            }
+            Kokkos::deep_copy(dst, dst_h);
+        };
+        auto copy_data_2D = [&](auto& src, Kokkos::View<double **> &dst) {
+            Kokkos::View<double **>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+            for (int i = 0; i < dst.extent(0); i++)
+            {
+                for (int j = 0; j < dst.extent(1); j++)
+                {
+                    dst_h(i, j) = src[i][j];
+                }
+            }
+            Kokkos::deep_copy(dst, dst_h);
+        };
+        auto copy_data_1D = [&](auto& src, Kokkos::View<double *> &dst) {
+            Kokkos::View<double *>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+            for (int i = 0; i < dst.extent(0); i++)
+            {
+                dst_h(i) = src[i];
+            }
+            Kokkos::deep_copy(dst, dst_h);
+        };
+
+        copy_data_3D(HM12_UVB_z, HM12_UVB_z_d);
+        copy_data_2D(cosmic_ray_ionization_rates, cosmic_ray_ionization_rates_d);
+        copy_data_1D(cosmic_ray_ionization_rates_induced_UV, cosmic_ray_ionization_rates_induced_UV_d);
+        copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, cosmic_ray_ionization_rates_induced_UV_heat_d);
+        copy_data_2D(dust_rec_coefs, dust_rec_coefs_d);
+
+
+        TabulatedData tabData = {
+            HM12_UVB_z_d,
+            cosmic_ray_ionization_rates_d,
+            cosmic_ray_ionization_rates_induced_UV_d,
+            cosmic_ray_ionization_rates_induced_UV_heat_d,
+            dust_rec_coefs_d
+        };
 
         Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {
             const double TK = 1e6;
@@ -1192,7 +1248,7 @@ int main()
             initialize_ion_fracs(elements_loc,n_and_ion_fracs_loc,rho,metallicity,1);
 
             get_chemical_eqm<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>(elements_loc, n_and_ion_fracs_loc, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
-                            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw);
+                            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData);
 
             // Loop over all elements
             int iion = 0;

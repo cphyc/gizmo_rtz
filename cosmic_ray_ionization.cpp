@@ -1,7 +1,7 @@
 // cosmic_ray_ionization.c
 #include <stdio.h>
 #include <math.h>
-#include "cosmic_ray_ionization.h"  // Include the header file
+#include "cosmic_ray_ionization.hpp"  // Include the header file
 
 // Array that holds the cosmic ray ionization rate data
 double cosmic_ray_ionization_rates[27][27];

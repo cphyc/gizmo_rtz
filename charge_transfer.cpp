@@ -2,7 +2,7 @@
 // Based on Kingdon & Ferland
 #include <stdio.h>
 #include <math.h>
-#include "charge_transfer.h"  // Include the header file
+#include "charge_transfer.hpp"  // Include the header file
 
 
 double CTRecomb[6][4][31];

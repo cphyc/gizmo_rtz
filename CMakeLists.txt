@@ -26,4 +26,4 @@ set(SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link Kokkos
-target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} Kokkos::kokkos)

@@ -1,7 +1,7 @@
 // recombination.c
 #include <stdio.h>
 #include <math.h>
-#include "recombination.h"  // Include the header file
+#include "recombination.hpp"  // Include the header file
 
 // ###
 // ### Carbon

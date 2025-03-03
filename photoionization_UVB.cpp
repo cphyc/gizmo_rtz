@@ -1,7 +1,7 @@
 // photoionization_UVB.c
 #include <stdio.h>
 #include <math.h>
-#include "photoionization_UVB.h"  // Include the header file
+#include "photoionization_UVB.hpp"  // Include the header file
 
 const int N_UVB_POINTS = 60;
 

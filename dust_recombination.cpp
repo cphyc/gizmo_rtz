@@ -3,7 +3,7 @@
 // Note that this approximation is only good between 10 and 10^3 K
 #include <stdio.h>
 #include <math.h>
-#include "dust_recombination.h"  // Include the header file
+#include "dust_recombination.hpp"  // Include the header file
 
 double dust_rec_coefs[27][7] = {
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA

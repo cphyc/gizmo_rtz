@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
-#include "constants.h"
-#include "cosmic_ray_ionization.h"
-#include "molecules.h"
-#include "photoionization_UVB.h"
-#include "charge_transfer.h"
+#include "constants.hpp"
+#include "cosmic_ray_ionization.hpp"
+#include "molecules.hpp"
+#include "photoionization_UVB.hpp"
+#include "charge_transfer.hpp"
 
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling

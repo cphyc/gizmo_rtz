@@ -1,7 +1,7 @@
 // molecules.c
 #include <stdio.h>
 #include <math.h>
-#include "molecules.h"  // Include the header file
+#include "molecules.hpp"  // Include the header file
 
 
 double alpha_H2_prim(double T, double xe, double H2_cosmic_ray_ionization_rate, double G0, double xHI, double xHII){

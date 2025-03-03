@@ -1,7 +1,7 @@
 // recombination.c
 #include <stdio.h>
 #include <math.h>
-#include "collisional_ionization.h"  // Include the header file
+#include "collisional_ionization.hpp"  // Include the header file
 
 // Define the collisional ionization data
 // "carbon"

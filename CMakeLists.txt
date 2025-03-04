@@ -32,3 +32,6 @@ target_link_libraries(${PROJECT_NAME} Kokkos::kokkos)
 if(Kokkos_ENABLE_CUDA)
     target_compile_options(${PROJECT_NAME} PRIVATE --expt-extended-lambda --expt-relaxed-constexpr)
 endif()
+
+# Warn all
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)

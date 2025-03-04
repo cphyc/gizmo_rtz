@@ -28,11 +28,11 @@ const double T_MAX = 1E9;
 template<typename T, typename T2>
 void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
     typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-    for (int i = 0; i < dst.extent(0); i++)
+    for (uint i = 0; i < dst.extent(0); i++)
     {
-        for (int j = 0; j < dst.extent(1); j++)
+        for (uint j = 0; j < dst.extent(1); j++)
         {
-            for (int k = 0; k < dst.extent(2); k++)
+            for (uint k = 0; k < dst.extent(2); k++)
             {
                 dst_h(i, j, k) = src[i][j][k];
             }
@@ -44,9 +44,9 @@ void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
 template<typename T, typename T2>
 void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
     typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-    for (int i = 0; i < dst.extent(0); i++)
+    for (uint i = 0; i < dst.extent(0); i++)
     {
-        for (int j = 0; j < dst.extent(1); j++)
+        for (uint j = 0; j < dst.extent(1); j++)
         {
             dst_h(i, j) = src[i][j];
         }
@@ -57,7 +57,7 @@ void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
 template<typename T, typename T2>
 void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
     typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-    for (int i = 0; i < dst.extent(0); i++)
+    for (uint i = 0; i < dst.extent(0); i++)
     {
         dst_h(i) = src[i];
     }
@@ -166,8 +166,8 @@ void initialize_elements(Element *elements)
 typedef struct
 {
     double n_element;
-    double *ion_fracs;
-    double *ion_fracs_new;
+    double ion_fracs[MAX_ELEMENTS];
+    double ion_fracs_new[MAX_ELEMENTS];
 } ParticleIonData;
 
 double get_dust_mass_and_depletion(
@@ -211,6 +211,7 @@ double get_dust_mass_and_depletion(
 }
 
 // Structs for element properties
+KOKKOS_FUNCTION
 void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, double hdens, double metallicity, int itype)
 {
     // Loop over all elements
@@ -228,8 +229,8 @@ void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, d
         {
             n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * metallicity * elements[i].depletion;
         }
-        n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
-        n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
+        // n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
+        // n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
 
         switch (itype)
         {
@@ -399,7 +400,7 @@ template <
 >
 KOKKOS_FUNCTION
 double get_chemical_eqm(const Element *elements,
-                        const ParticleIonData *n_and_ion_fracs,
+                        ParticleIonData n_and_ion_fracs[MAX_ELEMENTS],
                         double TK,
                         const double aexp,
                         const double total_dt,
@@ -454,7 +455,6 @@ double get_chemical_eqm(const Element *elements,
     double cosmic_ray_scale_factor; // Most rates normalized to 1e-16
 
     int n_ions; // Number of ions --> reset per element
-    int atomic_number;
 
     // Self-shielding
     double ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element / 1E-2);
@@ -463,7 +463,6 @@ double get_chemical_eqm(const Element *elements,
     double cooling_rate = 0.0;
     double cooling_rate_prime = 0.0;
     double cooling_rate_2 = 0.0;
-    double cooling_rate_prime_2 = 0.0;
 
     double element_number_densities[MAX_ELEMENTS];
     int element_number_ions[MAX_ELEMENTS];
@@ -747,9 +746,6 @@ double get_chemical_eqm(const Element *elements,
             {
                 if (elements[i].atomic_number < 1)
                     continue;
-
-                // Get the atomic number
-                atomic_number = elements[i].atomic_number;
 
                 // Get the number of ions
                 n_ions = elements[i].n_ions;
@@ -1188,7 +1184,7 @@ int main()
 
     // Declare an array (list) of 3 elements (structs)
     Element elements[MAX_ELEMENTS];
-    ParticleIonData n_and_ion_fracs[MAX_ELEMENTS];
+    // ParticleIonData n_and_ion_fracs[MAX_ELEMENTS];
 
     // Initialize the elements
     initialize_elements(elements);
@@ -1222,11 +1218,11 @@ int main()
         // HM-related data
         Kokkos::View<double***> HM12_UVB_z_d("HM12_UVB_z_d", 27, 27, 2);
         Kokkos::View<double*> G0_heating_rate_d("G0_heating_rate", 27);
-        
+
         copy_data_3D(HM12_UVB_z, HM12_UVB_z_d);
         double *G0_heating_rate_ptr = getG0_heating_rates();
         copy_data_1D(G0_heating_rate_ptr, G0_heating_rate_d);
-        
+
         // Cosmic ray and dust-related data
         Kokkos::View<double**> cosmic_ray_ionization_rates_d("cosmic_ray_ionization_rates", 27, 27);
         Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_d("cosmic_ray_ionization_rates_induced_UV", 27);
@@ -1236,7 +1232,7 @@ int main()
         copy_data_1D(cosmic_ray_ionization_rates_induced_UV, cosmic_ray_ionization_rates_induced_UV_d);
         copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, cosmic_ray_ionization_rates_induced_UV_heat_d);
         copy_data_2D(dust_rec_coefs, dust_rec_coefs_d);
-        
+
         // Charge transfer
         Kokkos::View<double***> CTRecomb_d("CTRecomb", 6, 4, 31);
         Kokkos::View<double***> CTIon_d("CTIon", 7, 3, 31);
@@ -1274,7 +1270,7 @@ int main()
         };
         init_recombination_rates(tabData);
         init_collisional_ionization(tabData);
-        
+
 
         Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {
             const double TK = 1e6;

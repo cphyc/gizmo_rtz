@@ -1219,8 +1219,7 @@ int main()
 
         // HM-related data
         copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
-        double *G0_heating_rate_ptr = getG0_heating_rates();
-        copy_data_1D(G0_heating_rate_ptr, tabData.G0_heating_rates);
+        copy_data_1D(G0_heating_rates, tabData.G0_heating_rates);
 
         // Cosmic ray and dust-related data
         copy_data_2D(cosmic_ray_ionization_rates, tabData.cosmic_ray_ionization_rates);
@@ -1229,21 +1228,15 @@ int main()
         copy_data_2D(dust_rec_coefs, tabData.dust_rec_coefs);
 
         // Charge transfer
-        double (*CTIon_ptr)[3][31] = getCTIon();
-        double (*CTRecomb_ptr)[4][31] = getCTRecomb();
-
-        copy_data_3D(CTRecomb_ptr, tabData.CTRecomb);
-        copy_data_3D(CTIon_ptr, tabData.CTIon);
+        copy_data_3D(CTRecomb, tabData.CTRecomb);
+        copy_data_3D(CTIon, tabData.CTIon);
 
         // Fine structure cooling
-        double (*fs_cool_tab)[160][8] = getfs_cool_tab();
         copy_data_3D(fs_cool_tab, tabData.fs_cool_tab);
 
         // High-T cooling rates
-        double (*high_t_cooling_rates_ptr)[27][27] = gethigh_t_cooling_rates();
-        bool (*high_t_cooling_rates_tflag_ptr)[27] = gethigh_t_cooling_rates_tflag();
-        copy_data_3D(high_t_cooling_rates_ptr, tabData.high_t_cooling_rates);
-        copy_data_2D(high_t_cooling_rates_tflag_ptr, tabData.high_t_cooling_rates_tflag);
+        copy_data_3D(high_t_cooling_rates, tabData.high_t_cooling_rates);
+        copy_data_2D(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
 
         init_recombination_rates(tabData);
         init_collisional_ionization(tabData);
@@ -1251,7 +1244,8 @@ int main()
 
         Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {
             const double TK = 1e6;
-            double rho = pow(10.0,-2+((double)i*0.1));
+            double rho = pow(10.0, -2 + 4.8 * i / double(NT));
+            // double rho = pow(10.0,-2+((double)i*0.1));
 
             Element elements_loc[MAX_ELEMENTS];
             ParticleIonData n_and_ion_fracs_loc[MAX_ELEMENTS];

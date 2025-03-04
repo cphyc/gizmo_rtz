@@ -11,14 +11,6 @@ add_subdirectory(extern/kokkos)
 
 # Set source files
 set(SOURCES
-    charge_transfer.cpp
-    collisional_ionization.cpp
-    cooling.cpp
-    cosmic_ray_ionization.cpp
-    dust_recombination.cpp
-    molecules.cpp
-    photoionization_UVB.cpp
-    recombination.cpp
     rtz_main.cpp
 )
 

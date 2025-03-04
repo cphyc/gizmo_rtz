@@ -1,8 +1,12 @@
 // recombination.h
-#ifndef RECOMBINATION
-#define RECOMBINATION
+#pragma once
+
+#include <Kokkos_Core.hpp>
+
+#include "types.hpp"
 
 // Declaration of recombination functions
-double recombination(double T, int ion, int element_idx);
+KOKKOS_FUNCTION
+double recombination(double T, int ion, int element_idx, const TabulatedData& tabData);
 
-#endif
+void init_recombination_rates(TabulatedData& tabData);

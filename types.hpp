@@ -28,4 +28,33 @@ typedef struct
     Kokkos::View<double***> high_t_cooling_rates;
     Kokkos::View<bool**> high_t_cooling_rates_tflag;
 
+    Kokkos::View<double[7][6]> RR_rates_carbon;
+    Kokkos::View<double[7][9]> DR_rates_c_carbon;
+    Kokkos::View<double[7][9]> DR_rates_e_carbon;
+    Kokkos::View<double[8][6]> RR_rates_nitrogen;
+    Kokkos::View<double[8][9]> DR_rates_c_nitrogen;
+    Kokkos::View<double[8][9]> DR_rates_e_nitrogen;
+    Kokkos::View<double[9][6]> RR_rates_oxygen;
+    Kokkos::View<double[9][9]> DR_rates_c_oxygen;
+    Kokkos::View<double[9][9]> DR_rates_e_oxygen;
+    Kokkos::View<double[11][6]> RR_rates_neon;
+    Kokkos::View<double[11][9]> DR_rates_c_neon;
+    Kokkos::View<double[11][9]> DR_rates_e_neon;
+    Kokkos::View<double[13][6]> RR_rates_magnesium;
+    Kokkos::View<double[13][9]> DR_rates_c_magnesium;
+    Kokkos::View<double[13][9]> DR_rates_e_magnesium;
+    Kokkos::View<double[15][6]> RR_rates_silicon;
+    Kokkos::View<double[15][9]> DR_rates_c_silicon;
+    Kokkos::View<double[15][9]> DR_rates_e_silicon;
+    Kokkos::View<double[17][6]> RR_rates_sulfur;
+    Kokkos::View<double[17][9]> DR_rates_c_sulfur;
+    Kokkos::View<double[17][9]> DR_rates_e_sulfur;
+    Kokkos::View<double[17][2]> RR_rates_alt_sulfur;
+    Kokkos::View<double[17][4]> DR_rates_alt_sulfur;
+    Kokkos::View<double[27][6]> RR_rates_iron;
+    Kokkos::View<double[27][9]> DR_rates_c_iron;
+    Kokkos::View<double[27][9]> DR_rates_e_iron;
+    Kokkos::View<double[27][2]> RR_rates_alt_iron;
+    Kokkos::View<double[27][8]> DR_rates_alt_iron;
+
 } TabulatedData;

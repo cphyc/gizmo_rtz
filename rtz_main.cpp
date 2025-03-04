@@ -66,6 +66,7 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
 
 
 // Structs for element properties
+KOKKOS_FUNCTION
 void initialize_elements(Element *elements)
 {
     // Initialize
@@ -481,7 +482,7 @@ double get_chemical_eqm(const Element *elements,
                 continue;
 
             for (int j = 0; j < elements[i].n_ions; j++) {
-                recombination_table[i][j] = recombination(TK, j, i);
+                recombination_table[i][j] = recombination(TK, j, i, tabData);
                 collisional_ionization_table[i][j] = collisional_ionization(TK, j, i);
                 charge_transfer_ionization_table[i][j] = charge_transfer_ionization(j, i, TK, tabData);
                 charge_transfer_recombination_table[i][j] = charge_transfer_recombination(j, i, TK, tabData);
@@ -1271,6 +1272,9 @@ int main()
             high_t_cooling_rates_d,
             high_t_cooling_rates_tflag_d
         };
+        init_recombination_rates(tabData);
+
+        
 
         Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {
             const double TK = 1e6;

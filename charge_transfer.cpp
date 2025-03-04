@@ -8,6 +8,15 @@
 double CTRecomb[6][4][31];
 double CTIon[7][3][31];
 
+double (*getCTRecomb())[4][31] {
+    return CTRecomb;
+}
+
+double (*getCTIon())[3][31] {
+    return CTIon;
+}
+
+
 void load_ct_rates(){
     // Load the charge transfer ionization
     // and recombination rates from file
@@ -57,7 +66,8 @@ void load_ct_rates(){
 
 }
 
-double charge_transfer_recombination(int ion, int nelem, double T){
+KOKKOS_FUNCTION
+double charge_transfer_recombination(int ion, int nelem, double T, const TabulatedData& tabData){
     // ion is stage of ionization, 2 for the ion going to the atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O+ + H => O + H+ is HCTRecom(2,8,1e4)
@@ -145,16 +155,17 @@ double charge_transfer_recombination(int ion, int nelem, double T){
     
     // Make sure te is between temp. boundaries; set constant outside of range
     double tused = 0.0;
-    tused = fmin(fmax(T,CTRecomb[4][ipIon][nelem]),CTRecomb[5][ipIon][nelem]);
+    tused = fmin(fmax(T,tabData.CTRecomb(4, ipIon, nelem)),tabData.CTRecomb(5, ipIon, nelem));
     tused *= 1E-4;
 
     // The interpolation equation
-    ct_recomb = CTRecomb[0][ipIon][nelem] * 1E-9 * pow(tused,CTRecomb[1][ipIon][nelem]) * (1. + CTRecomb[2][ipIon][nelem] * exp(CTRecomb[3][ipIon][nelem]*tused) );
+    ct_recomb = tabData.CTRecomb(0, ipIon, nelem) * 1E-9 * pow(tused,tabData.CTRecomb(1, ipIon, nelem)) * (1. + tabData.CTRecomb(2, ipIon, nelem) * exp(tabData.CTRecomb(3, ipIon, nelem)*tused) );
 
     return ct_recomb;
 }
 
-double charge_transfer_ionization(int ion, int nelem, double T){
+KOKKOS_FUNCTION
+double charge_transfer_ionization(int ion, int nelem, double T, const TabulatedData& tabData){
     // ion is stage of ionization, 1 for atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O + H+ => O+ + H is HCTIon(1,8,1e4)
@@ -261,12 +272,12 @@ double charge_transfer_ionization(int ion, int nelem, double T){
 
     // ! Make sure te is between temp. boundaries; set constant outside of range
     double tused = 0.0;
-    tused = fmin(fmax(T,CTIon[4][ipIon][nelem]),CTIon[5][ipIon][nelem]);
+    tused = fmin(fmax(T, tabData.CTIon(4, ipIon, nelem)), tabData.CTIon(5, ipIon, nelem));
     tused *= 1E-4;
     tused = fmax(tused,1E-10); //! harley added to prevent zero temperature
 
     // ! the interpolation equation
-    ct_ion = CTIon[0][ipIon][nelem] * 1E-9 * pow(tused,CTIon[1][ipIon][nelem]) * (1. + CTIon[2][ipIon][nelem] * exp(CTIon[3][ipIon][nelem]*tused) ) * exp(-1.0 * CTIon[6][ipIon][nelem]/tused);
+    ct_ion = tabData.CTIon(0, ipIon, nelem) * 1E-9 * pow(tused,tabData.CTIon(1, ipIon, nelem)) * (1. + tabData.CTIon(2, ipIon, nelem) * exp(tabData.CTIon(3, ipIon, nelem)*tused) ) * exp(-1.0 * tabData.CTIon(6, ipIon, nelem)/tused);
 
     return ct_ion;
 }

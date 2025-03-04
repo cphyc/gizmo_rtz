@@ -25,7 +25,45 @@ const double X_PCT_RULE_metal = 1E-2;  // Value required for convergence
 const double T_MIN = 2.725;
 const double T_MAX = 1E9;
 
-// Define the struct
+template<typename T, typename T2>
+void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
+    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    for (int i = 0; i < dst.extent(0); i++)
+    {
+        for (int j = 0; j < dst.extent(1); j++)
+        {
+            for (int k = 0; k < dst.extent(2); k++)
+            {
+                dst_h(i, j, k) = src[i][j][k];
+            }
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+template<typename T, typename T2>
+void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
+    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    for (int i = 0; i < dst.extent(0); i++)
+    {
+        for (int j = 0; j < dst.extent(1); j++)
+        {
+            dst_h(i, j) = src[i][j];
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+template<typename T, typename T2>
+void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
+    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    for (int i = 0; i < dst.extent(0); i++)
+    {
+        dst_h(i) = src[i];
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
 
 // Structs for element properties
 void initialize_elements(Element *elements)
@@ -445,8 +483,8 @@ double get_chemical_eqm(const Element *elements,
             for (int j = 0; j < elements[i].n_ions; j++) {
                 recombination_table[i][j] = recombination(TK, j, i);
                 collisional_ionization_table[i][j] = collisional_ionization(TK, j, i);
-                charge_transfer_ionization_table[i][j] = charge_transfer_ionization(j, i, TK);
-                charge_transfer_recombination_table[i][j] = charge_transfer_recombination(j, i, TK);
+                charge_transfer_ionization_table[i][j] = charge_transfer_ionization(j, i, TK, tabData);
+                charge_transfer_recombination_table[i][j] = charge_transfer_recombination(j, i, TK, tabData);
             }
         }
     };
@@ -1179,59 +1217,59 @@ int main()
         int NT = 48;
         int Nions = 113;
         Kokkos::View<double **> xions("xions", NT, Nions);
+
+        // HM-related data
         Kokkos::View<double***> HM12_UVB_z_d("HM12_UVB_z_d", 27, 27, 2);
+        Kokkos::View<double*> G0_heating_rate_d("G0_heating_rate", 27);
+        
+        copy_data_3D(HM12_UVB_z, HM12_UVB_z_d);
+        double *G0_heating_rate_ptr = getG0_heating_rates();
+        copy_data_1D(G0_heating_rate_ptr, G0_heating_rate_d);
+        
+        // Cosmic ray and dust-related data
         Kokkos::View<double**> cosmic_ray_ionization_rates_d("cosmic_ray_ionization_rates", 27, 27);
         Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_d("cosmic_ray_ionization_rates_induced_UV", 27);
         Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_heat_d("cosmic_ray_ionization_rates_induced_UV_heat", 27);
         Kokkos::View<double**> dust_rec_coefs_d("dust_rec_coefs", 27, 7);
-
-        auto copy_data_3D = [&](auto& src, Kokkos::View<double ***> &dst) {
-            Kokkos::View<double ***>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-            for (int i = 0; i < dst.extent(0); i++)
-            {
-                for (int j = 0; j < dst.extent(1); j++)
-                {
-                    for (int k = 0; k < dst.extent(2); k++)
-                    {
-                        dst_h(i, j, k) = src[i][j][k];
-                    }
-                }
-            }
-            Kokkos::deep_copy(dst, dst_h);
-        };
-        auto copy_data_2D = [&](auto& src, Kokkos::View<double **> &dst) {
-            Kokkos::View<double **>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-            for (int i = 0; i < dst.extent(0); i++)
-            {
-                for (int j = 0; j < dst.extent(1); j++)
-                {
-                    dst_h(i, j) = src[i][j];
-                }
-            }
-            Kokkos::deep_copy(dst, dst_h);
-        };
-        auto copy_data_1D = [&](auto& src, Kokkos::View<double *> &dst) {
-            Kokkos::View<double *>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
-            for (int i = 0; i < dst.extent(0); i++)
-            {
-                dst_h(i) = src[i];
-            }
-            Kokkos::deep_copy(dst, dst_h);
-        };
-
-        copy_data_3D(HM12_UVB_z, HM12_UVB_z_d);
         copy_data_2D(cosmic_ray_ionization_rates, cosmic_ray_ionization_rates_d);
         copy_data_1D(cosmic_ray_ionization_rates_induced_UV, cosmic_ray_ionization_rates_induced_UV_d);
         copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, cosmic_ray_ionization_rates_induced_UV_heat_d);
         copy_data_2D(dust_rec_coefs, dust_rec_coefs_d);
+        
+        // Charge transfer
+        Kokkos::View<double***> CTRecomb_d("CTRecomb", 6, 4, 31);
+        Kokkos::View<double***> CTIon_d("CTIon", 7, 3, 31);
+        double (*CTRecomb_ptr)[4][31] = getCTRecomb();
+        double (*CTIon_ptr)[3][31] = getCTIon();
 
+        copy_data_3D(CTRecomb_ptr, CTRecomb_d);
+        copy_data_3D(CTIon_ptr, CTIon_d);
+
+        // Fine structure cooling
+        Kokkos::View<double***> fs_cool_tab_d("fs_cool_tab", 27, 160, 8);
+        double (*fs_cool_tab)[160][8] = getfs_cool_tab();
+        copy_data_3D(fs_cool_tab, fs_cool_tab_d);
+
+        // High-T cooling rates
+        Kokkos::View<double***> high_t_cooling_rates_d("high_t_cooling_rates", 121, 27, 27);
+        Kokkos::View<bool**> high_t_cooling_rates_tflag_d("high_t_cooling_rates_tflag", 27, 27);
+        double (*high_t_cooling_rates_ptr)[27][27] = gethigh_t_cooling_rates();
+        bool (*high_t_cooling_rates_tflag_ptr)[27] = gethigh_t_cooling_rates_tflag();
+        copy_data_3D(high_t_cooling_rates_ptr, high_t_cooling_rates_d);
+        copy_data_2D(high_t_cooling_rates_tflag_ptr, high_t_cooling_rates_tflag_d);
 
         TabulatedData tabData = {
             HM12_UVB_z_d,
+            G0_heating_rate_d,
             cosmic_ray_ionization_rates_d,
             cosmic_ray_ionization_rates_induced_UV_d,
             cosmic_ray_ionization_rates_induced_UV_heat_d,
-            dust_rec_coefs_d
+            dust_rec_coefs_d,
+            CTRecomb_d,
+            CTIon_d,
+            fs_cool_tab_d,
+            high_t_cooling_rates_d,
+            high_t_cooling_rates_tflag_d
         };
 
         Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {

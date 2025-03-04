@@ -14,6 +14,11 @@ using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
 void initialize_high_temperature_metal_cooling();
 void init_fine_structure_tables();
 
+double (*getfs_cool_tab())[160][8];
+double *getG0_heating_rates();
+double (*gethigh_t_cooling_rates())[27][27];
+bool (*gethigh_t_cooling_rates_tflag())[27];
+
 KOKKOS_FUNCTION
 double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
                    int *element_number_ions, Array2D& element_ion_fractions,

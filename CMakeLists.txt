@@ -27,3 +27,8 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link Kokkos
 target_link_libraries(${PROJECT_NAME} Kokkos::kokkos)
+
+# Add compile flags if Kokkos_ENABLE_CUDA=ON
+if(Kokkos_ENABLE_CUDA)
+    target_compile_options(${PROJECT_NAME} PRIVATE --expt-extended-lambda --expt-relaxed-constexpr)
+endif()

@@ -21,6 +21,19 @@ double high_t_cooling_rates[N_HIGH_T_COOLING_TEMP][27][27];
 bool high_t_cooling_rates_tflag[27][27];
 double fs_cool_tab[27][160][8];  // Array for fine structure cooling rates
 
+
+double (*getfs_cool_tab())[160][8] {
+    return fs_cool_tab;
+}
+
+double (*gethigh_t_cooling_rates())[27][27] {
+    return high_t_cooling_rates;
+}
+
+bool (*gethigh_t_cooling_rates_tflag())[27] {
+    return high_t_cooling_rates_tflag;
+}
+
 double G0_heating_rates[27] = {
     0.0, // 0 
     0.0, // 1 - Hydrogen
@@ -51,6 +64,11 @@ double G0_heating_rates[27] = {
     4.71E-10  * 1.924 * EV_2_ERG, // 26 - Iron
 };
 
+double *getG0_heating_rates() {
+    return G0_heating_rates;
+}
+
+KOKKOS_INLINE_FUNCTION
 double collisional_ionization_cooling_HI(double T){
     // From Cen 1992
     double term_1 = 1.27E-21 * sqrt(T);
@@ -60,6 +78,7 @@ double collisional_ionization_cooling_HI(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double collisional_ionization_cooling_HeI(double T){
     // From Cen 1992
     double term_1 = 9.38E-22 * sqrt(T);
@@ -69,6 +88,7 @@ double collisional_ionization_cooling_HeI(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double collisional_ionization_cooling_HeII(double T){
     // From Cen 1992
     double term_1 = 4.95E-22 * sqrt(T);
@@ -78,6 +98,7 @@ double collisional_ionization_cooling_HeII(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double recombination_cooling_case_B_HII(double T){
     // From Hui & Gnedin 1997
     double lam_HI = 315614.0 / T;
@@ -88,6 +109,7 @@ double recombination_cooling_case_B_HII(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double recombination_cooling_case_B_HeII(double T){
     // From Hui & Gnedin 1997
     double lam_HeI = 570670.0 / T;
@@ -97,6 +119,7 @@ double recombination_cooling_case_B_HeII(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double recombination_cooling_case_B_HeIII(double T){
     // From Hui & Gnedin 1997
     double lam_HeII = 1263030.0 / T;
@@ -107,6 +130,8 @@ double recombination_cooling_case_B_HeIII(double T){
     return cooling_rate;
 }
 
+
+KOKKOS_INLINE_FUNCTION
 double dielectronic_recombination_cooling_HeII(double T){
     // From Black 1981
     double term_1 = 1.24E-13 * pow(T,-1.5);
@@ -116,6 +141,8 @@ double dielectronic_recombination_cooling_HeII(double T){
     return cooling_rate;
 }
 
+
+KOKKOS_INLINE_FUNCTION
 double collisional_excitation_cooling_HI(double T){
     // From Cen 1992
     double term_1 = 7.5E-19;
@@ -125,6 +152,7 @@ double collisional_excitation_cooling_HI(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double collisional_excitation_cooling_HeII(double T){
     // From Cen 1992
     double term_1 = 5.54E-17 * pow(T,-0.397);
@@ -134,12 +162,14 @@ double collisional_excitation_cooling_HeII(double T){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double bremmstrahlung(double T){
     // Osterbrock and Ferland 2006
     double cooling_rate = 1.42E-27 * sqrt(T);
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double compton_cooling(double T, double a){
     // Haiman+ 1996
     double term_1 = 1.017E-37;
@@ -149,6 +179,7 @@ double compton_cooling(double T, double a){
     return cooling_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double H2_cooling(double nH, double nH2, double T){
     // From Moseley 2021
     double T3 = 1E-3 * T;
@@ -177,6 +208,7 @@ double H2_cooling(double nH, double nH2, double T){
     return nH2 * (f1 + f2 + f3 + f4);
 }
 
+KOKKOS_INLINE_FUNCTION
 double H2_cooling_GP98(double nH, double nH2, double T){
     // H2 cooling from galli and palli 98
     double tm = fmax(T, 13.0); //    ! no cooling below 13 Kelvin
@@ -396,11 +428,13 @@ void initialize_high_temperature_metal_cooling(){
 
 }
 
+KOKKOS_FUNCTION
 double get_high_t_cooling_rates(double T, double ne, 
                                 double *element_number_densities,
                                 int *element_number_ions,
                                 Array2D& element_ion_fractions,
-                                double temp_smooth){
+                                double temp_smooth,
+                                const TabulatedData& tabData){
     // Computes the high-temperature cooling rates
     // derived from Harley's custom cloudy models
 
@@ -438,13 +472,13 @@ double get_high_t_cooling_rates(double T, double ne,
                 double n_ion = element_ion_fractions[i][j];
 
                 // Interpolate the cooling rate for the ion
-                double loc_cooling_rate = (frac_low * high_t_cooling_rates[idx_low][i][j]);
-                loc_cooling_rate += (frac_high * high_t_cooling_rates[idx_low+1][i][j]); 
+                double loc_cooling_rate = (frac_low * tabData.high_t_cooling_rates(idx_low, i, j));
+                loc_cooling_rate += (frac_high * tabData.high_t_cooling_rates(idx_low+1, i, j)); 
                 loc_cooling_rate = pow(10.0,loc_cooling_rate);
 
                 // Smooth with temperature if necessary
                 double loc_temp_smooth = 1.0;
-                if (high_t_cooling_rates_tflag[i][j]) {
+                if (tabData.high_t_cooling_rates_tflag(i,j)) {
                     loc_temp_smooth = temp_smooth;
                 }
 
@@ -511,6 +545,7 @@ void init_fine_structure_tables(){
     }
 }
 
+KOKKOS_FUNCTION
 double three_level(double g_0, double g_1, double g_2, 
                    double lam_10, double lam_20, double lam_21, 
                    double A_10, double A_20, double A_21, 
@@ -518,7 +553,9 @@ double three_level(double g_0, double g_1, double g_2,
                    double ne, double nH, double nHp, 
                    double nHe, double nHep, double nHepp, 
                    double nH2, 
-                   int idx_0, int idx_1, int idx_2){
+                   int idx_0, int idx_1, int idx_2,
+                   const TabulatedData& tabData
+                ){
     // Harley's three-level ion solver
 
     // ! Initialize the result
@@ -565,44 +602,44 @@ double three_level(double g_0, double g_1, double g_2,
 
     // ! All collison strengths are in cm^3 s^-1
     // ! For collisions with o-H2
-    double q10_oH2 = (fs_cool_tab[idx_0][itemp_low][6] * frac_low) + (fs_cool_tab[idx_0][itemp_high][6] * frac_high);
-    double q20_oH2 = (fs_cool_tab[idx_1][itemp_low][6] * frac_low) + (fs_cool_tab[idx_1][itemp_high][6] * frac_high);
-    double q21_oH2 = (fs_cool_tab[idx_2][itemp_low][6] * frac_low) + (fs_cool_tab[idx_2][itemp_high][6] * frac_high);
+    double q10_oH2 = (tabData.fs_cool_tab(idx_0, itemp_low, 6) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 6) * frac_high);
+    double q20_oH2 = (tabData.fs_cool_tab(idx_1, itemp_low, 6) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 6) * frac_high);
+    double q21_oH2 = (tabData.fs_cool_tab(idx_2, itemp_low, 6) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 6) * frac_high);
 
     // ! For collisions with p-H2
-    double q10_pH2 = (fs_cool_tab[idx_0][itemp_low][7] * frac_low) + (fs_cool_tab[idx_0][itemp_high][7] * frac_high);
-    double q20_pH2 = (fs_cool_tab[idx_1][itemp_low][7] * frac_low) + (fs_cool_tab[idx_1][itemp_high][7] * frac_high);
-    double q21_pH2 = (fs_cool_tab[idx_2][itemp_low][7] * frac_low) + (fs_cool_tab[idx_2][itemp_high][7] * frac_high);
+    double q10_pH2 = (tabData.fs_cool_tab(idx_0, itemp_low, 7) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 7) * frac_high);
+    double q20_pH2 = (tabData.fs_cool_tab(idx_1, itemp_low, 7) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 7) * frac_high);
+    double q21_pH2 = (tabData.fs_cool_tab(idx_2, itemp_low, 7) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 7) * frac_high);
 
     // ! For collisions with H
-    double q10_H = (fs_cool_tab[idx_0][itemp_low][4] * frac_low) + (fs_cool_tab[idx_0][itemp_high][4] * frac_high);
-    double q20_H = (fs_cool_tab[idx_1][itemp_low][4] * frac_low) + (fs_cool_tab[idx_1][itemp_high][4] * frac_high);
-    double q21_H = (fs_cool_tab[idx_2][itemp_low][4] * frac_low) + (fs_cool_tab[idx_2][itemp_high][4] * frac_high);
+    double q10_H = (tabData.fs_cool_tab(idx_0, itemp_low, 4) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 4) * frac_high);
+    double q20_H = (tabData.fs_cool_tab(idx_1, itemp_low, 4) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 4) * frac_high);
+    double q21_H = (tabData.fs_cool_tab(idx_2, itemp_low, 4) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 4) * frac_high);
 
     // ! For collisions with H+
-    double q10_Hp = (fs_cool_tab[idx_0][itemp_low][1] * frac_low) + (fs_cool_tab[idx_0][itemp_high][1] * frac_high);
-    double q20_Hp = (fs_cool_tab[idx_1][itemp_low][1] * frac_low) + (fs_cool_tab[idx_1][itemp_high][1] * frac_high);
-    double q21_Hp = (fs_cool_tab[idx_2][itemp_low][1] * frac_low) + (fs_cool_tab[idx_2][itemp_high][1] * frac_high);
+    double q10_Hp = (tabData.fs_cool_tab(idx_0, itemp_low, 1) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 1) * frac_high);
+    double q20_Hp = (tabData.fs_cool_tab(idx_1, itemp_low, 1) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 1) * frac_high);
+    double q21_Hp = (tabData.fs_cool_tab(idx_2, itemp_low, 1) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 1) * frac_high);
 
     // ! For collisions with e
-    double q10_e = (fs_cool_tab[idx_0][itemp_low][0] * frac_low) + (fs_cool_tab[idx_0][itemp_high][0] * frac_high);
-    double q20_e = (fs_cool_tab[idx_1][itemp_low][0] * frac_low) + (fs_cool_tab[idx_1][itemp_high][0] * frac_high);
-    double q21_e = (fs_cool_tab[idx_2][itemp_low][0] * frac_low) + (fs_cool_tab[idx_2][itemp_high][0] * frac_high);
+    double q10_e = (tabData.fs_cool_tab(idx_0, itemp_low, 0) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 0) * frac_high);
+    double q20_e = (tabData.fs_cool_tab(idx_1, itemp_low, 0) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 0) * frac_high);
+    double q21_e = (tabData.fs_cool_tab(idx_2, itemp_low, 0) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 0) * frac_high);
 
     // ! For collisions with He
-    double q10_He = (fs_cool_tab[idx_0][itemp_low][5] * frac_low) + (fs_cool_tab[idx_0][itemp_high][5] * frac_high);
-    double q20_He = (fs_cool_tab[idx_1][itemp_low][5] * frac_low) + (fs_cool_tab[idx_1][itemp_high][5] * frac_high);
-    double q21_He = (fs_cool_tab[idx_2][itemp_low][5] * frac_low) + (fs_cool_tab[idx_2][itemp_high][5] * frac_high);
+    double q10_He = (tabData.fs_cool_tab(idx_0, itemp_low, 5) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 5) * frac_high);
+    double q20_He = (tabData.fs_cool_tab(idx_1, itemp_low, 5) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 5) * frac_high);
+    double q21_He = (tabData.fs_cool_tab(idx_2, itemp_low, 5) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 5) * frac_high);
 
     // ! For collisions with He+
-    double q10_Hep = (fs_cool_tab[idx_0][itemp_low][2] * frac_low) + (fs_cool_tab[idx_0][itemp_high][2] * frac_high);
-    double q20_Hep = (fs_cool_tab[idx_1][itemp_low][2] * frac_low) + (fs_cool_tab[idx_1][itemp_high][2] * frac_high);
-    double q21_Hep = (fs_cool_tab[idx_2][itemp_low][2] * frac_low) + (fs_cool_tab[idx_2][itemp_high][2] * frac_high);
+    double q10_Hep = (tabData.fs_cool_tab(idx_0, itemp_low, 2) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 2) * frac_high);
+    double q20_Hep = (tabData.fs_cool_tab(idx_1, itemp_low, 2) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 2) * frac_high);
+    double q21_Hep = (tabData.fs_cool_tab(idx_2, itemp_low, 2) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 2) * frac_high);
 
     // ! For collisions with He++
-    double q10_Hepp = (fs_cool_tab[idx_0][itemp_low][3] * frac_low) + (fs_cool_tab[idx_0][itemp_high][3] * frac_high);
-    double q20_Hepp = (fs_cool_tab[idx_1][itemp_low][3] * frac_low) + (fs_cool_tab[idx_1][itemp_high][3] * frac_high);
-    double q21_Hepp = (fs_cool_tab[idx_2][itemp_low][3] * frac_low) + (fs_cool_tab[idx_2][itemp_high][3] * frac_high);
+    double q10_Hepp = (tabData.fs_cool_tab(idx_0, itemp_low, 3) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 3) * frac_high);
+    double q20_Hepp = (tabData.fs_cool_tab(idx_1, itemp_low, 3) * frac_low) + (tabData.fs_cool_tab(idx_1, itemp_high, 3) * frac_high);
+    double q21_Hepp = (tabData.fs_cool_tab(idx_2, itemp_low, 3) * frac_low) + (tabData.fs_cool_tab(idx_2, itemp_high, 3) * frac_high);
 
     // ! Net collision strengths note the 75-25 ortho-para H2
     double C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * 0.75 * nH2) + (q10_pH2 * 0.25 * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
@@ -650,10 +687,11 @@ double three_level(double g_0, double g_1, double g_2,
     return three_level_cooling;
 }
 
+KOKKOS_FUNCTION
 double two_level(double g_0, double g_1, double lam_10, double A_10,
                 double z, double T, double n_ion, double ne, 
                 double nH, double nHp, double nHe, double nHep, 
-                double nHepp, double nH2, int idx_0){
+                double nHepp, double nH2, int idx_0, const TabulatedData& tabData){
     // Harley's two-level ion solver
 
     // ! Initialize the result
@@ -690,28 +728,28 @@ double two_level(double g_0, double g_1, double lam_10, double A_10,
 
     // ! All collison strengths are in cm^3 s^-1
     // ! For collisions with o-H2
-    double q10_oH2 = (fs_cool_tab[idx_0][itemp_low][6] * frac_low) + (fs_cool_tab[idx_0][itemp_high][6] * frac_high);
+    double q10_oH2 = (tabData.fs_cool_tab(idx_0, itemp_low, 6) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 6) * frac_high);
 
     // ! For collisions with p-H2
-    double q10_pH2 = (fs_cool_tab[idx_0][itemp_low][7] * frac_low) + (fs_cool_tab[idx_0][itemp_high][7] * frac_high);
+    double q10_pH2 = (tabData.fs_cool_tab(idx_0, itemp_low, 7) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 7) * frac_high);
 
     // ! For collisions with H
-    double q10_H = (fs_cool_tab[idx_0][itemp_low][4] * frac_low) + (fs_cool_tab[idx_0][itemp_high][4] * frac_high);
+    double q10_H = (tabData.fs_cool_tab(idx_0, itemp_low, 4) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 4) * frac_high);
 
     // ! For collisions with H+
-    double q10_Hp = (fs_cool_tab[idx_0][itemp_low][1] * frac_low) + (fs_cool_tab[idx_0][itemp_high][1] * frac_high);
+    double q10_Hp = (tabData.fs_cool_tab(idx_0, itemp_low, 1) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 1) * frac_high);
 
     // ! For collisions with e
-    double q10_e = (fs_cool_tab[idx_0][itemp_low][0] * frac_low) + (fs_cool_tab[idx_0][itemp_high][0] * frac_high);
+    double q10_e = (tabData.fs_cool_tab(idx_0, itemp_low, 0) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 0) * frac_high);
 
     // ! For collisions with He
-    double q10_He = (fs_cool_tab[idx_0][itemp_low][5] * frac_low) + (fs_cool_tab[idx_0][itemp_high][5] * frac_high);
+    double q10_He = (tabData.fs_cool_tab(idx_0, itemp_low, 5) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 5) * frac_high);
 
     // ! For collisions with He+
-    double q10_Hep = (fs_cool_tab[idx_0][itemp_low][2] * frac_low) + (fs_cool_tab[idx_0][itemp_high][2] * frac_high);
+    double q10_Hep = (tabData.fs_cool_tab(idx_0, itemp_low, 2) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 2) * frac_high);
 
     // ! For collisions with He++
-    double q10_Hepp = (fs_cool_tab[idx_0][itemp_low][3] * frac_low) + (fs_cool_tab[idx_0][itemp_high][3] * frac_high);
+    double q10_Hepp = (tabData.fs_cool_tab(idx_0, itemp_low, 3) * frac_low) + (tabData.fs_cool_tab(idx_0, itemp_high, 3) * frac_high);
 
     // ! Net collision strengths note the 75-25 ortho-para H2
     double C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * 0.75 * nH2) + (q10_pH2 * 0.25 * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
@@ -739,9 +777,10 @@ double two_level(double g_0, double g_1, double lam_10, double A_10,
 }
 
 /* OI fine structure calculation function */
+KOKKOS_INLINE_FUNCTION
 double OI_fine_structure(double T, double n_ion, double nH, double nHp, 
                          double ne, double nH2, double nHe, double nHep, 
-                         double nHepp, double z){
+                         double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -770,13 +809,14 @@ double OI_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      7, 8, 9);
+                      7, 8, 9, tabData);
 }
 
 /* OIII fine structure calculation function */
+KOKKOS_INLINE_FUNCTION
 double OIII_fine_structure(double T, double n_ion, double nH, double nHp, 
                            double ne, double nH2, double nHe, double nHep, 
-                           double nHepp, double z){
+                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -805,12 +845,13 @@ double OIII_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      12, 13, 14);
+                      12, 13, 14, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double CI_fine_structure(double T, double n_ion, double nH, double nHp, 
                            double ne, double nH2, double nHe, double nHep, 
-                           double nHepp, double z){
+                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -839,12 +880,13 @@ double CI_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      1, 2, 3);
+                      1, 2, 3, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double CII_fine_structure(double T, double n_ion, double nH, double nHp, 
                           double ne, double nH2, double nHe, double nHep, 
-                          double nHepp, double z){
+                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1;
 
@@ -866,12 +908,14 @@ double CII_fine_structure(double T, double n_ion, double nH, double nHp,
                     A_10,
                     z, T,
                     n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                    0);
+                    0,
+                    tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double NII_fine_structure(double T, double n_ion, double nH, double nHp, 
                           double ne, double nH2, double nHe, double nHep, 
-                          double nHepp, double z){
+                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -900,12 +944,13 @@ double NII_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      4, 5, 6);
+                      4, 5, 6, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double SiI_fine_structure(double T, double n_ion, double nH, double nHp, 
                           double ne, double nH2, double nHe, double nHep, 
-                          double nHepp, double z){
+                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -934,12 +979,13 @@ double SiI_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      21, 22, 23);
+                      21, 22, 23, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double SiII_fine_structure(double T, double n_ion, double nH, double nHp, 
                            double ne, double nH2, double nHe, double nHep, 
-                           double nHepp, double z){
+                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1;
 
@@ -961,12 +1007,13 @@ double SiII_fine_structure(double T, double n_ion, double nH, double nHp,
                     A_10,
                     z, T,
                     n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                    11);
+                    11, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double NeII_fine_structure(double T, double n_ion, double nH, double nHp, 
                            double ne, double nH2, double nHe, double nHep, 
-                           double nHepp, double z){
+                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1;
 
@@ -988,12 +1035,13 @@ double NeII_fine_structure(double T, double n_ion, double nH, double nHp,
                     A_10,
                     z, T,
                     n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                    10);
+                    10, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double FeI_fine_structure(double T, double n_ion, double nH, double nHp, 
                           double ne, double nH2, double nHe, double nHep, 
-                          double nHepp, double z){
+                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -1022,12 +1070,13 @@ double FeI_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      15, 16, 17);
+                      15, 16, 17, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double FeII_fine_structure(double T, double n_ion, double nH, double nHp, 
                            double ne, double nH2, double nHe, double nHep, 
-                           double nHepp, double z){
+                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -1056,12 +1105,13 @@ double FeII_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      18, 19, 20);
+                      18, 19, 20, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double SI_fine_structure(double T, double n_ion, double nH, double nHp, 
                          double ne, double nH2, double nHe, double nHep, 
-                         double nHepp, double z){
+                         double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
     double g_0, g_1, g_2;
     
@@ -1090,9 +1140,10 @@ double SI_fine_structure(double T, double n_ion, double nH, double nHp,
                       A_10, A_20, A_21,
                       z, T,
                       n_ion, ne, nH, nHp, nHe, nHep, nHepp, nH2,
-                      24, 25, 26);
+                      24, 25, 26, tabData);
 }
 
+KOKKOS_INLINE_FUNCTION
 double dust_recombination_cooling(double T, double G0, double ne, double f_dg, double nH){
     // Dust recombination cooling
     double beta_drc = 0.74 / pow(T,0.068);
@@ -1102,6 +1153,7 @@ double dust_recombination_cooling(double T, double G0, double ne, double f_dg, d
     return dust_recomb_cool;
 }
 
+KOKKOS_INLINE_FUNCTION
 double dust_recombination_cooling_WD01(double T, double G0, double ne, double f_dg, double nH){
     // Dust recombination cooling from WD01
     double Gfac = log(1.7 * G0 * sqrt(T) / ne + 50.0);
@@ -1114,6 +1166,7 @@ double dust_recombination_cooling_WD01(double T, double G0, double ne, double f_
     return dust_recomb_cool;
 }
 
+KOKKOS_INLINE_FUNCTION
 double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp, double nH, double f_dg){
     double dust_hc_const = 1.0E-33; //! For atomic dominated regions
     dust_hc_const =  1.0E-33 + (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
@@ -1125,6 +1178,7 @@ double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp
     return dust_coll_cool * nH * nH * f_dg;
 }
 
+KOKKOS_INLINE_FUNCTION
 double PE_efficiency(double G0, double T, double ne){
     double phi_pah = 0.5; //! wolfire+(03)
     double fact = G0 * sqrt(T) / (ne * phi_pah);
@@ -1133,6 +1187,7 @@ double PE_efficiency(double G0, double T, double ne){
     return PE_efficiency;
 }
 
+KOKKOS_INLINE_FUNCTION
 double photoelectric_heating(double T, double G0, double ne, double f_dg, double nH){
     double eps_PE = PE_efficiency(G0, T, ne);
     // double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
@@ -1140,6 +1195,7 @@ double photoelectric_heating(double T, double G0, double ne, double f_dg, double
     return HratePE;
 }
 
+KOKKOS_INLINE_FUNCTION
 double photoelectric_heating_WD01(double T, double G0, double ne, double f_dg, double nH){
     // This is from weingartner and draine 2001
     double C0 = 5.22;
@@ -1216,8 +1272,10 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
     return cr_heating_tot;
 }
 
+KOKKOS_INLINE_FUNCTION
 double photoheating_UVB(double *element_number_densities, int *element_number_ions,
-                        Array2D& element_ion_fractions){
+                        Array2D& element_ion_fractions,
+                        const TabulatedData& tabData){
     // Photoheating contribution from a UVB
 
     double heating_rate = 0.0;
@@ -1229,16 +1287,18 @@ double photoheating_UVB(double *element_number_densities, int *element_number_io
 
         int n_ions = element_number_ions[i];
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
-            heating_rate += (n_element * element_ion_fractions[i][j] * HM12_UVB_z[i][j][1]); // erg/s/cm^3
+            heating_rate += (n_element * element_ion_fractions[i][j] * tabData.HM12_UVB_z(i, j, 1)); // erg/s/cm^3
         }
     }
 
     return heating_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double photoheating_UVB_G0(double G0,
                            double *element_number_densities,
-                           Array2D& element_ion_fractions){
+                           Array2D& element_ion_fractions,
+                           const TabulatedData& tabData){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
 
@@ -1249,12 +1309,13 @@ double photoheating_UVB_G0(double G0,
         double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        heating_rate += n_element * element_ion_fractions[i][0] * G0_heating_rates[i] * G0; // erg/s/cm^3
+        heating_rate += n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates[i] * G0; // erg/s/cm^3
     }
 
     return heating_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double Epump(double nH, double T, double xH2, double xHI){
     //! Energy converted to heat from UV pumping
     //! see Appendix A http://articles.adsabs.harvard.edu/cgi-bin/nph-iarticle_query?1990ApJ...365..620B&amp;data_type=PDF_HIGH&amp;whole_paper=YES&amp;type=PRINTER&amp;filetype=.pdf
@@ -1265,6 +1326,7 @@ double Epump(double nH, double T, double xH2, double xHI){
     return Epump_loc;
 }
 
+KOKKOS_INLINE_FUNCTION
 double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, double xHI,
                         double xHII, double xe, double f_dg, double xi_h2_cr){
     // Heating from H2 formation and destruction following Bialy 2018
@@ -1302,6 +1364,7 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
     return Hrate_H2_pd + Hrate_H2_form + Hrate_H2_pump;
 }
 
+KOKKOS_INLINE_FUNCTION
 double H2_heating(double G0, double nH2, double nH, double T, double xH2, double xHI,
                   double xHII, double xe, double f_dg, double xi_h2_cr){
     // Heating from the formation and destruction of the H2 molecule
@@ -1327,8 +1390,9 @@ double H2_heating(double G0, double nH2, double nH, double T, double xH2, double
     return heating_rate;
 }
 
+KOKKOS_INLINE_FUNCTION
 double CT_heat_cool(double T, double *element_number_densities,
-                    Array2D& element_ion_fractions){
+                    Array2D& element_ion_fractions, const TabulatedData& tabData){
     // Heating and cooling from charge exchange reactions
 
     double ct_hc_rate = 0.0;
@@ -1344,58 +1408,58 @@ double CT_heat_cool(double T, double *element_number_densities,
     double loc_nHII = element_number_densities[1] * element_ion_fractions[1][1];
 
     // Helium
-    ct_hc_rate += charge_transfer_recombination(1, 2, T) * loc_nHI * element_number_densities[2] * element_ion_fractions[1][1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
+    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * element_number_densities[2] * element_ion_fractions[1][1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
 
     // Carbon
-    ct_hc_rate += charge_transfer_ionization(0, 6, T) * loc_nHII * element_number_densities[6] * element_ion_fractions[6][0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 6, T) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][1] * (-2.34) * EV_2_ERG; // H + C+ -> C + H+
-    ct_hc_rate += charge_transfer_recombination(2, 6, T) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][2] * 4.01 * EV_2_ERG; // H + C++ -> C+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 6, T) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][3] * 5.73 * EV_2_ERG; // H + C+++ -> C++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 6, T) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][4] * 11.3 * EV_2_ERG; // H + C++++ -> C+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 6, T, tabData) * loc_nHII * element_number_densities[6] * element_ion_fractions[6][0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][1] * (-2.34) * EV_2_ERG; // H + C+ -> C + H+
+    ct_hc_rate += charge_transfer_recombination(2, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][2] * 4.01 * EV_2_ERG; // H + C++ -> C+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][3] * 5.73 * EV_2_ERG; // H + C+++ -> C++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][4] * 11.3 * EV_2_ERG; // H + C++++ -> C+++ + H+
 
     // Nitrogen
-    ct_hc_rate += charge_transfer_ionization(0, 7, T) * loc_nHII * element_number_densities[7] * element_ion_fractions[7][0] * (-0.94) * EV_2_ERG; // H+ + N -> N+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 7, T) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][1] * 0.94 * EV_2_ERG; // H + N+ -> N + H+
-    ct_hc_rate += charge_transfer_recombination(2, 7, T) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][2] * 4.56 * EV_2_ERG; // H + N++ -> N+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 7, T) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][3] * 6.40 * EV_2_ERG; // H + N+++ -> N++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 7, T) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][4] * 11.0 * EV_2_ERG; // H + N++++ -> N+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 7, T, tabData) * loc_nHII * element_number_densities[7] * element_ion_fractions[7][0] * (-0.94) * EV_2_ERG; // H+ + N -> N+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][1] * 0.94 * EV_2_ERG; // H + N+ -> N + H+
+    ct_hc_rate += charge_transfer_recombination(2, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][2] * 4.56 * EV_2_ERG; // H + N++ -> N+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][3] * 6.40 * EV_2_ERG; // H + N+++ -> N++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][4] * 11.0 * EV_2_ERG; // H + N++++ -> N+++ + H+
 
     // Oxygen
-    ct_hc_rate += charge_transfer_ionization(0, 8, T) * loc_nHII * element_number_densities[8] * element_ion_fractions[8][0] * (-0.02) * EV_2_ERG; // H+ + O -> O+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 8, T) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][1] * 0.02 * EV_2_ERG; // H + O+ -> O + H+
-    ct_hc_rate += charge_transfer_recombination(2, 8, T) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][2] * 6.65 * EV_2_ERG; // H + O++ -> O+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 8, T) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][3] * 5.00 * EV_2_ERG; // H + O+++ -> O++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 8, T) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][4] * 8.47 * EV_2_ERG; // H + O++++ -> O+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 8, T, tabData) * loc_nHII * element_number_densities[8] * element_ion_fractions[8][0] * (-0.02) * EV_2_ERG; // H+ + O -> O+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][1] * 0.02 * EV_2_ERG; // H + O+ -> O + H+
+    ct_hc_rate += charge_transfer_recombination(2, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][2] * 6.65 * EV_2_ERG; // H + O++ -> O+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][3] * 5.00 * EV_2_ERG; // H + O+++ -> O++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][4] * 8.47 * EV_2_ERG; // H + O++++ -> O+++ + H+
 
     // Neon
-    ct_hc_rate += charge_transfer_recombination(3, 10, T) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][3] * 5.82 * EV_2_ERG; // H + Ne+++ -> Ne++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 10, T) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][4] * 8.60 * EV_2_ERG; // H + Ne++++ -> Ne+++ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 10, T, tabData) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][3] * 5.82 * EV_2_ERG; // H + Ne+++ -> Ne++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 10, T, tabData) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][4] * 8.60 * EV_2_ERG; // H + Ne++++ -> Ne+++ + H+
 
     // Magnesium
-    ct_hc_rate += charge_transfer_ionization(0, 12, T) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][0] * 1.52 * EV_2_ERG; // H+ + Mg -> Mg+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 12, T) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][1] * (-1.44) * EV_2_ERG; // H+ + Mg+ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 12, T) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][2] * 1.44 * EV_2_ERG; // H + Mg++ -> Mg+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 12, T) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][3] * 5.73 * EV_2_ERG; // H + Mg+++ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 12, T) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][4] * 8.60 * EV_2_ERG; // H + Mg++++ -> Mg+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 12, T, tabData) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][0] * 1.52 * EV_2_ERG; // H+ + Mg -> Mg+ + H
+    ct_hc_rate += charge_transfer_ionization(1, 12, T, tabData) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][1] * (-1.44) * EV_2_ERG; // H+ + Mg+ -> Mg++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][2] * 1.44 * EV_2_ERG; // H + Mg++ -> Mg+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][3] * 5.73 * EV_2_ERG; // H + Mg+++ -> Mg++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][4] * 8.60 * EV_2_ERG; // H + Mg++++ -> Mg+++ + H+
 
     // Silicon
-    ct_hc_rate += charge_transfer_ionization(0, 14, T) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][0] * 0.12 * EV_2_ERG; // H+ + Si -> Si+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 14, T) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][1] * (-2.72) * EV_2_ERG; // H+ + Si+ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 14, T) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][2] * 2.72 * EV_2_ERG; // H + Si++ -> Si+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 14, T) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][3] * 4.23 * EV_2_ERG; // H + Si+++ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 14, T) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][4] * 7.49 * EV_2_ERG; // H + Si++++ -> Si+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 14, T, tabData) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][0] * 0.12 * EV_2_ERG; // H+ + Si -> Si+ + H
+    ct_hc_rate += charge_transfer_ionization(1, 14, T, tabData) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][1] * (-2.72) * EV_2_ERG; // H+ + Si+ -> Si++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][2] * 2.72 * EV_2_ERG; // H + Si++ -> Si+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][3] * 4.23 * EV_2_ERG; // H + Si+++ -> Si++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][4] * 7.49 * EV_2_ERG; // H + Si++++ -> Si+++ + H+
 
     // Sulfur
-    ct_hc_rate += charge_transfer_recombination(1, 16, T) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
-    ct_hc_rate += charge_transfer_recombination(3, 16, T) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 16, T) * loc_nHI * element_number_densities[16] * element_ion_fractions[15][4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
+    ct_hc_rate += charge_transfer_recombination(1, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
+    ct_hc_rate += charge_transfer_recombination(3, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[15][4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
 
     // Iron
     // Silicon
-    ct_hc_rate += charge_transfer_ionization(1, 26, T) * loc_nHII * element_number_densities[26] * element_ion_fractions[26][1] * (-2.56) * EV_2_ERG; // H+ + Fe+ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 26, T) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][2] * 2.56 * EV_2_ERG; // H + Fe++ -> Fe+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 26, T) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][3] * 6.30 * EV_2_ERG; // H + Fe+++ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 26, T) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][4] * 10.0 * EV_2_ERG; // H + Fe++++ -> Fe+++ + H+
+    ct_hc_rate += charge_transfer_ionization(1, 26, T, tabData) * loc_nHII * element_number_densities[26] * element_ion_fractions[26][1] * (-2.56) * EV_2_ERG; // H+ + Fe+ -> Fe++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][2] * 2.56 * EV_2_ERG; // H + Fe++ -> Fe+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][3] * 6.30 * EV_2_ERG; // H + Fe+++ -> Fe++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][4] * 10.0 * EV_2_ERG; // H + Fe++++ -> Fe+++ + H+
 
     return ct_hc_rate;
 }
@@ -1464,7 +1528,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
                                                     element_number_densities,
                                                     element_number_ions,
                                                     element_ion_fractions,
-                                                    metal_cool_smooth_f1);
+                                                    metal_cool_smooth_f1,
+                                                    tabData);
 
     // Metal line cooling -- low temperature (fine structure)
     double n_ion_fs;
@@ -1476,7 +1541,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CI = CI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z);
+                                                                 nHe_III, z,
+                                                                 tabData);
             total_fine_structure += cooling_fine_structure_CI;
         }
         
@@ -1485,7 +1551,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CII = CII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
+                                                                   nHe_III, z,
+                                                                   tabData);
             //printf("CII cool: %e\n",cooling_fine_structure_CII);
             total_fine_structure += cooling_fine_structure_CII;
         }
@@ -1495,7 +1562,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_NII = NII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_NII;
         }
         
@@ -1504,7 +1572,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OI = OI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z);
+                                                                 nHe_III, z,
+                                                                 tabData);
             //printf("OI cool: %e\n",cooling_fine_structure_OI);
             total_fine_structure += cooling_fine_structure_OI;
         }
@@ -1514,7 +1583,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OI = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_OI;
         }
 
@@ -1523,7 +1593,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_NeII = NeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
+                                                                     nHe_III, z,
+                                                                     tabData);
             total_fine_structure += cooling_fine_structure_NeII;
         }
         
@@ -1532,7 +1603,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiI = SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_SiI;
         }
         
@@ -1541,7 +1613,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiII = SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
+                                                                     nHe_III, z,
+                                                                     tabData);
             total_fine_structure += cooling_fine_structure_SiII;
         }
         
@@ -1550,7 +1623,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SI = SI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z);
+                                                                 nHe_III, z,
+                                                                 tabData);
             total_fine_structure += cooling_fine_structure_SI;
         }
         
@@ -1559,7 +1633,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeI = FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z);
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_FeI;
         }
         
@@ -1568,7 +1643,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeII = FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z);
+                                                                     nHe_III, z,
+                                                                     tabData);
             total_fine_structure += cooling_fine_structure_FeII;
         }
            
@@ -1598,13 +1674,15 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     // Photoheating from the UV background
     double uvb_photoheat = photoheating_UVB(element_number_densities,
                                             element_number_ions,
-                                            element_ion_fractions);
+                                            element_ion_fractions,
+                                            tabData);
     uvb_photoheat *= ss_factor; // Account for self-shielding
 
     // Photoheating from the G0 FUV background
     double uvb_photoheat_G0 = photoheating_UVB_G0(G0,
                                                   element_number_densities,
-                                                  element_ion_fractions);
+                                                  element_ion_fractions,
+                                                  tabData);
 
     // Heating from H2 formation and destruction
     // double h2_heat = H2_heating(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
@@ -1613,7 +1691,8 @@ double all_cooling(double T, double ne, double aexp, double *element_number_dens
     // Heating and cooling from charge transfer reactions
     double charge_transfer_heat_cool = CT_heat_cool(T,
                                                     element_number_densities,
-                                                    element_ion_fractions);
+                                                    element_ion_fractions,
+                                                    tabData);
 
     // Sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;

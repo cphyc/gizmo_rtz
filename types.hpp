@@ -1,5 +1,8 @@
 #pragma once
 #include <Kokkos_Core.hpp>
+// Create shorthand for double kokkos views
+#define MAX_ELEMENTS 27
+using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
 
 typedef struct
 {

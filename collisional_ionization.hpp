@@ -1,8 +1,10 @@
 // collisional_ionization.h
-#ifndef COLLISIONAL_IONIZATION
-#define COLLISIONAL_IONIZATION
+#pragma once
+
+#include "types.hpp"
+
+void init_collisional_ionization(TabulatedData& tabData);
 
 // Declaration of collisional ionization functions
-double collisional_ionization(double T, int ion, int element_idx);
-
-#endif
+KOKKOS_FUNCTION
+double collisional_ionization(double T, int ion, int element_idx, const TabulatedData& tabData);

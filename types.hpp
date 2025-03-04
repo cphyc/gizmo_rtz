@@ -57,4 +57,52 @@ typedef struct
     Kokkos::View<double[27][2]> RR_rates_alt_iron;
     Kokkos::View<double[27][8]> DR_rates_alt_iron;
 
+    Kokkos::View<double[6]> dE_carbon;
+    Kokkos::View<double[6]> A_carbon;
+    Kokkos::View<double[6]> X_carbon;
+    Kokkos::View<double[6]> K_carbon;
+    Kokkos::View<double[6]> P_carbon;
+
+    Kokkos::View<double[8]> dE_oxygen;
+    Kokkos::View<double[8]> A_oxygen;
+    Kokkos::View<double[8]> X_oxygen;
+    Kokkos::View<double[8]> K_oxygen;
+    Kokkos::View<double[8]> P_oxygen;
+
+    Kokkos::View<double[7]> dE_nitrogen;
+    Kokkos::View<double[7]> A_nitrogen;
+    Kokkos::View<double[7]> X_nitrogen;
+    Kokkos::View<double[7]> K_nitrogen;
+    Kokkos::View<double[7]> P_nitrogen;
+
+    Kokkos::View<double[10]> dE_neon;
+    Kokkos::View<double[10]> A_neon;
+    Kokkos::View<double[10]> X_neon;
+    Kokkos::View<double[10]> K_neon;
+    Kokkos::View<double[10]> P_neon;
+
+    Kokkos::View<double[12]> dE_magnesium;
+    Kokkos::View<double[12]> A_magnesium;
+    Kokkos::View<double[12]> X_magnesium;
+    Kokkos::View<double[12]> K_magnesium;
+    Kokkos::View<double[12]> P_magnesium;
+
+    Kokkos::View<double[14]> dE_silicon;
+    Kokkos::View<double[14]> A_silicon;
+    Kokkos::View<double[14]> X_silicon;
+    Kokkos::View<double[14]> K_silicon;
+    Kokkos::View<double[14]> P_silicon;
+
+    Kokkos::View<double[16]> dE_sulfur;
+    Kokkos::View<double[16]> A_sulfur;
+    Kokkos::View<double[16]> X_sulfur;
+    Kokkos::View<double[16]> K_sulfur;
+    Kokkos::View<double[16]> P_sulfur;
+
+    Kokkos::View<double[26]> dE_iron;
+    Kokkos::View<double[26]> A_iron;
+    Kokkos::View<double[26]> X_iron;
+    Kokkos::View<double[26]> K_iron;
+    Kokkos::View<double[26]> P_iron;
+
 } TabulatedData;

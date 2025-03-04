@@ -1,6 +1,5 @@
 // photoionization_UVB.h
-#ifndef PHOTOIONIZATION_UVB
-#define PHOTOIONIZATION_UVB
+#pragma once
 
 void load_UVB_data();
 void update_UVB(double redshift);
@@ -10,5 +9,3 @@ void update_UVB(double redshift);
 // enough that it shouldn't matter
 // Index is element number | Ion
 extern double HM12_UVB_z[27][27][2];
-
-#endif

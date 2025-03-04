@@ -34,4 +34,4 @@ if(Kokkos_ENABLE_CUDA)
 endif()
 
 # Warn all
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

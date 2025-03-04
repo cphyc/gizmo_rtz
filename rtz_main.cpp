@@ -1215,59 +1215,36 @@ int main()
         int Nions = 113;
         Kokkos::View<double **> xions("xions", NT, Nions);
 
-        // HM-related data
-        Kokkos::View<double***> HM12_UVB_z_d("HM12_UVB_z_d", 27, 27, 2);
-        Kokkos::View<double*> G0_heating_rate_d("G0_heating_rate", 27);
+        TabulatedData tabData;
 
-        copy_data_3D(HM12_UVB_z, HM12_UVB_z_d);
+        // HM-related data
+        copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
         double *G0_heating_rate_ptr = getG0_heating_rates();
-        copy_data_1D(G0_heating_rate_ptr, G0_heating_rate_d);
+        copy_data_1D(G0_heating_rate_ptr, tabData.G0_heating_rates);
 
         // Cosmic ray and dust-related data
-        Kokkos::View<double**> cosmic_ray_ionization_rates_d("cosmic_ray_ionization_rates", 27, 27);
-        Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_d("cosmic_ray_ionization_rates_induced_UV", 27);
-        Kokkos::View<double*> cosmic_ray_ionization_rates_induced_UV_heat_d("cosmic_ray_ionization_rates_induced_UV_heat", 27);
-        Kokkos::View<double**> dust_rec_coefs_d("dust_rec_coefs", 27, 7);
-        copy_data_2D(cosmic_ray_ionization_rates, cosmic_ray_ionization_rates_d);
-        copy_data_1D(cosmic_ray_ionization_rates_induced_UV, cosmic_ray_ionization_rates_induced_UV_d);
-        copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, cosmic_ray_ionization_rates_induced_UV_heat_d);
-        copy_data_2D(dust_rec_coefs, dust_rec_coefs_d);
+        copy_data_2D(cosmic_ray_ionization_rates, tabData.cosmic_ray_ionization_rates);
+        copy_data_1D(cosmic_ray_ionization_rates_induced_UV, tabData.cosmic_ray_ionization_rates_induced_UV);
+        copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, tabData.cosmic_ray_ionization_rates_induced_UV_heat);
+        copy_data_2D(dust_rec_coefs, tabData.dust_rec_coefs);
 
         // Charge transfer
-        Kokkos::View<double***> CTRecomb_d("CTRecomb", 6, 4, 31);
-        Kokkos::View<double***> CTIon_d("CTIon", 7, 3, 31);
-        double (*CTRecomb_ptr)[4][31] = getCTRecomb();
         double (*CTIon_ptr)[3][31] = getCTIon();
+        double (*CTRecomb_ptr)[4][31] = getCTRecomb();
 
-        copy_data_3D(CTRecomb_ptr, CTRecomb_d);
-        copy_data_3D(CTIon_ptr, CTIon_d);
+        copy_data_3D(CTRecomb_ptr, tabData.CTRecomb);
+        copy_data_3D(CTIon_ptr, tabData.CTIon);
 
         // Fine structure cooling
-        Kokkos::View<double***> fs_cool_tab_d("fs_cool_tab", 27, 160, 8);
         double (*fs_cool_tab)[160][8] = getfs_cool_tab();
-        copy_data_3D(fs_cool_tab, fs_cool_tab_d);
+        copy_data_3D(fs_cool_tab, tabData.fs_cool_tab);
 
         // High-T cooling rates
-        Kokkos::View<double***> high_t_cooling_rates_d("high_t_cooling_rates", 121, 27, 27);
-        Kokkos::View<bool**> high_t_cooling_rates_tflag_d("high_t_cooling_rates_tflag", 27, 27);
         double (*high_t_cooling_rates_ptr)[27][27] = gethigh_t_cooling_rates();
         bool (*high_t_cooling_rates_tflag_ptr)[27] = gethigh_t_cooling_rates_tflag();
-        copy_data_3D(high_t_cooling_rates_ptr, high_t_cooling_rates_d);
-        copy_data_2D(high_t_cooling_rates_tflag_ptr, high_t_cooling_rates_tflag_d);
+        copy_data_3D(high_t_cooling_rates_ptr, tabData.high_t_cooling_rates);
+        copy_data_2D(high_t_cooling_rates_tflag_ptr, tabData.high_t_cooling_rates_tflag);
 
-        TabulatedData tabData = {
-            HM12_UVB_z_d,
-            G0_heating_rate_d,
-            cosmic_ray_ionization_rates_d,
-            cosmic_ray_ionization_rates_induced_UV_d,
-            cosmic_ray_ionization_rates_induced_UV_heat_d,
-            dust_rec_coefs_d,
-            CTRecomb_d,
-            CTIon_d,
-            fs_cool_tab_d,
-            high_t_cooling_rates_d,
-            high_t_cooling_rates_tflag_d
-        };
         init_recombination_rates(tabData);
         init_collisional_ionization(tabData);
 

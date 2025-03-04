@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include "types.hpp"
 #include "recombination.hpp"
 #include "collisional_ionization.hpp"
 #include "cosmic_ray_ionization.hpp"
@@ -10,7 +11,6 @@
 #include "dust_recombination.hpp"
 #include "molecules.hpp"
 #include "cooling.hpp"
-#include "types.hpp"
 
 #include <Kokkos_Core.hpp>
 

@@ -36,9 +36,6 @@ public:
                                      double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS]) const;
 
 private:
-    // Element properties
-    Element elements[MAX_ELEMENTS];
-
     // Tabulated rate data (lives on device)
     TabulatedData tabData;
 

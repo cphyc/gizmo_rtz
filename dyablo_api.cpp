@@ -1254,24 +1254,25 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
         // TODO: get dust mass and depletion
         // double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
+        Element elements_loc[MAX_ELEMENTS];
+        initialize_elements(elements_loc);
+
         // solve for ionization balance and cooling rates
         ParticleIonData n_and_ion_fracs_loc[MAX_ELEMENTS];
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            if (elements[ii].atomic_number < 1) continue;
+            if (elements_loc[ii].atomic_number < 1) continue;
 
             n_and_ion_fracs_loc[ii].n_element = nelements_loc[ii];
 
-            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
+            for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
             {
                 n_and_ion_fracs_loc[ii].ion_fracs[jj] = xions_loc[iion];
                 iion++;
             }
         }
 
-        Element elements_loc[MAX_ELEMENTS];
-        initialize_elements(elements_loc);
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
@@ -1285,9 +1286,9 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
         // Loop over all elements
         iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            if (elements[ii].atomic_number < 1) continue;
+            if (elements_loc[ii].atomic_number < 1) continue;
 
-            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
+            for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
             {
                 xions_loc[iion] = n_and_ion_fracs_loc[ii].ion_fracs[jj];
                 iion++;

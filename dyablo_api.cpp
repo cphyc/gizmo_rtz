@@ -73,7 +73,7 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
 
 // Structs for element properties
 KOKKOS_FUNCTION
-void initialize_elements(Element *elements)
+void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements)
 {
     // Initialize
     for (int i = 0; i < MAX_ELEMENTS; i++)
@@ -177,7 +177,7 @@ void initialize_elements(Element *elements)
 // } ParticleIonData;
 
 double get_dust_mass_and_depletion(
-    Element *elements, double metallicity)
+    std::array<Element, MAX_ELEMENTS> &elements, const double metallicity)
 {
     // Parameters for the RR14 dust-to-gas mass ratio
     double a = 2.21;
@@ -218,7 +218,7 @@ double get_dust_mass_and_depletion(
 
 // Structs for element properties
 KOKKOS_FUNCTION
-void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, double hdens, double metallicity, int itype)
+void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype)
 {
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++)
@@ -286,7 +286,7 @@ void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, d
 }
 
 KOKKOS_FUNCTION
-double get_ne(const Element *elements, const ParticleIonData *n_and_ion_fracs, const bool use_new)
+double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, const bool use_new)
 {
     /*
     Returns the electron number density by looping over all elements
@@ -339,7 +339,7 @@ double get_mu(double xHI, double xHII, double xHeII, double xHeIII, double nH, d
 }
 
 KOKKOS_INLINE_FUNCTION
-void reduce_xion(double *ion_fracs, int size)
+void reduce_xion(std::array<double, MAX_ELEMENTS>& ion_fracs, const int size)
 {
     /*
     Makes sure that the ion fractions sum to one and that
@@ -362,7 +362,7 @@ void reduce_xion(double *ion_fracs, int size)
 }
 
 KOKKOS_INLINE_FUNCTION
-void reduce_xion_max(double* ion_fracs, int size)
+void reduce_xion_max(std::array<double, MAX_ELEMENTS>& ion_fracs, int size)
 {
     /*
     Makes sure that the ion fractions sum to one and that
@@ -405,8 +405,8 @@ template <
     bool include_CO=false
 >
 KOKKOS_FUNCTION
-double get_chemical_eqm(const Element *elements,
-                        ParticleIonData n_and_ion_fracs[MAX_ELEMENTS],
+double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
+                        std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs,
                         double TK,
                         const double aexp,
                         const double total_dt,
@@ -470,8 +470,8 @@ double get_chemical_eqm(const Element *elements,
     double cooling_rate_prime = 0.0;
     double cooling_rate_2 = 0.0;
 
-    double element_number_densities[MAX_ELEMENTS];
-    int element_number_ions[MAX_ELEMENTS];
+    std::array<double, MAX_ELEMENTS> element_number_densities;
+    std::array<int, MAX_ELEMENTS> element_number_ions;
     Array2D element_ion_fractions;
 
     for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -1186,7 +1186,7 @@ RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, i
         // initialize data structures
 
         // Declare an array (list) of 3 elements (structs)
-        Element elements[MAX_ELEMENTS];
+        std::array<Element, MAX_ELEMENTS> elements;
         // ParticleIonData n_and_ion_fracs[MAX_ELEMENTS];
 
         // Initialize the elements
@@ -1246,19 +1246,23 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
 
 template <bool constant_temperature, bool ramses_rt_T_scheme, bool rosenbrock_T_scheme, bool include_H2, bool include_CO>
 KOKKOS_FUNCTION
-void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(double &TK, const double metallicity, const double aexp, double nelements_loc[MAX_ELEMENTS], double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS]) const
+void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(
+    double &TK,
+    const double metallicity,
+    const double aexp,
+    const std::array<double, MAX_ELEMENTS> nelements_loc,
+    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc) const
 {
-
 
         // Get the dust to gas mass ratio and the depletion factors
         // TODO: get dust mass and depletion
         // double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
-        Element elements_loc[MAX_ELEMENTS];
+        std::array<Element, MAX_ELEMENTS> elements_loc;;
         initialize_elements(elements_loc);
 
         // solve for ionization balance and cooling rates
-        ParticleIonData n_and_ion_fracs_loc[MAX_ELEMENTS];
+        std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc;
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {

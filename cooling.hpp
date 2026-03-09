@@ -411,8 +411,8 @@ void initialize_high_temperature_metal_cooling(){
 
 KOKKOS_FUNCTION
 double get_high_t_cooling_rates(double T, double ne, 
-                                double *element_number_densities,
-                                int *element_number_ions,
+                                std::array<double, MAX_ELEMENTS>& element_number_densities,
+                                std::array<int, MAX_ELEMENTS>& element_number_ions,
                                 Array2D& element_ion_fractions,
                                 double temp_smooth,
                                 const TabulatedData& tabData){
@@ -1196,8 +1196,8 @@ double photoelectric_heating_WD01(double T, double G0, double ne, double f_dg, d
 KOKKOS_FUNCTION
 double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
-                          double *element_number_densities,
-                          int *element_number_ions,
+                          std::array<double, MAX_ELEMENTS>& element_number_densities,
+                          std::array<int, MAX_ELEMENTS>& element_number_ions,
                           Array2D& element_ion_fractions,
                           const TabulatedData& tabData
                         ){
@@ -1254,7 +1254,8 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
 }
 
 KOKKOS_INLINE_FUNCTION
-double photoheating_UVB(double *element_number_densities, int *element_number_ions,
+double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densities,
+                        std::array<int, MAX_ELEMENTS>& element_number_ions,
                         Array2D& element_ion_fractions,
                         const TabulatedData& tabData){
     // Photoheating contribution from a UVB
@@ -1277,7 +1278,7 @@ double photoheating_UVB(double *element_number_densities, int *element_number_io
 
 KOKKOS_INLINE_FUNCTION
 double photoheating_UVB_G0(double G0,
-                           double *element_number_densities,
+                           std::array<double, MAX_ELEMENTS>& element_number_densities,
                            Array2D& element_ion_fractions,
                            const TabulatedData& tabData){
     // Photoheating from the G0 background
@@ -1372,7 +1373,7 @@ double H2_heating(double G0, double nH2, double nH, double T, double xH2, double
 }
 
 KOKKOS_INLINE_FUNCTION
-double CT_heat_cool(double T, double *element_number_densities,
+double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_densities,
                     Array2D& element_ion_fractions, const TabulatedData& tabData){
     // Heating and cooling from charge exchange reactions
 
@@ -1447,8 +1448,8 @@ double CT_heat_cool(double T, double *element_number_densities,
 
 
 KOKKOS_FUNCTION
-double all_cooling(double T, double ne, double aexp, double *element_number_densities, 
-                   int *element_number_ions, Array2D& element_ion_fractions,
+double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEMENTS>& element_number_densities, 
+                   std::array<int, MAX_ELEMENTS>& element_number_ions, Array2D& element_ion_fractions,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor, const TabulatedData& tabData){
     // Main cooling driver

@@ -6,10 +6,10 @@
 #define MAX_ELEMENTS 27
 
 KOKKOS_FUNCTION
-void initialize_elements(Element *elements);
+void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements);
 
 KOKKOS_FUNCTION
-void initialize_ion_fracs(Element *elements, ParticleIonData *n_and_ion_fracs, double hdens, double metallicity, int itype);
+void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype);
 
 template <
     bool constant_temperature,
@@ -31,8 +31,8 @@ public:
     void solve_chemistry_and_cooling(double &TK,
                                      const double metallicity,
                                      const double aexp,
-                                     double nelements_loc[MAX_ELEMENTS],
-                                     double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS]) const;
+                                     std::array<double, MAX_ELEMENTS> nelements_loc,
+                                     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc) const;
 
 private:
     // Tabulated rate data (lives on device)

@@ -19,8 +19,8 @@ typedef struct
 typedef struct
 {
     double n_element;
-    double ion_fracs[MAX_ELEMENTS];
-    double ion_fracs_new[MAX_ELEMENTS];
+    std::array<double, MAX_ELEMENTS> ion_fracs;
+    std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
 
 typedef struct

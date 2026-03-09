@@ -91,9 +91,9 @@ int main()
             double rho = pow(10.0, -2 + 4.8 * i / double(NT));
             // double rho = pow(10.0,-2+((double)i*0.1));
 
-            ParticleIonData n_and_ion_fracs_loc[MAX_ELEMENTS];
+            std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc;
 
-            Element elements_loc[MAX_ELEMENTS];
+            std::array<Element, MAX_ELEMENTS> elements_loc;
             // Initialize the elements
             initialize_elements(elements_loc);
 
@@ -103,11 +103,9 @@ int main()
             // get_chemical_eqm<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>(elements_loc, n_and_ion_fracs_loc, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
             //                 generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData);
 
-            std::cout << "Making Kokkos Views" << std::endl;
             // Loop over all elements
-            double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS];
-            double nelements_loc[MAX_ELEMENTS];
-            std::cout << "Copying data to Kokkos Views" << std::endl;
+            std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc;
+            std::array<double, MAX_ELEMENTS> nelements_loc;
             int iion = 0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
                 if (elements_loc[ii].atomic_number < 1) continue;

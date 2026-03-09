@@ -1246,7 +1246,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
 
 template <bool constant_temperature, bool ramses_rt_T_scheme, bool rosenbrock_T_scheme, bool include_H2, bool include_CO>
 KOKKOS_FUNCTION
-void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(double &TK, const double rho, const double metallicity, const double aexp, double nelements_loc[MAX_ELEMENTS], double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS]) const
+void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(double &TK, const double metallicity, const double aexp, double nelements_loc[MAX_ELEMENTS], double xions_loc[MAX_ELEMENTS * MAX_ELEMENTS]) const
 {
 
 

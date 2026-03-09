@@ -123,7 +123,7 @@ int main()
 
             std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
 
-            rtz_solver.solve_chemistry_and_cooling(TK, rho, metallicity, aexp, nelements_loc, xions_loc);
+            rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, nelements_loc, xions_loc);
 
             std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
 

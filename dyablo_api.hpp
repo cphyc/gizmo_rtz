@@ -29,7 +29,6 @@ public:
     // Solve the chemistry network and cooling for a single cell
     KOKKOS_FUNCTION
     void solve_chemistry_and_cooling(double &TK,
-                                     const double rho,
                                      const double metallicity,
                                      const double aexp,
                                      double nelements_loc[MAX_ELEMENTS],

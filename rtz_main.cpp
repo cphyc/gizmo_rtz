@@ -11,6 +11,7 @@
 int main()
 {
     double redshift = 1000.0;                          // Redshift of the calculation
+    double aexp = 1.0 / (1.0 + redshift);                   // Scale factor
     double UV_background_G0 = 1.0;                     // G0 (sub ionizing radiaiton field)
     double generic_cosmic_ray_ionization_rate = 1E-16; // Background CR ionization rate (primary + secondary) --> H
     double metallicity = 1E-5;                         // Gas phase metallicity (solar units)
@@ -122,7 +123,7 @@ int main()
 
             std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
 
-            rtz_solver.solve_chemistry_and_cooling(TK, rho, metallicity, (1.0/redshift) - 1.0, nelements_loc, xions_loc);
+            rtz_solver.solve_chemistry_and_cooling(TK, rho, metallicity, aexp, nelements_loc, xions_loc);
 
             std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
 

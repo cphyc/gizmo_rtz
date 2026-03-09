@@ -1176,7 +1176,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // for (int i = 1; i < MAX_ELEMENTS; i++)
     //     free(element_ion_fractions[i]);
 
-    printf("%e %e %e %e %d %e %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt);
+    // printf("%e %e %e %e %d %e %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt);
 
     return TK;
 }
@@ -1255,15 +1255,15 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
     double &TK,
     const double metallicity,
     const double aexp,
-    const std::array<double, MAX_ELEMENTS> nelements_loc,
-    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc) const
+    const std::array<double, MAX_ELEMENTS> &nelements_loc,
+    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc) const
 {
 
         // Get the dust to gas mass ratio and the depletion factors
         // TODO: get dust mass and depletion
         // double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
-        std::array<Element, MAX_ELEMENTS> elements_loc;;
+        std::array<Element, MAX_ELEMENTS> elements_loc;
         initialize_elements(elements_loc);
 
         // solve for ionization balance and cooling rates
@@ -1292,7 +1292,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData
         );
 
-        printf("Final temperature: %e\n", TK);
+        // printf("Final temperature: %e\n", TK);
 
         // Loop over all elements
         iion = 0;

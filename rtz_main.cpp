@@ -12,8 +12,6 @@ int main()
 {
     double redshift = 1000.0;                          // Redshift of the calculation
     double aexp = 1.0 / (1.0 + redshift);                   // Scale factor
-    double UV_background_G0 = 1.0;                     // G0 (sub ionizing radiaiton field)
-    double generic_cosmic_ray_ionization_rate = 1E-16; // Background CR ionization rate (primary + secondary) --> H
     double metallicity = 1E-5;                         // Gas phase metallicity (solar units)
     constexpr bool include_H2 = true;                            // Whether to include molecular hydrogen
     constexpr bool include_CO = false;                           // Whether to include CO
@@ -51,6 +49,7 @@ int main()
 
     {
         RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO> rtz_solver;
+        rtz_solver.need_to_update_UVB(redshift);
 
         int NT = 48;
         int Nions = 113;
@@ -150,7 +149,7 @@ int main()
         // Print the data
         for (int i = 0; i < NT; i++)
         {
-            printf("%e %e ", log10(pow(10.0, -2 + ((double)i * 0.1))), log10(1e6));
+            printf("%e %e ", -2 + 4.8 * i / double(NT), log10(1e6));
             for (int j = 0; j < Nions; j++)
             {
                 printf("%e ", xions_h(i, j));

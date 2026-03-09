@@ -31,8 +31,8 @@ public:
     void solve_chemistry_and_cooling(double &TK,
                                      const double metallicity,
                                      const double aexp,
-                                     std::array<double, MAX_ELEMENTS> nelements_loc,
-                                     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc) const;
+                                     const std::array<double, MAX_ELEMENTS> &nelements_loc,
+                                     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc) const;
 
 private:
     // Tabulated rate data (lives on device)

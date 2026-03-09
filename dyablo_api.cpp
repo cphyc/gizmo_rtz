@@ -1207,10 +1207,10 @@ RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, i
         // Initialize the low temperature cooling tables
         init_fine_structure_tables();
 
+        // Hardcode some stuff for now
+        UV_background_G0 = 1.0;
+        generic_cosmic_ray_ionization_rate = 1E-16;
 
-
-        // load tables
-        TabulatedData tabData;
 
         // HM-related data
         copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);

@@ -119,11 +119,25 @@ int main()
                 }
             }
 
-            std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
+            //printf("Density: %e Temperature: %e\n", rho, TK);
 
             rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, nelements_loc, xions_loc);
 
-            std::cout << "Density: " << rho << " Temperature: " << TK << std::endl;
+            //printf("Density: %e Temperature: %e\n", rho, TK);
+
+            // Copy results back into the Kokkos Views for host retrieval
+            int iion_out = 0;
+            for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+                if (elements_loc[ii].atomic_number < 1) continue;
+
+                nelements(i, ii) = nelements_loc[ii];
+
+                for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
+                {
+                    xions(i, iion_out) = xions_loc[iion_out];
+                    iion_out++;
+                }
+            }
 
         });
 

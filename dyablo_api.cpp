@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include <iostream>
+
 #include "types.hpp"
 #include "recombination.hpp"
 #include "collisional_ionization.hpp"
@@ -15,7 +17,7 @@
 
 #include <Kokkos_Core.hpp>
 
-#define MAX_ELEMENTS 27
+// MAX_ELEMENTS is already defined in types.hpp (included via dyablo_api.hpp)
 const double MIN_XION = 1E-20;         // Minimum ion fraction
 const double MIN_XION_FLOOR = 1E-10;   // Minimum ion fraction
 const double CONV_ABS = 1E-4;          // Value required for convergence
@@ -176,6 +178,7 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements)
 //     double ion_fracs_new[MAX_ELEMENTS];
 // } ParticleIonData;
 
+KOKKOS_FUNCTION
 double get_dust_mass_and_depletion(
     std::array<Element, MAX_ELEMENTS> &elements, const double metallicity)
 {
@@ -325,9 +328,9 @@ KOKKOS_FUNCTION
 double get_mu(double xHI, double xHII, double xHeII, double xHeIII, double nH, double nHe)
 {
     /*
-    Calculated the mean molecular weight
+    Calculate the mean molecular weight
     --> here we ignore metals as their contribution is minimal
-    but we do include molecular hydrogen
+    --> molecular hydrogen is NOT included in this formula
     */
 
     double X = nH / (nH + 4.0 * nHe);          // Hydrogen mass fraction
@@ -462,8 +465,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
     int n_ions; // Number of ions --> reset per element
 
-    // Self-shielding
-    double ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element / 1E-2);
+    // Self-shielding (use hydrogen = element index 1)
+    double ss_factor = exp(-1.0 * n_and_ion_fracs[1].n_element / 1E-2);
 
     // Cooling
     double cooling_rate = 0.0;
@@ -1173,6 +1176,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // for (int i = 1; i < MAX_ELEMENTS; i++)
     //     free(element_ion_fractions[i]);
 
+    printf("%e %e %e %e %d %e %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt);
+
     return TK;
 }
 
@@ -1286,6 +1291,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
             elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData
         );
+
+        printf("Final temperature: %e\n", TK);
 
         // Loop over all elements
         iion = 0;

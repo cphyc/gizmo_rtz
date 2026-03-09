@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include <Kokkos_Core.hpp>
 
-#define MAX_ELEMENTS 27
+// MAX_ELEMENTS is already defined in types.hpp
 
 KOKKOS_FUNCTION
 void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements);

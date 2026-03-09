@@ -15,6 +15,14 @@ typedef struct
     double depletion;
 } Element;
 
+
+typedef struct
+{
+    double n_element;
+    double ion_fracs[MAX_ELEMENTS];
+    double ion_fracs_new[MAX_ELEMENTS];
+} ParticleIonData;
+
 typedef struct
 {
     Kokkos::View<double[27][27][2]> HM12_UVB_z {"HM12_UVB_z"};

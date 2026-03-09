@@ -11,6 +11,7 @@ add_subdirectory(extern/kokkos)
 
 # Set source files
 set(SOURCES
+    dyablo_api.cpp
     rtz_main.cpp
 )
 

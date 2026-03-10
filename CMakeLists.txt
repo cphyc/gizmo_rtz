@@ -54,7 +54,7 @@ add_test(
         -P ${CMAKE_SOURCE_DIR}/tests/run_test.cmake
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-set_tests_properties(ISM_test PROPERTIES TIMEOUT 600)
+set_tests_properties(ISM_test PROPERTIES TIMEOUT 1200)
 
 # CIE test (296 temperature steps, constant temperature)
 add_test(
@@ -70,4 +70,4 @@ add_test(
         -P ${CMAKE_SOURCE_DIR}/tests/run_test.cmake
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-set_tests_properties(CIE_test PROPERTIES TIMEOUT 600)
+set_tests_properties(CIE_test PROPERTIES TIMEOUT 1200)

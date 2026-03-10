@@ -444,6 +444,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         const double primary_cosmic_ray_ionization_rate,
                         const double dust_to_gas_mass_ratio_over_mw,
                         const TabulatedData& tabData,
+                        const PhysicsFlags& flags,
                         const int conv_its = 20000,
                         const int max_its = 40000,
                         int* out_total_iterations = nullptr,
@@ -798,26 +799,32 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         cr += recombination_table[i][j+1] * ne * n_and_ion_fracs[i].ion_fracs_new[j + 1];
 
                     // Collisional ionization of the less excited state
+                    if (flags.include_collisional_ionization)
                     if (j > 0)
                         cr += collisional_ionization_table[i][j-1] * ne * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Photoionization of the less excited state
+                    if (flags.include_HM12_UVB)
                     if (j > 0)
                         cr += tabData.HM12_UVB_z(i, j - 1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+                    if (flags.include_photoionization)
                     if (j == 1)
                         cr += UV_background_G0 * elements[i].G0_photo_rate * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Cosmic ray ionization of the less excited state
+                    if (flags.include_cosmic_ray_ionization) {
                     if (j > 0)
                         cr += tabData.cosmic_ray_ionization_rates(i, j - 1) * total_cosmic_ray_ionization_rate_loc * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Cosmic ray ionization of the less excited state from induced UV
                     if (j == 1)
                         cr += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                    }
 
                     // Recombination on dust for the more excited state
+                    if (flags.include_dust_recombination)
                     if (j < (n_ions - 1))
                         cr += dust_recombination_rates(j + 1, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density * n_and_ion_fracs[i].ion_fracs_new[j + 1];
 
@@ -833,14 +840,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     }
 
                     // Collisional ionization
+                    if (flags.include_collisional_ionization)
                     if (j < (n_ions - 1))
                         de += collisional_ionization_table[i][j] * ne;
 
                     // Photoionization
+                    if (flags.include_HM12_UVB)
                     if (j < (n_ions - 1))
                         de += tabData.HM12_UVB_z(i, j, 0) * ss_factor;
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+                    if (flags.include_photoionization)
                     if (j == 0)
                         de += UV_background_G0 * elements[i].G0_photo_rate;
 
@@ -849,14 +859,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         de += recombination_table[i][j] * ne;
 
                     // Cosmic ray ionization
+                    if (flags.include_cosmic_ray_ionization) {
                     if (j < (n_ions - 1))
                         de += tabData.cosmic_ray_ionization_rates(i,j) * total_cosmic_ray_ionization_rate_loc;
 
                     // Cosmic ray ionization from induced UV
                     if (j == 0)
                         de += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor;
+                    }
 
                     // Recombination on dust
+                    if (flags.include_dust_recombination)
                     if (j > 0)
                         de += dust_recombination_rates(j, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density;
 
@@ -866,6 +879,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     // Note, this was split off due to cross species
                     // coupling. Saves us an extra double loop
                     // Charge exchange
+                    if (flags.include_charge_exchange) {
                     if (i == 1)
                     { // If element is hydrogen
                         // Loop over all other elements
@@ -914,6 +928,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                             cr += charge_transfer_recombination_table[i][j + 1] * n_and_ion_fracs[i].ion_fracs_new[j + 1] * HI_number_density; //! Example:  O+ + H => O + H+
                         }
                     }
+                    } // end charge exchange
 
                     /////////////////////////
                     //       Update        //
@@ -1172,7 +1187,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     int *out_its,
     double *out_ddt,
     int conv_its,
-    int max_its) const
+    int max_its,
+    PhysicsFlags flags) const
 {
 
         // Get the dust to gas mass ratio and the depletion factors
@@ -1209,7 +1225,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         >(
             elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData,
-            conv_its, max_its, &loc_its, &loc_ddt
+            flags, conv_its, max_its, &loc_its, &loc_ddt
         );
 
         if (out_its) *out_its = loc_its;
@@ -1245,5 +1261,6 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
 // Explicit template instantiations
 template class RTZ<false, true, true, false>;
 template class RTZ<true, true, true, false>;
+template class RTZ<true, true, false, false>;
 template class RTZ<false, true, false, false>;
 template class RTZ<false, true, true, true>;

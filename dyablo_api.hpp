@@ -37,7 +37,8 @@ public:
                                      int *out_its = nullptr,
                                      double *out_ddt = nullptr,
                                      int conv_its = 20000,
-                                     int max_its = 40000) const;
+                                     int max_its = 40000,
+                                     PhysicsFlags flags = {}) const;
 
 private:
     // Tabulated rate data (lives on device)

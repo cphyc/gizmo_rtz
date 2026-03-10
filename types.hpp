@@ -15,6 +15,16 @@ typedef struct
     double depletion;
 } Element;
 
+// Runtime physics flags (controls which processes are active in the solver)
+struct PhysicsFlags {
+    bool include_collisional_ionization = true;
+    bool include_photoionization = true;
+    bool include_cosmic_ray_ionization = true;
+    bool include_HM12_UVB = true;
+    bool include_dust_recombination = true;
+    bool include_charge_exchange = true;
+};
+
 
 typedef struct
 {

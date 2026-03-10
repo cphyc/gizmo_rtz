@@ -37,9 +37,9 @@ public:
                                      double& out_mu,
                                      int& out_its,
                                      double& out_ddt,
-                                     int conv_its = 20000,
-                                     int max_its = 40000,
-                                     PhysicsFlags flags = {}) const;
+                                     int conv_its,
+                                     int max_its,
+                                     PhysicsFlags flags) const;
 
 private:
     // Tabulated rate data (lives on device)

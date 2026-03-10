@@ -30,6 +30,7 @@ public:
     void solve_chemistry_and_cooling(double &TK,
                                      const double metallicity,
                                      const double aexp,
+                                     const double total_dt,
                                      std::array<double, MAX_ELEMENTS> &nelements_loc,
                                      std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
                                      double& nCO,

@@ -1263,6 +1263,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     double &TK,
     const double metallicity,
     const double aexp,
+    const double total_dt,
     std::array<double, MAX_ELEMENTS> &nelements_loc,
     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
     double& nCO,
@@ -1303,7 +1304,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         double Tmu_final = get_chemical_eqm<
             constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
         >(
-            elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
+            elements_loc, n_and_ion_fracs_loc, TK, aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
             flags, loc_its, loc_ddt, conv_its, max_its
         );

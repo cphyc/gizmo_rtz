@@ -1180,8 +1180,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // for (int i = 1; i < MAX_ELEMENTS; i++)
     //     free(element_ion_fractions[i]);
 
-    if (out_total_iterations) out_total_iterations = total_iterations;
-    if (out_ddt) out_ddt = ddt;
+    out_total_iterations = total_iterations;
+    out_ddt = ddt;
 
     return Tmu_old;
 }
@@ -1308,8 +1308,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
             flags, loc_its, loc_ddt, conv_its, max_its
         );
 
-        if (out_its) out_its = loc_its;
-        if (out_ddt) out_ddt = loc_ddt;
+        out_its = loc_its;
+        out_ddt = loc_ddt;
         {
             double ne_final = 0.0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
@@ -1318,8 +1318,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
                     ne_final += n_and_ion_fracs_loc[ii].n_element * (jj + 1) * n_and_ion_fracs_loc[ii].ion_fracs[jj + 1];
             }
             double mu_final = get_mu(ne_final, elements_loc, n_and_ion_fracs_loc, false);
-            if (out_mu) out_mu = mu_final;
-            if (out_Tmu) out_Tmu = Tmu_final;
+            out_mu = mu_final;
+            out_Tmu = Tmu_final;
             TK = Tmu_final;
         }
 

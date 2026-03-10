@@ -1191,7 +1191,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
 
 template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
-RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ()
+RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ(std::string path_to_data)
 {
         // initialize data structures
 
@@ -1203,19 +1203,19 @@ RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ()
         initialize_elements(elements);
 
         // Initialize the UV background data
-        load_UVB_data();      // First load the UVB data from files
+        load_UVB_data(path_to_data);      // First load the UVB data from files
 
         // Initialize cosmic ray rates
         initialize_cr_rates();
 
         // Initialize the charge transfer rates
-        load_ct_rates();
+        load_ct_rates(path_to_data);
 
         // Initialize high temperature cooling tables
-        initialize_high_temperature_metal_cooling();
+        initialize_high_temperature_metal_cooling(path_to_data);
 
         // Initialize the low temperature cooling tables
-        init_fine_structure_tables();
+        init_fine_structure_tables(path_to_data);
 
         // Hardcode some stuff for now
         UV_background_G0 = 1.0;
@@ -1244,8 +1244,8 @@ RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ()
         copy_data_2D(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
 
         init_recombination_rates(tabData);
-        init_cloudy_rad_rec_data(tabData);
-        init_collisional_ionization(tabData);
+        init_cloudy_rad_rec_data(path_to_data, tabData);
+        init_collisional_ionization(path_to_data, tabData);
 }
 
 template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>

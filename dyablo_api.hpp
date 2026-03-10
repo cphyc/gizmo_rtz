@@ -20,7 +20,7 @@ template <
 class RTZ {
 public:
     // Constructor: initializes elements, loads all tabulated data
-    RTZ();
+    RTZ(std::string path_to_data);
 
     // Update the UV background for a given redshift
     void need_to_update_UVB(double redshift);

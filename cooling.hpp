@@ -195,7 +195,7 @@ double H2_cooling(double nH, double nH2, double T){
     return fmax(nH2 * (f1 + f2 + f3 + f4), 1e-100);
 }
 
-void initialize_high_temperature_metal_cooling(){
+void initialize_high_temperature_metal_cooling(std::string path_to_data){
     // Cloudy tables of metal line cooling
     // which are valid at high temperature
     FILE *file;
@@ -203,7 +203,7 @@ void initialize_high_temperature_metal_cooling(){
     printf("Initializing high temperature cooling tables\n");
 
     // Temperatures
-    file = fopen("./data/high_T_cooling/temperatures.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/temperatures.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling temperatures file\n");
     }
@@ -226,7 +226,7 @@ void initialize_high_temperature_metal_cooling(){
     }
 
     // Carbon
-    file = fopen("./data/high_T_cooling/CARBON/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/CARBON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling carbon rates\n");
     }
@@ -241,7 +241,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Nitrogen
-    file = fopen("./data/high_T_cooling/NITROGEN/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/NITROGEN/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling nitrogen rates\n");
     }
@@ -256,7 +256,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Oxygen
-    file = fopen("./data/high_T_cooling/OXYGEN/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/OXYGEN/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling oxygen rates\n");
     }
@@ -271,7 +271,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Neon
-    file = fopen("./data/high_T_cooling/NEON/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/NEON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling neon rates\n");
     }
@@ -286,7 +286,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Magnesium
-    file = fopen("./data/high_T_cooling/MAGNESIUM/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/MAGNESIUM/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling magnesium rates\n");
     }
@@ -301,7 +301,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Silicon
-    file = fopen("./data/high_T_cooling/SILICON/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/SILICON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling silicon rates\n");
     }
@@ -316,7 +316,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // Sulfur
-    file = fopen("./data/high_T_cooling/SULPHUR/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/SULPHUR/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling sulphur rates\n");
     }
@@ -331,7 +331,7 @@ void initialize_high_temperature_metal_cooling(){
     fclose(file);
 
     // IRON
-    file = fopen("./data/high_T_cooling/IRON/all_cool.dat", "r");
+    file = fopen((path_to_data + "/data/high_T_cooling/IRON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling iron rates\n");
     }
@@ -447,7 +447,7 @@ double get_high_t_cooling_rates(double T, double ne,
     return fmax(total_metal_cooling_rate * t_scale_fac,1e-100);
 }
 
-void init_fine_structure_tables(){
+void init_fine_structure_tables(std::string path_to_data){
     // Initialization for fine structure cooling tables
     printf("Initializing fine structure cooling tables\n");
 
@@ -462,7 +462,7 @@ void init_fine_structure_tables(){
         "SI_17um_rates.dat", "SI_25um_rates.dat", "SI_56um_rates.dat"
     };
 
-    char fs_cooling_dir[256] = "./data/fine_structure_data/";
+    std::string fs_cooling_dir = path_to_data + "/data/fine_structure_data/";
 
     char file_path[512];
     FILE* file;
@@ -470,28 +470,28 @@ void init_fine_structure_tables(){
 
     // Check that all files exist and concatenate directory and filename
     for (int i = 0; i < N_LINES; i++) {
-        snprintf(file_path, sizeof(file_path), "%s%s", fs_cooling_dir, file_names[i]);
-        file = fopen(file_path, "r");
+        std::string file_path = fs_cooling_dir + file_names[i];
+        file = fopen(file_path.c_str(), "r");
         ok = (file != NULL);
         if (!ok) {
-            printf("Cannot access fine structure cooling file %s\n", file_path);
+            printf("Cannot access fine structure cooling file %s\n", file_path.c_str());
         }
         fclose(file);
     }
 
     // Read in the fine structure data
     for (int j = 0; j < N_LINES; j++) {
-        snprintf(file_path, sizeof(file_path), "%s%s", fs_cooling_dir, file_names[j]);
-        file = fopen(file_path, "r");
+        std::string file_path = fs_cooling_dir + file_names[j];
+        file = fopen(file_path.c_str(), "r");
         if (!file) {
-            printf("Failed to open file %s\n", file_path);
+            printf("Failed to open file %s\n", file_path.c_str());
         }
 
         // Loop over temperatures
         for (int i = 0; i < 160; i++) {
             for (int k = 0; k < 8; k++) {
                 if (fscanf(file, "%lf", &fs_cool_tab[j][i][k]) != 1) {
-                    printf("Error reading data from file %s\n", file_path);
+                    printf("Error reading data from file %s\n", file_path.c_str());
                     fclose(file);
                 }
             }

@@ -13,15 +13,15 @@ void copy1D (double src[N], Kokkos::View<double[N]> &data_d) {
 
     Kokkos::deep_copy(data_d, data_h);
 }
-void init_collisional_ionization(TabulatedData& tabData) {
+void init_collisional_ionization(std::string path_to_data, TabulatedData& tabData) {
     FILE *file;
     double data[27][27][5] = {};
 
     printf("Initializing collisional ionization rates\n");
 
-    file = fopen("./data/collisional_ionization.dat", "r");
+    file = fopen((path_to_data + "/data/collisional_ionization.dat").c_str(), "r");
     if (file == NULL) {
-        fprintf(stderr, "Error: Could not open ./data/collisional_ionization.dat\n");
+        fprintf(stderr, "Error: Could not open %s/data/collisional_ionization.dat\n", path_to_data);
         return;
     }
 

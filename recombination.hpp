@@ -595,15 +595,15 @@ void init_recombination_rates(TabulatedData &tabData) {
     copy2D(DR_rates_alt_iron, tabData.DR_rates_alt_iron);
 }
 
-void init_cloudy_rad_rec_data(TabulatedData &tabData) {
+void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) {
     FILE *file;
     int i, j;
     double help[9];
 
     printf("loading rec data\n");
-    file = fopen("./data/rad_rec.dat", "r");
+    file = fopen((path_to_data + "/data/rad_rec.dat").c_str(), "r");
     if (file == NULL) {
-        fprintf(stderr, "Error: Could not open ./data/rad_rec.dat\n");
+        fprintf(stderr, "Error: Could not open %s/data/rad_rec.dat\n", path_to_data);
         return;
     }
 

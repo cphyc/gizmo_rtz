@@ -9,14 +9,14 @@
 double CTRecomb[6][4][31];
 double CTIon[7][3][31];
 
-void load_ct_rates(){
+void load_ct_rates(std::string path_to_data){
     // Load the charge transfer ionization
     // and recombination rates from file
 
     FILE *file;
 
     // Ionization
-    file = fopen("./data/charge_transfer/ct_ionization.dat", "r");
+    file = fopen((path_to_data + "/data/charge_transfer/ct_ionization.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open charge transfer ionization file\n");
     }
@@ -40,7 +40,7 @@ void load_ct_rates(){
     }
 
     // Ionization
-    file = fopen("./data/charge_transfer/ct_recombination.dat", "r");
+    file = fopen((path_to_data + "/data/charge_transfer/ct_recombination.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open charge transfer ionization file\n");
     }

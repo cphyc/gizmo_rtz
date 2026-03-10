@@ -414,8 +414,8 @@ double get_high_t_cooling_rates(double T, double ne,
     // Prepare for 1D interpolation
     int idx_low = (int)floor((log_T - t_min)/dt);
 
-	// TODO: check this is working on a GPU
-    double frac_high = (log_T - high_t_cooling_temp[idx_low]) / (high_t_cooling_temp[idx_low+1] - high_t_cooling_temp[idx_low]);
+	// Uniform grid: high_t_cooling_temp[k] = t_min + k * dt
+    double frac_high = (log_T - (t_min + idx_low * dt)) / dt;
     double frac_low = 1.0 - frac_high;
 
     // Loop over all ions -- not including H and He
@@ -1109,6 +1109,7 @@ double dust_recombination_cooling(double T, double G0, double ne, double f_dg, d
     return dust_recomb_cool;
 }
 
+KOKKOS_INLINE_FUNCTION
 double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp, double nH, double f_dg){
     double dust_hc_const = 1.0E-33; //! For atomic dominated regions
     dust_hc_const += (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
@@ -1136,6 +1137,7 @@ double photoelectric_heating(double T, double G0, double ne, double f_dg, double
     return fmax(HratePE, 1e-100);
 }
 
+KOKKOS_INLINE_FUNCTION
 double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
                           std::array<double, MAX_ELEMENTS>& element_number_densities,

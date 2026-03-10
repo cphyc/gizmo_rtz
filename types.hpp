@@ -2,7 +2,10 @@
 #include <Kokkos_Core.hpp>
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
+#define N_GROUPS 1
+#define N_DIM 3
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
+using Array2D_RT = std::array<std::array<double, N_GROUPS>, N_DIM>;
 
 typedef struct
 {
@@ -139,5 +142,7 @@ typedef struct
     // Verner cross sections
     Kokkos::View<double[27][27][9]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
     Kokkos::View<double[27][27][7][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
+
+    // TODO(code): add cs_ph here
 
 } TabulatedData;

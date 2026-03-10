@@ -1365,11 +1365,12 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
     return ct_hc_rate;
 }
 KOKKOS_FUNCTION
-double local_photoheating(double *dNp, int nGroups, double x_e,
-                          double *element_number_densities,
-                          int *element_number_ions,
+double local_photoheating(std::array<double, N_GROUPS>& dNp, 
+                          int nGroups, double x_e,
+                          std::array<double, MAX_ELEMENTS>& element_number_densities,
+                          std::array<int, MAX_ELEMENTS>& element_number_ions,
                           Array2D& element_ion_fractions,
-                          double ***PHrate) {
+                          const TabulatedData& tabData) {
     double rate = 0.0;
     for (int ii = 1; ii < 27; ii++) {
         double n_element = element_number_densities[ii];
@@ -1378,7 +1379,7 @@ double local_photoheating(double *dNp, int nGroups, double x_e,
         for (int jj = 0; jj < n_ions - 1; jj++) {
             for (int kk = 0; kk < nGroups - 1; kk++) {
                 rate += dNp[kk] * element_number_densities[ii]
-                       * element_ion_fractions[ii][jj] * PHrate[kk][ii][jj];
+                       * element_ion_fractions[ii][jj] * tabData.cs_ph(ii,jj,kk,2);
             }
         }
     }
@@ -1409,6 +1410,7 @@ double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double
 KOKKOS_FUNCTION
 double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEMENTS>& element_number_densities, 
                    std::array<int, MAX_ELEMENTS>& element_number_ions, Array2D& element_ion_fractions,
+                   std::array<double, N_GROUPS>& dNp,
                    double nCO,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
@@ -1426,6 +1428,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     element_number_densities --> vector with element number densities [cm^-3]
     element_number_ions --> vector with number of ions to compute
     element_ion_fractions --> 2D array with ion fractions
+    dNp --> photon number densities in each group
     G0 --> habing band radiation field (MW units)
     f_dg --> dust to gas mass ratio normalized by MW value
     xe --> electron fraction i.e. ne / (rho/mH)
@@ -1649,6 +1652,8 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
                                                     element_ion_fractions,
                                                     tabData);
 	}
+
+    // TODO(code): call local photoheating
 
     // Sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling + CO_cooling;

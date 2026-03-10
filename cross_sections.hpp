@@ -21,6 +21,7 @@ void initialize_cross_sections(TabulatedData &tabData) {
     Kokkos::deep_copy(h_nl, -999.0);
 
     // 3. Load Total Cross Sections
+    // TODO(code): generalize location of data files
     std::ifstream file_tot("./data/verner_cross_sections/phfit_tot.dat");
     int i1, i2;
     double x1, x2, x3, x4, x5, x6, x7, x8, x9;
@@ -41,6 +42,7 @@ void initialize_cross_sections(TabulatedData &tabData) {
     file_tot.close();
 
     // 4. Load n,l-resolved Cross Sections
+    // TODO(code): generalize location of data files
     std::ifstream file_nl("./data/verner_cross_sections/phfit.dat");
     int a, b, c, d;
     double nx1, nx2, nx3, nx4, nx5, nx6;
@@ -318,6 +320,7 @@ double e_bar(double E0, double E1, double T){
     return (numerator / denominator) / EV_2_ERG;
 }
 
+// TODO(code): Declate the 4D array and then copy to the tabdata
 void update_cross_sections(double T){
     // Updates the cross sections for each element and group
     // TODO(code): update C_CGS with the reduced speed of light if needed
@@ -358,7 +361,6 @@ void update_cross_sections(double T){
         cs_ph[1][2][i][1] = sigma_E(group_E_min[i], group_E_max[i], T, 1, 2); // cm^3 / s
         cs_ph[1][2][i][2] = (cs_ph[1][2][i][1] * group_energy) - (cs_ph[1][2][i][0] * verner_cross_sections.E_th[1][2]);
         cs_ph[1][2][i][2] = fmax(cs_ph[1][2][i][2],0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
-
 
     } // End loop over photon groups
 }

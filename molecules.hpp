@@ -142,7 +142,7 @@ double comp_SH2(double nH2, double dx_SS) {
 }
 
 KOKKOS_INLINE_FUNCTION
-double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO, double n){
+double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO){
 
     //! see glover 2012
     double k0 = 5.E-16; //! cm^3 s^-1
@@ -152,10 +152,10 @@ double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO, 
     double gammaCHx_cr = 8.88E-15 * (xi_cr_H2 / 1E-16); //! Cosmic rays
     double gammaCHx = (1.41E-10 * G0) + gammaCHx_cr;
 
-    double beta = k1 * xO/(k1*xO + gammaCHx/n);
+    double beta = k1 * xO/(k1*xO + gammaCHx/(nH2+1e-40));
     double formation_rate = k0 * nCII * nH2 * beta;
 
-    return formation_rate;
+    return fmax(formation_rate,1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -166,5 +166,98 @@ double beta_CO(double G0, double xi_cr_H2){
 
     double destruction_rate = gammaCO + gammaCO_cr;
 
-    return destruction_rate;
+    return fmax(destruction_rate,1e-100);
+}
+
+// sco_table has 52 entries
+constexpr double sco_col1[52] = {
+    1.000e+00, 1.000e+12, 1.650e+12, 2.995e+12, 5.979e+12, 1.313e+13,
+    3.172e+13, 8.429e+13, 2.464e+14, 7.923e+14, 1.670e+15, 2.595e+15,
+    4.435e+15, 6.008e+15, 8.952e+15, 1.334e+16, 1.661e+16, 2.274e+16,
+    3.115e+16, 4.266e+16, 5.843e+16, 8.002e+16, 1.096e+17, 1.501e+17,
+    2.055e+17, 2.815e+17, 4.241e+17, 6.389e+17, 9.625e+17, 1.450e+18,
+    2.184e+18, 3.291e+18, 4.124e+18, 5.685e+18, 7.838e+18, 1.080e+19,
+    1.285e+19, 1.681e+19, 2.199e+19, 2.538e+19, 3.222e+19, 4.091e+19,
+    5.193e+19, 5.893e+19, 7.356e+19, 8.269e+19, 9.246e+19, 1.031e+20,
+    1.148e+20, 1.277e+20, 1.419e+20, 1.578e+20
+};
+
+constexpr double sco_col2[52] = {
+    1.000e+00, 9.990e-01, 9.981e-01, 9.961e-01, 9.912e-01, 9.815e-01,
+    9.601e-01, 9.113e-01, 8.094e-01, 6.284e-01, 4.808e-01, 3.889e-01,
+    2.827e-01, 2.293e-01, 1.695e-01, 1.224e-01, 1.017e-01, 7.764e-02,
+    5.931e-02, 4.546e-02, 3.506e-02, 2.728e-02, 2.143e-02, 1.700e-02,
+    1.360e-02, 1.094e-02, 8.273e-03, 6.283e-03, 4.773e-03, 3.611e-03,
+    2.704e-03, 1.986e-03, 1.657e-03, 1.258e-03, 9.332e-04, 6.745e-04,
+    5.596e-04, 4.123e-04, 2.982e-04, 2.490e-04, 1.827e-04, 1.324e-04,
+    9.473e-05, 7.891e-05, 5.668e-05, 4.732e-05, 3.967e-05, 3.327e-05,
+    2.788e-05, 2.331e-05, 1.944e-05, 1.619e-05
+};
+
+// sh2_table has 43 entries
+constexpr double sh2_col1[43] = {
+    1.000e+00, 2.666e+13, 3.801e+14, 6.634e+15, 8.829e+16, 9.268e+17,
+    1.007e+18, 2.021e+18, 3.036e+18, 4.051e+18, 5.066e+18, 6.082e+18,
+    7.097e+18, 8.112e+18, 9.341e+18, 1.014e+19, 2.030e+19, 3.045e+19,
+    4.061e+19, 5.076e+19, 6.092e+19, 7.107e+19, 8.123e+19, 9.353e+19,
+    1.015e+20, 2.031e+20, 3.047e+20, 4.062e+20, 5.078e+20, 6.094e+20,
+    7.109e+20, 8.125e+20, 9.355e+20, 1.016e+21, 2.031e+21, 3.047e+21,
+    4.063e+21, 5.078e+21, 6.094e+21, 7.110e+21, 8.125e+21, 9.355e+21,
+    1.016e+22
+};
+
+constexpr double sh2_col2[43] = {
+    1.000e+00, 9.999e-01, 9.893e-01, 9.678e-01, 9.465e-01, 9.137e-01,
+    9.121e-01, 8.966e-01, 8.862e-01, 8.781e-01, 8.716e-01, 8.660e-01,
+    8.612e-01, 8.569e-01, 8.524e-01, 8.497e-01, 8.262e-01, 8.118e-01,
+    8.011e-01, 7.921e-01, 7.841e-01, 7.769e-01, 7.702e-01, 7.626e-01,
+    7.579e-01, 7.094e-01, 6.712e-01, 6.378e-01, 6.074e-01, 5.791e-01,
+    5.524e-01, 5.271e-01, 4.977e-01, 4.793e-01, 2.837e-01, 1.526e-01,
+    7.774e-02, 3.952e-02, 2.093e-02, 1.199e-02, 7.666e-03, 5.333e-03,
+    4.666e-03
+};
+
+KOKKOS_INLINE_FUNCTION
+double comp_SCO(double nco_mol, double nh2, double dx_SS) {
+    double ss_factor = 1.0;
+
+    // CO self-shielding
+    double effcNCO = fmax(nco_mol*dx_SS, sco_col1[1]);
+    if (effcNCO >= 1.578e+20) {
+        ss_factor *= 1.619e-05;
+    } else {
+        int idxCO = 0;
+        for (int i=0; i<51; i++) {
+            if (effcNCO >= sco_col1[i]) idxCO = i;
+        }
+
+        double logeffcNCO = log10(effcNCO);
+        double logsCO = log10(sco_col2[idxCO])
+                        + (log10(sco_col2[idxCO+1]) - log10(sco_col2[idxCO]))
+                        * (logeffcNCO - log10(sco_col1[idxCO]))
+                        / (log10(sco_col1[idxCO+1]) - log10(sco_col1[idxCO]));
+
+        ss_factor *= pow(10.0,logsCO);
+    }
+
+    // H2 shielding of CO
+    double effcNH2 = fmax(nh2*dx_SS, sh2_col1[1]);
+    if (effcNH2 >= 1.016e+22) {
+        ss_factor *= 4.666e-03;
+    } else {
+        int idxH2 = 0;
+        for (int i=1; i<42; i++) {
+            if (effcNH2 >= sh2_col1[i]) idxH2 = i;
+        }
+
+        double logeffcNH2 = log10(effcNH2);
+        double logsH2 = log10(sh2_col2[idxH2])
+                        + (log10(sh2_col2[idxH2+1]) - log10(sh2_col2[idxH2]))
+                        * (logeffcNH2 - log10(sh2_col1[idxH2]))
+                        / (log10(sh2_col1[idxH2+1]) - log10(sh2_col1[idxH2]));
+
+        ss_factor *= pow(10.0,logsH2);
+    }
+
+    return ss_factor;
 }

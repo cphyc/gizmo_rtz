@@ -192,24 +192,24 @@ double get_dust_mass_and_depletion(
     double xs = 8.69;
     double x, y;
 
-    // Compute x (log-scale oxygen abundance proxy, equivalent to 12+log(O/H))
-    x = 8.69 + log10(metallicity);
-    x = fmax(x, 5.0); // Mild extrapolation floor (matches reference)
+    // Compute loc_z = 12 + log10(O_solar * Z / H_solar), matching reference exactly
+    double loc_z = 12.0 + log10(elements[8].z_solar * metallicity / (elements[1].z_solar + 1E-20));
+    x = fmax(loc_z, 5.0);
 
     // Determine y (gas-to-dust mass ratio)
-    if (x > xt)
+    if (loc_z > xt)
     {
-        y = a + (aH * (xs - x));
+        y = a + aH * (xs - x);
     }
     else
     {
-        y = b + (aL * (xs - x));
+        y = b + aL * (xs - x);
     }
 
-    y = pow(10.0, y); // Convert to actual ratio
+    double G2D = pow(10.0, y);
+    double G2D_sol = pow(10.0, a);
 
-    // Set the depletion factors
-    double y_ratio = fmin(1.0, pow(10.0, a) / y);
+    double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
 
     for (int i = 1; i < MAX_ELEMENTS; i++)
     {
@@ -496,7 +496,10 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     int n_ions; // Number of ions --> reset per element
 
     // Self-shielding
-    double ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element / 1E-2);
+    double ss_factor = 1.0;
+    if (flags.include_self_shielding) {
+        ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element / 1E-2);
+    }
 
     // Cooling
     double cooling_rate = 0.0;
@@ -808,9 +811,9 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         double tot_O = n_and_ion_fracs[8].n_element_new - delta_CO;
                         for (int ii=0; ii<elements[8].n_ions; ii++) {
                             if (ii != 0) {
-                                n_and_ion_fracs[8].ion_fracs_new[ii] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[ii] / tot_O;
+                                n_and_ion_fracs[8].ion_fracs[ii] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[ii] / tot_O;
                             } else {
-                                n_and_ion_fracs[8].ion_fracs_new[ii] = nOI_new / tot_O;
+                                n_and_ion_fracs[8].ion_fracs[ii] = nOI_new / tot_O;
                             }
                         }
 
@@ -963,7 +966,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                             // Loop over all other ionization states
                             for (int jj = 0; jj < elements[ii].n_ions; jj++)
                             {
-                                double paired_ion_number_density = n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element;
+                                double paired_ion_number_density = n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element_new;
                                 if (j == 0)
                                 {                                                                                                                       // H
                                     cr += charge_transfer_ionization_table[ii][jj] * n_and_ion_fracs[i].ion_fracs_new[j + 1] * paired_ion_number_density; //! Example:  O + H+ => O+ + H
@@ -979,8 +982,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     }
                     else
                     { // All other elements
-                        double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element;
-                        double HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element;
+                        double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new;
+                        double HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element_new;
 
                         if (j > 0)
                         {
@@ -1014,8 +1017,10 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     ne = get_ne(elements, n_and_ion_fracs, true);
                     xe = ne / n_and_ion_fracs[1].n_element_new;
 
-                    phi_s = secondary_cr_rates(xe);
-                    total_cosmic_ray_ionization_rate_loc = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
+                    if (flags.include_cosmic_ray_ionization) {
+                        phi_s = secondary_cr_rates(xe);
+                        total_cosmic_ray_ionization_rate_loc = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
+                    }
 
                     // Update mu and T --> only H and He (others don't matter)
                     if (i < 3) {
@@ -1258,7 +1263,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     double &TK,
     const double metallicity,
     const double aexp,
-    const std::array<double, MAX_ELEMENTS> &nelements_loc,
+    std::array<double, MAX_ELEMENTS> &nelements_loc,
     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
     double& nCO,
     double *out_Tmu,
@@ -1269,10 +1274,6 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     int max_its,
     PhysicsFlags flags) const
 {
-
-        // Get the dust to gas mass ratio and the depletion factors
-        // TODO: get dust mass and depletion
-        // double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
         std::array<Element, MAX_ELEMENTS> elements_loc;
         initialize_elements(elements_loc);
@@ -1328,6 +1329,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
             if (elements_loc[ii].atomic_number < 1) continue;
+
+            nelements_loc[ii] = n_and_ion_fracs_loc[ii].n_element;
 
             for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
             {

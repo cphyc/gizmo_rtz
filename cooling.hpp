@@ -1385,9 +1385,31 @@ double local_photoheating(double *dNp, int nGroups, double x_e,
     return fmax(rate, 1.e-100);
 }
 
+KOKKOS_INLINE_FUNCTION
+double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double T) {
+    double T_pivot = 3080.0;
+    double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / n;
+
+    // CO Rotational cooling
+    double rot_numerator = n * nCO * 4.0 * pow(KB * T, 2.0) * 9.7e-8;
+    double rot_denominator = n * 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
+    double rot = rot_numerator / rot_denominator;
+
+    // CO Vibrational cooling (H2 collisions)
+    double vib_H2 = nH2 * nCO * T_pivot * KB * 4.3e-14 * T * exp(-pow(3.14e5 / T, 0.333)) * exp(-T_pivot / T);
+
+    // CO Vibrational cooling (HI collisions)
+    double vib_H = nHI * nCO * T_pivot * KB * 3.0e-12 * sqrt(T) * exp(-pow(2000.0 / T, 3.43)) * exp(-T_pivot / T);
+
+    double rate = rot + vib_H2 + vib_H;
+
+    return fmax(rate,1e-100);
+}
+
 KOKKOS_FUNCTION
 double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEMENTS>& element_number_densities, 
                    std::array<int, MAX_ELEMENTS>& element_number_ions, Array2D& element_ion_fractions,
+                   double nCO,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
                    bool rtz_include_photoionization,
@@ -1579,7 +1601,10 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     double dust_cooling = 0.0;
     dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, element_number_densities[1]);
     dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, element_number_densities[1], f_dg);
-    
+
+    // CO cooling
+    double CO_cooling = CO_cooling_koyama_00(nH, nH2, nH_I, nCO, T);
+
     // Photoelectric heating --> note factor of 1.7 is because IUV
     double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
     // double photoelectric_heat = photoelectric_heating_WD01(T, G0, ne, f_dg, element_number_densities[1]);
@@ -1626,7 +1651,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
 	}
 
     // Sum all of the cooling rates
-    double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling;
+    double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling + CO_cooling;
 
     // Sum all of the heating rates
     double total_heating = (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat + charge_transfer_heat_cool);

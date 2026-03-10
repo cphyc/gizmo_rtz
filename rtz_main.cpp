@@ -169,7 +169,7 @@ static int run_ism_test()
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
         fprintf(stderr, "step %d/%d rho=%e TK=%e its=%d\n", i+1, NT, rho, r.T_actual, r.its);
-        printf("%e %e %e %e %d %e %e %e\n",
+        printf("%.15e %.15e %.15e %.15e %d %.15e %.15e %.15e\n",
                r.nH, r.T_actual, r.Tmu, r.mu, r.its,
                r.n_C, r.nCO, r.ddt);
     }

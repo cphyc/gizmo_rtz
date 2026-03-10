@@ -6,23 +6,15 @@ import numpy as np
 
 def load_data(path):
     """Load space-separated output file, skipping non-numeric header lines."""
+    from io import StringIO
     lines = []
     with open(path) as f:
         for line in f:
             line = line.strip()
-            if not line or not line[0].isdigit() and line[0] != '-':
+            if not line or (not line[0].isdigit() and line[0] != '-'):
                 continue
             lines.append(line)
-    # columns: nH T_actual T_mu mu iterations xHI xHII xH2 ddt
-    data = np.loadtxt(lines, dtype=str)
-    n = data.shape[0]
-    result = np.zeros((n, 9))
-    for i in range(9):
-        if i == 4:  # iterations column is int
-            result[:, i] = data[:, i].astype(float)
-        else:
-            result[:, i] = data[:, i].astype(float)
-    return result
+    return np.loadtxt(StringIO("\n".join(lines)))
 
 
 def main():
@@ -38,9 +30,17 @@ def main():
         print(f"FAIL: Row count mismatch: golden={golden.shape[0]} test={test.shape[0]}")
         sys.exit(1)
 
-    col_names = ["nH", "T", "T_mu", "mu", "iterations", "xHI", "xHII", "xH2", "ddt"]
-    # Columns to check with relative tolerance
-    check_cols = [0, 1, 2, 3, 5, 6, 7]  # skip iterations(4) and ddt(8)
+    ncols = golden.shape[1]
+    if ncols == 8:
+        col_names = ["nH", "T", "T_mu", "mu", "iterations", "n_C", "nCO", "ddt"]
+        check_cols = [0, 1, 2, 3, 5, 6]  # skip iterations(4) and ddt(7)
+    elif ncols == 9:
+        col_names = ["nH", "T", "T_mu", "mu", "iterations", "xHI", "xHII", "xH2", "ddt"]
+        check_cols = [0, 1, 2, 3, 5, 6, 7]  # skip iterations(4) and ddt(8)
+    else:
+        # Generic: check all columns except the last (ddt) and col 4 (iterations)
+        col_names = [f"col{i}" for i in range(ncols)]
+        check_cols = [i for i in range(ncols) if i != 4 and i != ncols - 1]
     rtol = 1e-4  # relative tolerance
 
     max_rel_errors = {}

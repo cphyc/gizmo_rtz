@@ -23,12 +23,14 @@ struct PhysicsFlags {
     bool include_HM12_UVB = true;
     bool include_dust_recombination = true;
     bool include_charge_exchange = true;
+    bool include_self_shielding = false;
 };
 
 
 typedef struct
 {
     double n_element;
+    double n_element_new;
     std::array<double, MAX_ELEMENTS> ion_fracs;
     std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;

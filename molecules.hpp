@@ -34,11 +34,12 @@ double alpha_H2_prim(double T, double xe, double H2_cosmic_ray_ionization_rate, 
     double k13 = -1.801849334E1 + 2.36085220E0*lnTe - 2.82744300E-1*pow(lnTe,2.) \
                  +1.62331664E-2*pow(lnTe,3.)-3.36501203E-2*pow(lnTe,4.)+1.17832978E-2*pow(lnTe,5.) \
                  -1.65619470E-3*pow(lnTe,6.)+1.06827520E-4*pow(lnTe,7.)-2.63128581E-6*pow(lnTe,8.);
-    k13 = exp(k13);
+    k13 = exp(fmax(k13,-92.0));
 
     // ! H- + H --> H + H + e-
     // ! I think this reaction was broken in glover so I took the results from
     // ! https://www.aanda.org/articles/aa/pdf/2016/02/aa27262-15.pdf Table A1
+    // ! Harley added the fudge factor for continuity
     double k14 = 1.357772745525155 * 2.5634E-15 * pow(exp(lnTe),1.78186); // Note that T must be in eV for this reaction to make sense
     if (T > 1160.0) {
         k14 = -3.388464953E1 + 1.13944933E0*lnTe - 1.4210135E-1*pow(lnTe,2.) \
@@ -94,78 +95,50 @@ double beta_H2_krome(double T, double nH, double ne, double nH2, double nHe){
     double destruction_rate = 0.0;
 
     // H2 + H --> H + H + H (k18)
-    destruction_rate += (6.67E-12 * sqrt(T) * exp(-1.0 * (1.0 + (63593.0/T)))) * nH;
+    destruction_rate += ((6.67E-12 * sqrt(T) * exp(-1.0 * (1.0 + (63593.0/T)))) * nH);
 
     // H2 + H2 --> H2 + H + H (k19)
-    destruction_rate += (5.996E-30 * pow(T,4.1881) * pow(1.0 + (6.761 * T),-5.6881) * exp(-54657.4/T)) * nH2;
+    destruction_rate += ((5.996E-30 * pow(T,4.1881) * pow(1.0 + (6.761 * T),-5.6881) * exp(-54657.4/T)) * nH2);
 
     // H2 + e- --> H + H + e- (k22)
-    destruction_rate += 4.38E-10 * pow(T,0.35) * exp(-102000.0/T) * ne;
+    destruction_rate += (4.38E-10 * pow(T,0.35) * exp(-102000.0/T) * ne);
 
     // H2 + He --> H + H + He
-    destruction_rate += pow(10.0,-27.029 + (3.801 * log10(T)) - (29487.0/T)) * nHe;
+    destruction_rate += (pow(10.0,-27.029 + (3.801 * log10(T)) - (29487.0/T)) * nHe);
 
     return destruction_rate;
 }
 
 KOKKOS_INLINE_FUNCTION
-double beta_H2(double T, double nH, double xHI, double xH2, double xHe, double ne, double nHI, double nH2, double nHeI){
-    // ! Returns the collisional dissociation rates of H2 for four different
-    // ! reactions [cm3s-1] from Glover & Abel (2008)
-    // ! http://mnras.oxfordjournals.org/content/388/4/1627.full.pdf 
+double comp_Sd(double nHI, double nH2, double dx_SS, double Z) {
+    //   ! Returns the self shielding factor for dust
+    //   ! see section 2.2 http://iopscience.iop.org/0004-637X/697/1/55/pdf/apj_697_1_55.pdf
 
-    double T4 = T / 1E4;
+    double Sdeff = 2.34e-21;    // dust cross section cm^2 ! Updated for bare-gr-s
+    double cNHI = nHI*dx_SS;    // HI column density
+    double cNH2 = nH2*dx_SS;    // H2 column density
 
-    // ! Critical number densities.  See eqns 15, 16, and 17
-    double ncrH =  pow(10.0,3.0 - 0.416*log10(T4) - 0.327*log10(T4)*log10(T4));
-    double ncrH2 = pow(10.0,4.845 - 1.3*log10(T4) + 1.62*log10(T4)*log10(T4));
-    double ncrHe = pow(10.0,5.0792*(1.0 - 1.23E-5*(T - 2000.0)));
+    double ss_factor = exp(-Sdeff*Z*(cNHI + (2.0*cNH2)));
 
-    // ! 1/ncr.  see eqn 14
-    double invncr = (xHI/ncrH) + (xH2/ncrH2) + (xHe/ncrHe);
+    return ss_factor;
+}
 
-    // ! prefactors for LTE and NLTE collision rates  see eqn 13
-    double LTEfac = (nH*invncr)/(1.0 + (nH*invncr));
-    double NLTEfac = 1.0/(1.0 + (nH*invncr));
-    if (ne > nHI) {
-        LTEfac = 1.0;
-        NLTEfac = 0.0;
-    }
+KOKKOS_INLINE_FUNCTION
+double comp_SH2(double nH2, double dx_SS) {
+    // ! Returns the self shielding factor for dust
+    // ! see section 2.2 http://iopscience.iop.org/0004-637X/697/1/55/pdf/apj_697_1_55.pdf
 
-    // !reaction rates from the appendix:
-    // !H2 + e- --> H + H + e-
-    double k8 = 3.73E-9 * pow(T,0.1121) * exp(-99430.0/T); // ! Glover et al. (2010)
+    double cNH2 = nH2*dx_SS;  // H2 column density
+    double xfac = cNH2/(5e14);
+    double wH2 = 0.2;
 
-    // !H2 + H --> H + H + H
-    double k9 = (6.67E-12)*sqrt(T)*exp(-1.0*(1.0 + (63593.0/T)));
-    double k9L = (3.52E-9)*exp(-43900.0/T);
+    double Sa = (1.0 - wH2)/((1.0 + xfac)*(1.0 + xfac));
+    double Sb = wH2/sqrt(1.0 + xfac);
+    double Sc = exp(-0.00085*sqrt(1.0 + xfac));
 
-    // !H2 + H2 --> H2 + H + H
-    double k10 = ( (5.996E-30*pow(T,4.1881)) / pow(1.0 + 6.761E-6*T,5.6881)) * exp(-54657.4/T);
-    double k10L = (1.3E-9)*exp(-53300.0/T);
+    double ss_factor = Sa + (Sb*Sc);
 
-    // !H2 + He --> H + H + He
-    double k11 = pow(10.0,-27.029 + (3.801*log10(T)) - (29487.0/T));
-    double k11L = pow(10.0,-2.729 - (1.75*log10(T)) - (23474.0/T));
-
-    k8   = fmax(k8, 1E-40);
-    k9   = fmax(k9, 1E-40);
-    k10  = fmax(k10, 1E-40);
-    k11  = fmax(k11, 1E-40);
-    k9L  = fmax(k9L, 1E-40);
-    k10L = fmax(k10L, 1E-40);
-    k11L = fmax(k11L, 1E-40);
-
-    // !Log of all the rates
-    double lk8 = log10(k8);
-    double lk9 = (LTEfac*log10(k9L)) + (NLTEfac*log10(k9));
-    double lk10 = (LTEfac*log10(k10L)) + (NLTEfac*log10(k10));
-    double lk11 = (LTEfac*log10(k11L)) + (NLTEfac*log10(k11));
-
-    double destruction_rate = (ne*pow(10.0,lk8)) + (nHI*pow(10.0,lk9)) + (nH2*pow(10.0,lk10)) + (nHeI*pow(10.0,lk11));
-    destruction_rate = fmax(destruction_rate, 1E-40);
-
-    return destruction_rate;
+    return ss_factor;
 }
 
 KOKKOS_INLINE_FUNCTION

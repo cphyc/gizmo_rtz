@@ -43,6 +43,59 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
     }
 }
 
+// Output record for one step (device → host transfer)
+struct StepResult {
+    double nH, T_actual, Tmu, mu, ddt;
+    double xHI, xHII, xH2;
+    int its;
+};
+
+// Run the solver for one step inside a Kokkos kernel, writing results into views
+template <typename SolverType>
+void solve_one_step(const SolverType &rtz_solver,
+                    Kokkos::View<double[MAX_ELEMENTS]> &d_nel,
+                    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> &d_xions,
+                    Kokkos::View<double[1]> &d_TK,
+                    double metallicity, double aexp, PhysicsFlags flags,
+                    int conv_its, int max_its,
+                    Kokkos::View<StepResult[1]> &d_result)
+{
+    Kokkos::parallel_for("solve_step", 1, KOKKOS_LAMBDA(int) {
+        // Copy views into local arrays
+        std::array<double, MAX_ELEMENTS> nel_loc{};
+        std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc{};
+        for (int i = 0; i < MAX_ELEMENTS; i++) nel_loc[i] = d_nel(i);
+        for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) xions_loc[i] = d_xions(i);
+        double TK = d_TK(0);
+
+        double out_Tmu, out_mu;
+        int out_its;
+        double out_ddt;
+
+        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp,
+                                               nel_loc, xions_loc,
+                                               &out_Tmu, &out_mu,
+                                               &out_its, &out_ddt,
+                                               conv_its, max_its, flags);
+
+        // Write results back to views
+        d_TK(0) = TK;
+        for (int i = 0; i < MAX_ELEMENTS; i++) d_nel(i) = nel_loc[i];
+        for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) d_xions(i) = xions_loc[i];
+
+        d_result(0).nH = nel_loc[1];
+        d_result(0).T_actual = TK * out_mu;
+        d_result(0).Tmu = out_Tmu;
+        d_result(0).mu = out_mu;
+        d_result(0).its = out_its;
+        d_result(0).ddt = out_ddt;
+        d_result(0).xHI = xions_loc[0];
+        d_result(0).xHII = xions_loc[1];
+        d_result(0).xH2 = xions_loc[2];
+    });
+    Kokkos::fence();
+}
+
 static int run_ism_test()
 {
     double redshift = 0.0;
@@ -63,33 +116,46 @@ static int run_ism_test()
     double rho_old = pow(10.0, -2.0);
     setup_elements(elements, nelements_loc, xions_loc, rho_old, metallicity);
 
-    double TK = 1e5;
+    // Device views for mutable state
+    Kokkos::View<double[MAX_ELEMENTS]> d_nel("nel");
+    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> d_xions("xions");
+    Kokkos::View<double[1]> d_TK("TK");
+    Kokkos::View<StepResult[1]> d_result("result");
+
+    // Host mirrors
+    auto h_nel = Kokkos::create_mirror_view(d_nel);
+    auto h_xions = Kokkos::create_mirror_view(d_xions);
+    auto h_TK = Kokkos::create_mirror_view(d_TK);
+    auto h_result = Kokkos::create_mirror_view(d_result);
+
+    for (int i = 0; i < MAX_ELEMENTS; i++) h_nel(i) = nelements_loc[i];
+    for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) h_xions(i) = xions_loc[i];
+    h_TK(0) = 1e5;
+    Kokkos::deep_copy(d_nel, h_nel);
+    Kokkos::deep_copy(d_xions, h_xions);
+    Kokkos::deep_copy(d_TK, h_TK);
 
     for (int i = 0; i < NT; i++) {
         double rho = pow(10.0, -2.0 + (double)i * 7.0 / (NT - 1));
 
+        // Scale densities on host, then copy to device
+        Kokkos::deep_copy(h_nel, d_nel);
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
             if (elements[ii].atomic_number < 1) continue;
-            nelements_loc[ii] *= rho / rho_old;
+            h_nel(ii) *= rho / rho_old;
         }
         rho_old = rho;
+        Kokkos::deep_copy(d_nel, h_nel);
 
-        double out_Tmu, out_mu;
-        int out_its;
-        double out_ddt;
+        solve_one_step(rtz_solver, d_nel, d_xions, d_TK,
+                       metallicity, aexp, flags, 20000, 40000, d_result);
 
-        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp,
-                                               nelements_loc, xions_loc,
-                                               &out_Tmu, &out_mu,
-                                               &out_its, &out_ddt,
-                                               20000, 40000, flags);
-
-        double T_actual = TK * out_mu;
-        fprintf(stderr, "step %d/%d rho=%e TK=%e its=%d\n", i+1, NT, rho, T_actual, out_its);
-
+        Kokkos::deep_copy(h_result, d_result);
+        auto &r = h_result(0);
+        fprintf(stderr, "step %d/%d rho=%e TK=%e its=%d\n", i+1, NT, rho, r.T_actual, r.its);
         printf("%e %e %e %e %d %e %e %e %e\n",
-               nelements_loc[1], T_actual, out_Tmu, out_mu, out_its,
-               xions_loc[0], xions_loc[1], xions_loc[2], out_ddt);
+               r.nH, r.T_actual, r.Tmu, r.mu, r.its,
+               r.xHI, r.xHII, r.xH2, r.ddt);
     }
     return 0;
 }
@@ -99,7 +165,7 @@ static int run_cie_test()
     double redshift = 0.0;
     double aexp = 1.0 / (1.0 + redshift);
     double metallicity = 1E0;
-    int NT = 296;  // match golden reference (truncated at step 296)
+    int NT = 296;
 
     RTZ<true, true, false, false> rtz_solver;
     rtz_solver.need_to_update_UVB(1000.0);
@@ -119,27 +185,35 @@ static int run_cie_test()
     double rho = 1e-2;
     setup_elements(elements, nelements_loc, xions_loc, rho, metallicity);
 
-    double TK = 1e5;
+    // Device views
+    Kokkos::View<double[MAX_ELEMENTS]> d_nel("nel");
+    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> d_xions("xions");
+    Kokkos::View<double[1]> d_TK("TK");
+    Kokkos::View<StepResult[1]> d_result("result");
+
+    auto h_nel = Kokkos::create_mirror_view(d_nel);
+    auto h_xions = Kokkos::create_mirror_view(d_xions);
+    auto h_TK = Kokkos::create_mirror_view(d_TK);
+    auto h_result = Kokkos::create_mirror_view(d_result);
+
+    for (int i = 0; i < MAX_ELEMENTS; i++) h_nel(i) = nelements_loc[i];
+    for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) h_xions(i) = xions_loc[i];
+    Kokkos::deep_copy(d_nel, h_nel);
+    Kokkos::deep_copy(d_xions, h_xions);
 
     for (int i = 0; i < NT; i++) {
-        TK = pow(10.0, ((double)i / 499.0) * (8.0 - 3.0) + 3.0);
+        h_TK(0) = pow(10.0, ((double)i / 499.0) * (8.0 - 3.0) + 3.0);
+        Kokkos::deep_copy(d_TK, h_TK);
 
-        double out_Tmu, out_mu;
-        int out_its;
-        double out_ddt;
+        solve_one_step(rtz_solver, d_nel, d_xions, d_TK,
+                       metallicity, aexp, flags, 20000, 40000, d_result);
 
-        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp,
-                                               nelements_loc, xions_loc,
-                                               &out_Tmu, &out_mu,
-                                               &out_its, &out_ddt,
-                                               20000, 40000, flags);
-
-        double T_actual = TK * out_mu;
-        fprintf(stderr, "step %d/%d TK=%e its=%d\n", i+1, NT, T_actual, out_its);
-
+        Kokkos::deep_copy(h_result, d_result);
+        auto &r = h_result(0);
+        fprintf(stderr, "step %d/%d TK=%e its=%d\n", i+1, NT, r.T_actual, r.its);
         printf("%e %e %e %e %d %e %e %e %e\n",
-               nelements_loc[1], T_actual, out_Tmu, out_mu, out_its,
-               xions_loc[0], xions_loc[1], xions_loc[2], out_ddt);
+               r.nH, r.T_actual, r.Tmu, r.mu, r.its,
+               r.xHI, r.xHII, r.xH2, r.ddt);
     }
     return 0;
 }

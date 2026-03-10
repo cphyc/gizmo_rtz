@@ -52,7 +52,11 @@ KOKKOS_INLINE_FUNCTION
 double coll_ion(double T, double dE, double A, double X, double K, double P){
     // Eqn 1 of Voronov 1997
     double U = dE / (T * 8.61732814974056E-05); // #! K --> eV
-    if (U > 80.0) return 0.0;
+
+    if (U > 80.0) {
+        return 0.0;
+    }
+
     return A * (1. + P * sqrt(U)) * pow(U,K) * exp(-U) / (X + U);
 }
 
@@ -73,5 +77,7 @@ double collisional_ionization(double T, int ion, int element_idx, const Tabulate
         col = coll_ion(T, dE, A, X, K, P);
     }
 
-    return fmax(col, 1e-100);
+    col = fmax(col,1e-100);
+
+    return col;
 }

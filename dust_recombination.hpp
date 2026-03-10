@@ -11,20 +11,20 @@ double dust_rec_coefs[27][7] = {
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
     { 45.58E0, 6.089E-3, 1.128E0, 4.331E2, 4.845E-2, 0.8120E0, 1.333E-4 }, // Carbon
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Nitrogen
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Oxygen
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Neon
+    { 2.178E0, 1.732E-7, 2.133E0, 1.029E4, 1.859E-6, 1.0341E0, 3.223E-5, }, // Sodium
     { 2.510E0, 8.116E-8, 1.864E0, 6.170E4, 2.169E-6, 0.9605E0, 7.232E-5 }, // Magnesium
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Aluminum
     { 2.166E0, 5.678E-8, 1.874E0, 4.375E4, 1.635E-6, 0.8964E0, 7.538E-5 }, // Silicon
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
     { 3.064E0, 7.769E-5, 1.319E0, 1.087E2, 3.475E-1, 0.4790E0, 4.689E-2 }, // Sulfur
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Chlorine
+    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // Argon
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
-    { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
+    { 1.636E0, 8.208E-9, 2.289E0, 1.254E5, 1.349E-9, 1.1506E0, 7.204E-4 }, // Calcium
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
     { 0.000E0, 0.000E0,  0.000E0, 0.000E0, 0.000E0,  0.0000E0, 0.000E0 }, // NA
@@ -40,28 +40,24 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
     double dust_rec_rate = 0.0;
     double dr_sf = 1.0;
 
-    // No dust recombombination except for the first ionization state.
+    double loc_T = T;
+
+    // No dust recombination except for the first ionization state.
     // Maybe this will change later...
     if (ion != 1)
     {
         return dust_rec_rate;
     }
 
-    if (T > 1E4)
-    {
+    if (T > 1E4) {
         // No dust recombination at high temperatures
         return dust_rec_rate;
-    } else if (T > 1E3)
-    {
+    } else if (T > 1E3) {
         // Scale down if gtr than 1.d3
         dr_sf = exp(-1.0 * T / 1E3) / exp(-1.0);
     }
 
-    if (T < 10.0)
-    {
-        // No dust recombination at very low temperatures
-        return dust_rec_rate;
-    }
+    loc_T = fmax(T,10.0);
 
     // First check to make sure that all elements are not zero
     double row_sum = 0.0;
@@ -70,13 +66,12 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
     } 
 
     // In this case there is nothing to compute
-    if (row_sum <= 0.0)
-    {
+    if (row_sum <= 0.0) {
         return dust_rec_rate;
     }
 
     // Extra fac on the denominator to avoid divide by zero
-    double phi = (G + 1E-8) * sqrt(T) / (ne + 1E-10); // units K^1/2 cm^3
+    double phi = (G + 1E-8) * sqrt(loc_T) / (ne + 1E-10); // units K^1/2 cm^3
 
     double a1 = dust_rec_coefs(nelem, 1) * pow(phi, dust_rec_coefs(nelem, 2));
     double a2 = dust_rec_coefs(nelem, 3) * pow(T, dust_rec_coefs(nelem, 4));
@@ -90,6 +85,8 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
     //   ! Zubko assumes 3.3e-5 C in PAH / H atom
     //   ! Weingartner & Draine assume 6e-5 C in PAH / H atom
     dust_rec_rate = dust_rec_rate * (3.3E-5 / 6.0E-5);
+
+    dust_rec_rate = fmax(dust_rec_rate,1E-100);
 
     return dust_rec_rate;
 }

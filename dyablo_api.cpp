@@ -624,6 +624,11 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                            primary_cosmic_ray_ionization_rate,
                                            H2_cosmic_ray_ionization_rate,
                                            ss_factor,
+                                           flags.include_photoionization,
+                                           flags.include_cosmic_ray_ionization,
+                                           flags.include_HM12_UVB,
+                                           flags.include_dust_recombination,
+                                           flags.include_charge_exchange,
                                            tabData);
 
                 cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
@@ -636,6 +641,11 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                                  primary_cosmic_ray_ionization_rate,
                                                  H2_cosmic_ray_ionization_rate,
                                                  ss_factor,
+                                                 flags.include_photoionization,
+                                                 flags.include_cosmic_ray_ionization,
+                                                 flags.include_HM12_UVB,
+                                                 flags.include_dust_recombination,
+                                                 flags.include_charge_exchange,
                                                  tabData);
 
                 cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001 * TK) - TK);

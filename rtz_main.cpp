@@ -75,8 +75,8 @@ void solve_one_step(const SolverType &rtz_solver,
 
         rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp,
                                                nel_loc, xions_loc, nCO,
-                                               &out_Tmu, &out_mu,
-                                               &out_its, &out_ddt,
+                                               out_Tmu, out_mu,
+                                               out_its, out_ddt,
                                                conv_its, max_its, flags);
 
         // Write results back to views

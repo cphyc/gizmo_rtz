@@ -446,10 +446,10 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         double& nCO,
                         const TabulatedData& tabData,
                         const PhysicsFlags& flags,
+                        int& out_total_iterations,
+                        double& out_ddt,
                         const int conv_its = 20000,
-                        const int max_its = 40000,
-                        int* out_total_iterations = nullptr,
-                        double* out_ddt = nullptr
+                        const int max_its = 40000
                     )
 {
     static_assert(constant_temperature || ramses_rt_T_scheme,
@@ -1180,8 +1180,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // for (int i = 1; i < MAX_ELEMENTS; i++)
     //     free(element_ion_fractions[i]);
 
-    if (out_total_iterations) *out_total_iterations = total_iterations;
-    if (out_ddt) *out_ddt = ddt;
+    if (out_total_iterations) out_total_iterations = total_iterations;
+    if (out_ddt) out_ddt = ddt;
 
     return Tmu_old;
 }
@@ -1266,10 +1266,10 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     std::array<double, MAX_ELEMENTS> &nelements_loc,
     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
     double& nCO,
-    double *out_Tmu,
-    double *out_mu,
-    int *out_its,
-    double *out_ddt,
+    double& out_Tmu,
+    double& out_mu,
+    int& out_its,
+    double& out_ddt,
     int conv_its,
     int max_its,
     PhysicsFlags flags) const
@@ -1305,11 +1305,11 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         >(
             elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
-            flags, conv_its, max_its, &loc_its, &loc_ddt
+            flags, loc_its, loc_ddt, conv_its, max_its
         );
 
-        if (out_its) *out_its = loc_its;
-        if (out_ddt) *out_ddt = loc_ddt;
+        if (out_its) out_its = loc_its;
+        if (out_ddt) out_ddt = loc_ddt;
         {
             double ne_final = 0.0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
@@ -1318,8 +1318,8 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
                     ne_final += n_and_ion_fracs_loc[ii].n_element * (jj + 1) * n_and_ion_fracs_loc[ii].ion_fracs[jj + 1];
             }
             double mu_final = get_mu(ne_final, elements_loc, n_and_ion_fracs_loc, false);
-            if (out_mu) *out_mu = mu_final;
-            if (out_Tmu) *out_Tmu = Tmu_final;
+            if (out_mu) out_mu = mu_final;
+            if (out_Tmu) out_Tmu = Tmu_final;
             TK = Tmu_final;
         }
 

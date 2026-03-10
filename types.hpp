@@ -26,7 +26,6 @@ struct PhysicsFlags {
     bool include_self_shielding = false;
 };
 
-
 typedef struct
 {
     double n_element;
@@ -136,5 +135,9 @@ typedef struct
 
     // Collisional ionization data (from collisional_ionization.dat)
     Kokkos::View<double[27][27][5]> collisional_ionization_data {"collisional_ionization_data"};
+
+    // Verner cross sections
+    Kokkos::View<double[27][27][9]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
+    Kokkos::View<double[27][27][7][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
 } TabulatedData;

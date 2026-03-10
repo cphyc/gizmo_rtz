@@ -23,6 +23,23 @@ void copy2D (double src[N][M], Kokkos::View<double[N][M]> &data_d) {
 
 void init_recombination_rates(TabulatedData &tabData) {
     // ###
+    // ### Helium
+    // ###
+    double DR_rates_c_helium[3][9] = {
+        { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+        { 1.4170e-03, 2.2350e-04,-2.1850e-05, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+        { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+    };
+    copy2D(DR_rates_c_helium, tabData.DR_rates_c_helium);
+
+    double DR_rates_e_helium[3][9] = {
+        { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+        { 4.6330e+05, 5.5320e+05, 8.8870e+05, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+        { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
+    };
+    copy2D(DR_rates_e_helium, tabData.DR_rates_e_helium);
+
+    // ###
     // ### Carbon
     // ###
     // ###Radiative recombination rates
@@ -578,6 +595,100 @@ void init_recombination_rates(TabulatedData &tabData) {
     copy2D(DR_rates_alt_iron, tabData.DR_rates_alt_iron);
 }
 
+void init_cloudy_rad_rec_data(TabulatedData &tabData) {
+    FILE *file;
+    int i, j;
+    double help[9];
+
+    printf("loading rec data\n");
+    file = fopen("./data/rad_rec.dat", "r");
+    if (file == NULL) {
+        fprintf(stderr, "Error: Could not open ./data/rad_rec.dat\n");
+        return;
+    }
+
+    // Temporary host arrays
+    double rrec[30][30][2] = {};
+    double rnew[30][30][4] = {};
+    double fe[13][3] = {};
+
+    fscanf(file, "%d", &i);
+
+    while (true) {
+        fscanf(file, "%d %d", &i, &j);
+        if (i == -1 && j == -1) break;
+        fscanf(file, "%le %le", &help[0], &help[1]);
+        for (int l = 0; l < 2; ++l)
+            rrec[i][j][l] = help[l];
+    }
+    while (true) {
+        fscanf(file, "%d %d", &i, &j);
+        if (i == -1 && j == -1) break;
+        fscanf(file, "%le %le %le %le", &help[0], &help[1], &help[2], &help[3]);
+        for (int l = 0; l < 4; ++l)
+            rnew[i][j][l] = help[l];
+    }
+    while (true) {
+        fscanf(file, "%d", &i);
+        if (i == -1) break;
+        fscanf(file, "%le %le %le", &help[0], &help[1], &help[2]);
+        for (int l = 0; l < 3; ++l)
+            fe[i][l] = help[l];
+    }
+    fclose(file);
+
+    // Copy to Kokkos views
+    {
+        auto h = Kokkos::create_mirror_view(tabData.rrec);
+        for (int a = 0; a < 30; a++)
+            for (int b = 0; b < 30; b++)
+                for (int c = 0; c < 2; c++)
+                    h(a, b, c) = rrec[a][b][c];
+        Kokkos::deep_copy(tabData.rrec, h);
+    }
+    {
+        auto h = Kokkos::create_mirror_view(tabData.rnew);
+        for (int a = 0; a < 30; a++)
+            for (int b = 0; b < 30; b++)
+                for (int c = 0; c < 4; c++)
+                    h(a, b, c) = rnew[a][b][c];
+        Kokkos::deep_copy(tabData.rnew, h);
+    }
+    {
+        auto h = Kokkos::create_mirror_view(tabData.fe);
+        for (int a = 0; a < 13; a++)
+            for (int b = 0; b < 3; b++)
+                h(a, b) = fe[a][b];
+        Kokkos::deep_copy(tabData.fe, h);
+    }
+}
+
+KOKKOS_INLINE_FUNCTION
+double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
+    double tt;
+    double rate;
+
+    if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
+        (iz == 26 && in_ > 11)) {
+        tt = sqrt(t / tabData.rnew(in_ - 1, iz - 1, 2));
+        rate = tabData.rnew(in_ - 1, iz - 1, 0) /
+               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, iz - 1, 1)) *
+                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, iz - 1, 3)),
+                    1.0 + tabData.rnew(in_ - 1, iz - 1, 1)));
+    } else {
+        tt = t * 1.0e-04;
+        if (iz == 26 && in_ <= 13) {
+            rate = tabData.fe(in_ - 1, 0) /
+                   pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
+        } else {
+            rate = tabData.rrec(in_ - 1, iz - 1, 0) /
+                   pow(tt, tabData.rrec(in_ - 1, iz - 1, 1));
+        }
+    }
+
+    return rate;
+}
+
 template <int N, int M>
 KOKKOS_INLINE_FUNCTION
 double alpha_RR(const double T, const Kokkos::View<double [N][M]>& RR_rates, const int ion){
@@ -620,116 +731,52 @@ KOKKOS_FUNCTION
 double recombination(double T, int ion, int element_idx, const TabulatedData& tabData){
     /*
     recombination rate [cm^3 s^-1]
+    Radiative recombination from Cloudy (rad_rec.dat) + dielectronic recombination
     */
 
     double rec = 0.0;
 
+    // Radiative recombination from Cloudy tables
+    rec = cloudy_rad_rec(element_idx, element_idx - ion + 1, T, tabData);
+
     switch (element_idx) {
         case 1: // hydrogen
-            {
-            // Case B rec. coefficient [cm3 s-1] for HII (Hui&Gnedin'97)-------------
-            double lam = 315614.0 / T;
-            double f = 1.0 + pow((lam/2.74),0.407);
-            rec = 2.753E-14 * pow(lam,1.5) / pow(f,2.242);
             break;
-            }
         case 2: // helium
-            {
-            switch (ion) {
-                case 1: // HeII --> HeI
-                    {
-                    double lam = 570670.0 / T;
-                    rec = 1.26E-14 * pow(lam,0.75);
-                    break;
-                    }
-                case 2: // HeIII --> HeII
-                    {
-                    double lam = 1263030.0 / T;
-                    double f = 1.0 + pow(lam/2.74,0.407);
-                    rec = 5.506E-14 * pow(lam,1.5) / pow(f,2.242);
-                    break;
-                    }
-            }
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_helium, tabData.DR_rates_c_helium, ion);
             break;
-            }
         case 6: // carbon
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_carbon, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_carbon, tabData.DR_rates_c_carbon, ion);
             break;
         case 7: // nitrogen
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_nitrogen, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T,tabData.DR_rates_e_nitrogen, tabData.DR_rates_c_nitrogen, ion);
             break;
         case 8: // oxygen
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_oxygen, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_oxygen, tabData.DR_rates_c_oxygen, ion);
             break;
         case 10: // neon
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_neon, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_neon, tabData.DR_rates_c_neon, ion);
             break;
         case 12: // magnesium
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_magnesium, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_magnesium, tabData.DR_rates_c_magnesium, ion);
             break;
         case 14: // silicon
-            // #! Radiative recombination
-            rec = alpha_RR(T, tabData.RR_rates_silicon, ion);
-
-            // #! Dielectronic recombination
+            // Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_silicon, tabData.DR_rates_c_silicon, ion);
             break;
         case 16: // sulfur
-            if (ion >= 2){
-                // #! Radiative recombination
-                rec = alpha_RR(T, tabData.RR_rates_sulfur, ion);
-
-                // #! Dielectronic recombination
-                rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
-            } else {
-                double A = tabData.RR_rates_alt_sulfur(ion, 0);
-                double B = tabData.RR_rates_alt_sulfur(ion, 1);
-                rec = A * pow(T/1.0E4,-1.0*B);
-
-                A  = tabData.DR_rates_alt_sulfur(ion, 0);
-                B  = tabData.DR_rates_alt_sulfur(ion, 1);
-                double T0 = tabData.DR_rates_alt_sulfur(ion, 2);
-                double T1 = tabData.DR_rates_alt_sulfur(ion, 3);
-                rec += ( A * pow(T,-1.5E0) * exp( -1.0 * T0 / T ) * ( 1.0 + B * exp( -1.0 * T1 / T ) ) );
-            }
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
             break;
         case 26: // iron
-            if (ion >= 12){
-                // #! Radiative recombination
-                rec = alpha_RR(T, tabData.RR_rates_iron, ion);
-
-                // #! Dielectronic recombination
-                rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
-            } else {
-                double A = tabData.RR_rates_alt_iron(ion, 0);
-                double B = tabData.RR_rates_alt_iron(ion, 1);
-                rec = A * pow(T/1.0E4,-1.0*B); 
-
-                // for i in range(4):
-                for (int i = 0; i < 4; i++) {
-                    rec += ( pow(T,-1.5) * ( tabData.DR_rates_alt_iron(ion, i+4) * exp( -1. * tabData.DR_rates_alt_iron(ion, i) / ( 8.617333262145E-5 * T ) ) ) );
-                }
-            }
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
             break;
     }
     return rec;

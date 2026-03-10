@@ -22,9 +22,10 @@ const double MIN_XION = 1E-20;         // Minimum ion fraction
 const double MIN_XION_FLOOR = 1E-10;   // Minimum ion fraction
 const double CONV_ABS = 1E-4;          // Value required for convergence
 const double CONV_ABS_H2_metal = 1E-4; // Value required for convergence
-const double X_PCT_RULE = 1E-2;        // Value required for convergence
-const double X_PCT_RULE_TEMP = 1E-2;   // Value required for convergence
-const double X_PCT_RULE_metal = 1E-2;  // Value required for convergence
+const double X_PCT_RULE = 1E-1;        // Value required for convergence (matches reference)
+const double X_PCT_RULE_TEMP = 1E-1;   // Value required for convergence (matches reference)
+const double X_PCT_RULE_metal = 1E-1;  // Value required for convergence (matches reference)
+const double X_FM = 1E-7;              // Damping value for X_PCT_RULE
 const double T_MIN = 2.725;
 const double T_MAX = 1E9;
 
@@ -32,7 +33,7 @@ const double T_MAX = 1E9;
 
 template<typename T, typename T2>
 void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
-    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++)
     {
         for (uint j = 0; j < dst.extent(1); j++)
@@ -48,7 +49,7 @@ void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
 
 template<typename T, typename T2>
 void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
-    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++)
     {
         for (uint j = 0; j < dst.extent(1); j++)
@@ -61,7 +62,7 @@ void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
 
 template<typename T, typename T2>
 void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
-    typename Kokkos::View<T2>::HostMirror dst_h = Kokkos::create_mirror_view(dst);
+    auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++)
     {
         dst_h(i) = src[i];
@@ -191,8 +192,9 @@ double get_dust_mass_and_depletion(
     double xs = 8.69;
     double x, y;
 
-    // Compute x (metallicity proxy)
+    // Compute x (log-scale oxygen abundance proxy, equivalent to 12+log(O/H))
     x = 8.69 + log10(metallicity);
+    x = fmax(x, 5.0); // Mild extrapolation floor (matches reference)
 
     // Determine y (gas-to-dust mass ratio)
     if (x > xt)
@@ -207,7 +209,7 @@ double get_dust_mass_and_depletion(
     y = pow(10.0, y); // Convert to actual ratio
 
     // Set the depletion factors
-    double y_ratio = fmin(1.0, 162.0 / y);
+    double y_ratio = fmin(1.0, pow(10.0, a) / y);
 
     for (int i = 1; i < MAX_ELEMENTS; i++)
     {
@@ -247,8 +249,8 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
             // fully ionized
             for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
             {
-                n_and_ion_fracs[i].ion_fracs[j] = 0.0;
-                n_and_ion_fracs[i].ion_fracs_new[j] = 0.0;
+                n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
+                n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
             n_and_ion_fracs[i].ion_fracs[elements[i].n_ions - 1] = 1.0;
             n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions - 1] = 1.0;
@@ -257,8 +259,8 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
             // fully neutral
             for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
             {
-                n_and_ion_fracs[i].ion_fracs[j] = 0.0;
-                n_and_ion_fracs[i].ion_fracs_new[j] = 0.0;
+                n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
+                n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
             n_and_ion_fracs[i].ion_fracs[0] = 1.0;
             n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
@@ -267,8 +269,8 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
             // fully molecular or neutral
             for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
             {
-                n_and_ion_fracs[i].ion_fracs[j] = 0.0;
-                n_and_ion_fracs[i].ion_fracs_new[j] = 0.0;
+                n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
+                n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
             if (elements[i].n_mol > 0)
             {
@@ -321,46 +323,72 @@ double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const std::arra
         } // End loop ion fracs
     } // End loop elements
 
-    return fmax(ne, MIN_XION);
+    return ne;
 }
 
 KOKKOS_FUNCTION
-double get_mu(double xHI, double xHII, double xHeII, double xHeIII, double nH, double nHe)
+double get_rho(const std::array<Element, MAX_ELEMENTS>& elements,
+               const std::array<ParticleIonData, MAX_ELEMENTS>& n_and_ion_fracs)
 {
-    /*
-    Calculate the mean molecular weight
-    --> here we ignore metals as their contribution is minimal
-    --> molecular hydrogen is NOT included in this formula
-    */
+    double rho = 0.0;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
+        rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass / elements[i].depletion;
+    }
+    return rho;
+}
 
-    double X = nH / (nH + 4.0 * nHe);          // Hydrogen mass fraction
-    double Y = (4.0 * nHe) / (nH + 4.0 * nHe); // Helium mass fraction
+KOKKOS_FUNCTION
+double get_mu(double ne,
+              const std::array<Element, MAX_ELEMENTS>& elements,
+              const std::array<ParticleIonData, MAX_ELEMENTS>& n_and_ion_fracs,
+              bool use_new)
+{
+    double m_bar = 0.0;
+    double n_hat = 0.0;
 
-    double mu = 1. / (X * (0.5 + 0.5 * xHI + 1.5 * xHII) + 0.25 * Y * (1. + xHeII + 2. * xHeIII));
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
+        int n_ions = elements[i].n_ions;
+        for (int j = 0; j < n_ions; j++) {
+            double frac = use_new ? n_and_ion_fracs[i].ion_fracs_new[j]
+                                  : n_and_ion_fracs[i].ion_fracs[j];
+            m_bar += n_and_ion_fracs[i].n_element * frac * elements[i].atomic_mass;
+            n_hat += n_and_ion_fracs[i].n_element * frac;
+        }
+    }
 
-    return mu;
+    // Electrons
+    n_hat += ne;
+
+    // H2 contribution (index 2 of element 1)
+    {
+        double xH2 = use_new ? n_and_ion_fracs[1].ion_fracs_new[2]
+                              : n_and_ion_fracs[1].ion_fracs[2];
+        m_bar += n_and_ion_fracs[1].n_element * xH2 * elements[1].atomic_mass;
+        n_hat += 0.5 * n_and_ion_fracs[1].n_element * xH2;
+    }
+
+    return m_bar / n_hat;
 }
 
 KOKKOS_INLINE_FUNCTION
 void reduce_xion(std::array<double, MAX_ELEMENTS>& ion_fracs, const int size)
 {
     /*
-    Makes sure that the ion fractions sum to one and that
-    the ion fractions don't go below some minimum value
+    Makes sure that the ion fractions sum to one
     */
     double total_ion_frac = 0.0;
 
     // Loop over all ions and get the total
     for (int i = 0; i < size; i++)
     {
-        ion_fracs[i] = fmax(ion_fracs[i], MIN_XION);
         total_ion_frac += ion_fracs[i];
-        // total_ion_frac += fmax(ion_fracs[i],MIN_XION);
     }
     // Loop again to normalize
     for (int i = 0; i < size; i++)
     {
-        ion_fracs[i] /= total_ion_frac;
+        ion_fracs[i] *= (1.0 / total_ion_frac);
     }
 }
 
@@ -403,7 +431,6 @@ void reduce_xion_max(std::array<double, MAX_ELEMENTS>& ion_fracs, int size)
 template <
     bool constant_temperature,
     bool ramses_rt_T_scheme=true,
-    bool rosenbrock_T_scheme=false,
     bool include_H2=true,
     bool include_CO=false
 >
@@ -414,13 +441,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         const double aexp,
                         const double total_dt,
                         const double UV_background_G0,
-                        const double total_cosmic_ray_ionization_rate,
+                        const double primary_cosmic_ray_ionization_rate,
                         const double dust_to_gas_mass_ratio_over_mw,
-                        const TabulatedData& tabData
+                        const TabulatedData& tabData,
+                        const int conv_its = 20000,
+                        const int max_its = 40000,
+                        int* out_total_iterations = nullptr,
+                        double* out_ddt = nullptr
                     )
 {
-    static_assert(constant_temperature || (ramses_rt_T_scheme ^ rosenbrock_T_scheme),
-                  "Exactly one temperature scheme must be selected");
+    static_assert(constant_temperature || ramses_rt_T_scheme,
+                  "ramses_rt_T_scheme must be true when not constant_temperature");
     /*
     Computes chemical equilibrium
 
@@ -438,23 +469,20 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
     // Convergence variables
     int success_counter = 0;
-    int convergence_counter = 0;
     int total_iterations = 0;
     bool model_converged = false;
-    bool convergence_bool = true;
     bool x_percent_rule = true;
     bool compute_atoms = true;
     bool compute_molecules = true;
     double total_time = 0.E0;
     double residual;
     double ne_residual;
-    double max_residual;
     double max_residual_all;
-    double max_residual_abs;
 
     // Physical variables
     double mu; // Mean molecular weight
-    // double TK; //Actual temperature (not T/mu)
+    double Tmu_old = TK; // T/mu (TK parameter is actually T/mu like the reference)
+    double Tmu_new = TK; // T/mu
     double ne;                      // Electron number density
     double ne_initial;              // Electron number density for convergence
     double cr;                      // Creation rate
@@ -471,11 +499,10 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // Cooling
     double cooling_rate = 0.0;
     double cooling_rate_prime = 0.0;
-    double cooling_rate_2 = 0.0;
 
-    std::array<double, MAX_ELEMENTS> element_number_densities;
-    std::array<int, MAX_ELEMENTS> element_number_ions;
-    Array2D element_ion_fractions;
+    std::array<double, MAX_ELEMENTS> element_number_densities{};
+    std::array<int, MAX_ELEMENTS> element_number_ions{};
+    Array2D element_ion_fractions{};
 
     for (int i = 1; i < MAX_ELEMENTS; i++) {
         element_number_densities[i] = n_and_ion_fracs[i].n_element;
@@ -497,8 +524,6 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             }
         }
     };
-
-    recompute_tables(TK);
 
     // # infinite loop
     while (1)
@@ -526,27 +551,27 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         // Update the electron fraction
         xe = ne / n_and_ion_fracs[1].n_element;
         // Measure mu
-        mu = get_mu(
-            n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
-            n_and_ion_fracs[2].ion_fracs_new[1], n_and_ion_fracs[2].ion_fracs_new[2],
-            n_and_ion_fracs[1].n_element, n_and_ion_fracs[2].n_element);
+        mu = get_mu(ne, elements, n_and_ion_fracs, true);
+        // Get TK from Tmu_old
+        double TK = Tmu_old * mu;
+        if constexpr (constant_temperature) TK = Tmu_old;
+        // Recompute rate tables at current TK
+        recompute_tables(TK);
+
         // Measure phi_s for secondary CR ionization
         phi_s = secondary_cr_rates(xe);
-        // Now calculate the total CR ionization rate
-        double primary_cosmic_ray_ionization_rate = total_cosmic_ray_ionization_rate / (1.0 + phi_s);
+        // Now calculate the total CR ionization rate (primary is constant, total depends on phi_s)
+        double total_cosmic_ray_ionization_rate_loc = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
         double H2_cosmic_ray_ionization_rate = 2.0 * primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
 
         // Set the cosmic ray scale factor -> only needed for secondary UVs
-        cosmic_ray_scale_factor = total_cosmic_ray_ionization_rate / 1E-16;
+        cosmic_ray_scale_factor = H2_cosmic_ray_ionization_rate / 1E-16;
 
         // Initialize the X percent rule
         x_percent_rule = true;
 
         // Convergence
-        convergence_bool = true;
         max_residual_all = -999.;
-        max_residual = -999.;
-        max_residual_abs = -999.;
 
         // Make sure the timestep isn't larger than how long we
         // need to evolve for, otherwise shorten it
@@ -582,9 +607,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
         // Is we use the ramses-rt scheme for the temperature update
         // then we perform the update first
-        double nH = n_and_ion_fracs[1].n_element / 0.76;      // TODO(code): hard coded at 0.76 -- need to calculate
-        double X_nHkb = 1.0 / (1.5 * nH * 1.380649e-16 * mu); // TODO(code): double check mu goes here
-        double TK_new = TK;
+        double loc_rho = get_rho(elements, n_and_ion_fracs);
+        double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
         if constexpr (!constant_temperature)
         {
             if constexpr (ramses_rt_T_scheme)
@@ -597,7 +621,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                            dust_to_gas_mass_ratio_over_mw,
                                            xe,
                                            primary_cosmic_ray_ionization_rate,
-                                           2.0 * primary_cosmic_ray_ionization_rate,
+                                           H2_cosmic_ray_ionization_rate,
                                            ss_factor,
                                            tabData);
 
@@ -609,35 +633,32 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                                  dust_to_gas_mass_ratio_over_mw,
                                                  xe,
                                                  primary_cosmic_ray_ionization_rate,
-                                                 2.0 * primary_cosmic_ray_ionization_rate,
+                                                 H2_cosmic_ray_ionization_rate,
                                                  ss_factor,
                                                  tabData);
 
-                cooling_rate_prime = (cooling_rate - cooling_rate_prime) / (TK - (1.001 * TK));
+                cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001 * TK) - TK);
 
                 cooling_rate *= X_nHkb;
-                cooling_rate_prime *= (-X_nHkb);
+                cooling_rate_prime *= (-X_nHkb) * mu;
 
-                double dUU = fabs(fmax(T_MIN, TK + cooling_rate * ddt) - TK);
+                // Integrate in T/mu space (reference scheme)
+                double dUU = fabs(fmax(T_MIN, Tmu_old + cooling_rate * ddt) - Tmu_old);
+                Tmu_new = fmax(T_MIN, Tmu_old + cooling_rate * ddt / (1. - cooling_rate_prime * ddt));
 
-                // ! New T2 value
-                TK_new = fmax(T_MIN, TK + cooling_rate * ddt / (1. - cooling_rate_prime * ddt));
-                residual = fmax(dUU, fabs(TK_new - TK)) / (TK + T_MIN);
+                TK = Tmu_new * mu;
+                residual = fmax(dUU, fabs(Tmu_new - Tmu_old)) / (Tmu_old + T_MIN);
 
                 // Convergence
                 // X% rule
-                // residual = dTK / TK;
-
-                // Update the max residual
-                max_residual = fmax(max_residual, residual);
 
                 // Max residual over all elements
-                max_residual_all = fmax(max_residual_all, max_residual);
+                max_residual_all = fmax(max_residual_all, residual);
 
-                double max_frac_diff_temp = X_PCT_RULE_TEMP;
-                if (residual > max_frac_diff_temp)
+                if (residual > X_PCT_RULE)
                 {
-                    // printf("Broken temperature %e %e\n",TK,residual);
+                    // Reset the success counter
+                    success_counter = 0;
                     // Declare the x-percent rule was violated
                     x_percent_rule = false;
                     // Dont compute molecules
@@ -689,10 +710,11 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 //                     xH2 * n_and_ion_fracs[1].n_element,   // nH2
                 //                     n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element);  // nHeI
 
-                beta_H2_loc = beta_H2_umist(TK,
+                beta_H2_loc = beta_H2_krome(TK,
                                             n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element,
                                             ne,
-                                            xH2 * n_and_ion_fracs[1].n_element);
+                                            xH2 * n_and_ion_fracs[1].n_element,
+                                            n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element);
 
                 de_H2 += beta_H2_loc;
 
@@ -708,32 +730,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 // Store in the struct
                 n_and_ion_fracs[1].ion_fracs_new[2] = 2.0 * fmin(fmax(xH2, MIN_XION), 0.5);
 
-                // Make sure ions sum to 1
-                int size = elements[1].n_ions + elements[1].n_mol;
-                reduce_xion(n_and_ion_fracs[1].ion_fracs_new, size);
-
-                // Update electron fraction
-                ne = get_ne(elements, n_and_ion_fracs, true);
-
                 // Convergence
                 // X% rule
-                residual = fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / fmax(n_and_ion_fracs[1].ion_fracs[2], MIN_XION_FLOOR);
-
-                // Update the max residual
-                max_residual = fmax(max_residual, residual);
-
-                // Note that this functional format actually helps with convergence at high densities
-                if (fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) > CONV_ABS_H2_metal)
-                {
-                    convergence_bool = false;
-                }
+                residual = fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
 
                 // Max residual over all elements
-                max_residual_all = fmax(max_residual_all, max_residual);
-                max_residual_abs = fmax(max_residual_abs, fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / CONV_ABS);
+                max_residual_all = fmax(max_residual_all, residual);
 
                 if (residual > X_PCT_RULE)
                 {
+                    // Reset the success counter
+                    success_counter = 0;
                     // Declare the x-percent rule was violated
                     x_percent_rule = false;
                     // Break the loop over ions
@@ -745,9 +752,20 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         // CO
         // TODO(code)
 
+        if constexpr (!constant_temperature) {
+            // Update mu and T after molecule update
+            mu = get_mu(ne, elements, n_and_ion_fracs, true);
+            TK = Tmu_new * mu;
+        }
+        if constexpr (constant_temperature) {
+            TK = Tmu_old;
+        }
+
         /////////////////////////
         //        Atoms        //
         /////////////////////////
+        // Update the HI number density in case it has changed e.g. due to charge exchange
+        double dust_effective_number_density = n_and_ion_fracs[1].n_element * dust_to_gas_mass_ratio_over_mw;
         if (compute_atoms)
         {
             // Loop over all elements
@@ -759,15 +777,9 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 // Get the number of ions
                 n_ions = elements[i].n_ions;
 
-                // Initialize the max residual
-                max_residual = 0.E0;
-
                 // Loop over the number of ions
                 for (int j = 0; j < n_ions; j++)
                 {
-
-                    // Update the HI number density in case it has changed e.g. due to charge exchange
-                    double dust_effective_number_density = n_and_ion_fracs[1].n_element * dust_to_gas_mass_ratio_over_mw;
 
                     /////////////////////////
                     //       Creation      //
@@ -799,7 +811,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
                     // Cosmic ray ionization of the less excited state
                     if (j > 0)
-                        cr += tabData.cosmic_ray_ionization_rates(i, j - 1) * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j - 1];
+                        cr += tabData.cosmic_ray_ionization_rates(i, j - 1) * total_cosmic_ray_ionization_rate_loc * n_and_ion_fracs[i].ion_fracs_new[j - 1];
 
                     // Cosmic ray ionization of the less excited state from induced UV
                     if (j == 1)
@@ -838,7 +850,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
                     // Cosmic ray ionization
                     if (j < (n_ions - 1))
-                        de += tabData.cosmic_ray_ionization_rates(i,j) * total_cosmic_ray_ionization_rate;
+                        de += tabData.cosmic_ray_ionization_rates(i,j) * total_cosmic_ray_ionization_rate_loc;
 
                     // Cosmic ray ionization from induced UV
                     if (j == 0)
@@ -910,71 +922,46 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     n_and_ion_fracs[i].ion_fracs_new[j] = (cr * ddt + n_and_ion_fracs[i].ion_fracs_new[j]) / (1.0 + de * ddt);
                     n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j], MIN_XION), 1.0);
 
-                    int size = elements[i].n_ions + elements[i].n_mol;
-                    reduce_xion(n_and_ion_fracs[i].ion_fracs_new, size);
-
                     // Get the new electron fraction
                     ne_initial = ne;
                     ne = get_ne(elements, n_and_ion_fracs, true);
                     xe = ne / n_and_ion_fracs[1].n_element;
+
                     phi_s = secondary_cr_rates(xe);
-                    primary_cosmic_ray_ionization_rate = total_cosmic_ray_ionization_rate / (1.0 + phi_s);
+                    total_cosmic_ray_ionization_rate_loc = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
+
+                    // Update mu and T --> only H and He (others don't matter)
+                    if (i < 3) {
+                        mu = get_mu(ne, elements, n_and_ion_fracs, true);
+                        if constexpr (!constant_temperature) {
+                            TK = Tmu_new * mu;
+                        }
+                    }
 
                     /////////////////////////
                     //     Convergence     //
                     /////////////////////////
                     // X% rule
-                    residual = fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / fmax(n_and_ion_fracs[i].ion_fracs[j], MIN_XION_FLOOR);
+                    residual = fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + X_FM);
 
                     // electron density residual
-                    ne_residual = fabs(ne - ne_initial) / fmax(ne, MIN_XION_FLOOR);
+                    ne_residual = fabs(ne - ne_initial) / (ne + X_FM);
                     residual = fmax(residual, ne_residual);
 
-                    // residual of derivative
-                    double dy_dt = cr - (de * n_and_ion_fracs[i].ion_fracs[j]);
-                    double dx_dy_dt = -1.0 * de;
-                    double first_order_residual = fabs(dx_dy_dt / fmax(dy_dt, 1e-10));
-                    // residual = fmax(residual,first_order_residual);
-
-                    // Check if convergence rule is broken
-                    double CONV_ABS_loc = CONV_ABS;
-                    if (i > 2)
-                    {
-                        CONV_ABS_loc = CONV_ABS_H2_metal;
-                    }
-
-                    // Check if the model has converged
-                    if (fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) > CONV_ABS_loc)
-                    {
-                        convergence_bool = false;
-                    }
-
-                    // Update the max residual
-                    max_residual = fmax(max_residual, residual);
-
                     // Max residual over all elements
-                    max_residual_all = fmax(max_residual_all, max_residual);
-                    max_residual_abs = fmax(max_residual_abs, fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / CONV_ABS_loc);
+                    max_residual_all = fmax(max_residual_all, residual);
 
                     // Check if X percent rule is broken
-                    double loc_X_PCT_RULE = X_PCT_RULE;
-                    if (i > 2)
+                    if (residual > X_PCT_RULE)
                     {
-                        loc_X_PCT_RULE = X_PCT_RULE_metal;
-                    }
-
-                    if (residual > loc_X_PCT_RULE)
-                    {
+                        // Reset the success counter
+                        success_counter = 0;
                         // Declare the x-percent rule was violated
                         x_percent_rule = false;
                         // Break the loop over ions
                         break;
                     }
                 } // End ion loop
-
-                // Make sure ions sum to 1
-                int size = elements[i].n_ions + elements[i].n_mol;
-                reduce_xion(n_and_ion_fracs[i].ion_fracs_new, size);
 
                 // If the X% rule is violated restart with shorter timestep
                 if (!x_percent_rule)
@@ -985,147 +972,68 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     break;
                 }
 
-            } // End element loop
-        }
+                // REDUCE SO THAT IONIZATION FRACTIONS SUM TO 1
+                int size = elements[i].n_ions + elements[i].n_mol;
 
-        // Update temeprature afterwards if using the rosenbrock T scheme
-        if constexpr (!constant_temperature)
-        {
-            if constexpr (rosenbrock_T_scheme)
-            {
-
-                // Update mu
-                mu = get_mu(
-                    n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
-                    n_and_ion_fracs[2].ion_fracs_new[1], n_and_ion_fracs[2].ion_fracs_new[2],
-                    n_and_ion_fracs[1].n_element, n_and_ion_fracs[2].n_element);
-                // Update X_nHkb
-                X_nHkb = 1.0 / (1.5 * nH * 1.380649e-16 * mu); // TODO(code): double check mu goes here
-
-                double rosenbrock_gamma = 0.5;
-                double rosenbrock_h = ddt;
-                double rosenbrock_time = 0.0;
-
-                while (rosenbrock_time < ddt)
-                {
-                    cooling_rate = all_cooling(TK, ne, aexp,
-                                               element_number_densities,
-                                               element_number_ions,
-                                               element_ion_fractions,
-                                               UV_background_G0,
-                                               dust_to_gas_mass_ratio_over_mw,
-                                               xe,
-                                               primary_cosmic_ray_ionization_rate,
-                                               2.0 * primary_cosmic_ray_ionization_rate,
-                                               ss_factor,
-                                               tabData);
-
-                    cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-                                                     element_number_densities,
-                                                     element_number_ions,
-                                                     element_ion_fractions,
-                                                     UV_background_G0,
-                                                     dust_to_gas_mass_ratio_over_mw,
-                                                     xe,
-                                                     primary_cosmic_ray_ionization_rate,
-                                                     2.0 * primary_cosmic_ray_ionization_rate,
-                                                     ss_factor,
-                                                     tabData);
-
-                    cooling_rate_prime = (cooling_rate - cooling_rate_prime) / (TK - (1.001 * TK));
-
-                    cooling_rate *= X_nHkb;
-                    cooling_rate_prime *= (-X_nHkb); // This is now the Jacobian
-
-                    double rosenbrock_M = 1.0 - (rosenbrock_gamma * rosenbrock_h * cooling_rate_prime);
-                    double rosenbrock_k1 = cooling_rate / rosenbrock_M;
-
-                    double T_h_k1 = TK + (rosenbrock_h * rosenbrock_k1);
-
-                    cooling_rate_2 = all_cooling(T_h_k1, ne, aexp,
-                                                 element_number_densities,
-                                                 element_number_ions,
-                                                 element_ion_fractions,
-                                                 UV_background_G0,
-                                                 dust_to_gas_mass_ratio_over_mw,
-                                                 xe,
-                                                 primary_cosmic_ray_ionization_rate,
-                                                 2.0 * primary_cosmic_ray_ionization_rate,
-                                                 ss_factor,
-                                                 tabData);
-
-                    cooling_rate_2 *= X_nHkb;
-
-                    double rosenbrock_k2 = (cooling_rate_2 - (-1.0 * (rosenbrock_M - 1.0) * rosenbrock_k1)) / rosenbrock_M;
-                    TK_new = TK + rosenbrock_h * (rosenbrock_k1 + rosenbrock_k2);
-                    TK_new = fmin(fmax(TK_new, T_MIN), T_MAX);
-
-                    // 10% rule
-                    residual = fabs(TK_new - TK) / (TK + T_MIN);
-
-                    if (residual > 0.05)
-                    {
-                        // Reduce the timestep if needed
-                        // Can be more clever here
-                        rosenbrock_h /= 2.0;
+                if (i <= 2) {
+                    double current_mass_frac = 0.0;
+                    for (int i_tmp = 1; i_tmp < size; i_tmp++) {
+                        current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
                     }
-                    else
-                    {
-                        // Update the time
-                        rosenbrock_time += rosenbrock_h;
 
-                        // Don't overshoot the timestep
-                        if ((rosenbrock_time + rosenbrock_h) > ddt)
-                        {
-                            rosenbrock_h = ddt - rosenbrock_time;
+                    n_and_ion_fracs[i].ion_fracs_new[0] = 0.0;
+
+                    if (current_mass_frac >= 0.0) {
+                        if (current_mass_frac <= 1.0) {
+                            n_and_ion_fracs[i].ion_fracs_new[0] = 1.0 - current_mass_frac;
+                        } else {
+                            for (int i_tmp = 1; i_tmp < size; i_tmp++) {
+                                n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
+                            }
                         }
-                        // Update the temperature
-                        TK = TK_new;
+                    } else {
+                        n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
+                        for (int i_tmp = 1; i_tmp < size; i_tmp++) {
+                            n_and_ion_fracs[i].ion_fracs_new[i_tmp] = 0.0;
+                        }
+                    }
+                } else {
+                    double current_mass_frac = 0.0;
+                    for (int i_tmp = 0; i_tmp < size; i_tmp++) {
+                        current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
+                    }
+
+                    for (int i_tmp = 0; i_tmp < size; i_tmp++) {
+                        n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
                     }
                 }
-                recompute_tables(TK);
-            }
+
+            } // End element loop
         }
 
         /////////////////////////
         //   More Convergence  //
         /////////////////////////
 
-        // Set new dt --> Strategy from Nick Gnedin
+        // Set new dt (matches reference strategy)
         max_residual_all /= (X_PCT_RULE);
-        double max_residual_ddt = fmax(max_residual_all, max_residual_abs * CONV_ABS / 1e-3);
-        if (max_residual_ddt > 1.0)
-        {
-            ddt = 0.9 * ddt / sqrt(2. + max_residual_ddt);
+        if (!x_percent_rule) {
+            ddt /= 2.0;
+        } else {
+            ddt = fmin(0.9 * ddt / pow(0.07 + max_residual_all, 0.3), 2.0 * ddt);
         }
-        else
-        {
-            ddt = 0.9 * ddt / pow(0.07 + max_residual_ddt, 0.3);
-        }
-        ddt = fmin(ddt, 1E11);
-
-        // Check if the model has converged
-        if (convergence_bool)
-        {
-            // If yes, increment counter
-            convergence_counter += 1;
-        }
-        else
-        {
-            // Else reset the counter
-            convergence_counter = 0;
-        }
+        // Density-dependent ddt cap (matches reference exactly)
+        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element) + 10.85714286;
+        ddt = fmin(ddt, pow(10.0, tlimit));
 
         // If all elements completed
         // Loop over elements and ions and
         // set old values to new values
         if (x_percent_rule)
         {
-            // Update temperature
-            TK_new = fmin(fmax(TK_new, T_MIN), T_MAX);
-            if (TK != TK_new) {
-                TK = TK_new;
-                recompute_tables(TK);
+            if constexpr (!constant_temperature) {
+                // Update temperature
+                Tmu_old = fmin(fmax(Tmu_new, T_MIN), T_MAX);
             }
             // Update atomic data
             for (int i = 1; i < MAX_ELEMENTS; i++)
@@ -1144,15 +1052,13 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         // Update the success counter
         success_counter += 1;
 
-        // Check if we are converged
-        if (convergence_counter > 5000)
+        // Check if we are converged (match reference: conv_its successful steps)
+        if (success_counter > conv_its)
         {
-            // printf("#Converged\n");
             model_converged = true;
         }
-        if (success_counter > 1000)
+        if (total_iterations > max_its)
         {
-            // printf("#Success\n");
             model_converged = true;
         }
 
@@ -1176,17 +1082,18 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     // for (int i = 1; i < MAX_ELEMENTS; i++)
     //     free(element_ion_fractions[i]);
 
-    // printf("%e %e %e %e %d %e %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt);
+    if (out_total_iterations) *out_total_iterations = total_iterations;
+    if (out_ddt) *out_ddt = ddt;
 
-    return TK;
+    return Tmu_old;
 }
 
 
 
 
 
-template <bool constant_temperature, bool ramses_rt_T_scheme, bool rosenbrock_T_scheme, bool include_H2, bool include_CO>
-RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::RTZ()
+template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
+RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ()
 {
         // initialize data structures
 
@@ -1239,24 +1146,33 @@ RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, i
         copy_data_2D(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
 
         init_recombination_rates(tabData);
+        init_cloudy_rad_rec_data(tabData);
         init_collisional_ionization(tabData);
 }
 
-template <bool constant_temperature, bool ramses_rt_T_scheme, bool rosenbrock_T_scheme, bool include_H2, bool include_CO>
-void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::need_to_update_UVB(double redshift)
+template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
+void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need_to_update_UVB(double redshift)
 {
     update_UVB(redshift);
+    // Re-copy updated global array into tabData Kokkos view
+    copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
 }
 
 
-template <bool constant_temperature, bool ramses_rt_T_scheme, bool rosenbrock_T_scheme, bool include_H2, bool include_CO>
+template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
 KOKKOS_FUNCTION
-void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(
+void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(
     double &TK,
     const double metallicity,
     const double aexp,
     const std::array<double, MAX_ELEMENTS> &nelements_loc,
-    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc) const
+    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+    double *out_Tmu,
+    double *out_mu,
+    int *out_its,
+    double *out_ddt,
+    int conv_its,
+    int max_its) const
 {
 
         // Get the dust to gas mass ratio and the depletion factors
@@ -1267,7 +1183,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
         initialize_elements(elements_loc);
 
         // solve for ionization balance and cooling rates
-        std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc;
+        std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc{};
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
@@ -1285,12 +1201,31 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
-        TK = get_chemical_eqm<
-            constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO
+        int loc_its = 0;
+        double loc_ddt = 0.0;
+        // get_chemical_eqm returns Tmu (= T/mu), matching the reference
+        double Tmu_final = get_chemical_eqm<
+            constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
         >(
             elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
-            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData
+            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData,
+            conv_its, max_its, &loc_its, &loc_ddt
         );
+
+        if (out_its) *out_its = loc_its;
+        if (out_ddt) *out_ddt = loc_ddt;
+        {
+            double ne_final = 0.0;
+            for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+                if (elements_loc[ii].atomic_number < 1) continue;
+                for (int jj = 0; jj < elements_loc[ii].n_ions - 1; jj++)
+                    ne_final += n_and_ion_fracs_loc[ii].n_element * (jj + 1) * n_and_ion_fracs_loc[ii].ion_fracs[jj + 1];
+            }
+            double mu_final = get_mu(ne_final, elements_loc, n_and_ion_fracs_loc, false);
+            if (out_mu) *out_mu = mu_final;
+            if (out_Tmu) *out_Tmu = Tmu_final;
+            TK = Tmu_final;
+        }
 
         // printf("Final temperature: %e\n", TK);
 
@@ -1308,8 +1243,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_
 }
 
 // Explicit template instantiations
-template class RTZ<false, true, false, true, false>;
-template class RTZ<true, true, false, true, false>;
-template class RTZ<false, false, true, true, false>;
-template class RTZ<false, true, false, false, false>;
-template class RTZ<false, true, false, true, true>;
+template class RTZ<false, true, true, false>;
+template class RTZ<true, true, true, false>;
+template class RTZ<false, true, false, false>;
+template class RTZ<false, true, true, true>;

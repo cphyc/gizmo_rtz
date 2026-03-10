@@ -1,163 +1,99 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
-#include <iostream>
 
 #include "dyablo_api.hpp"
-
 #include <Kokkos_Core.hpp>
 
 int main()
 {
-    double redshift = 1000.0;                          // Redshift of the calculation
-    double aexp = 1.0 / (1.0 + redshift);                   // Scale factor
-    double metallicity = 1E-5;                         // Gas phase metallicity (solar units)
-    constexpr bool include_H2 = true;                            // Whether to include molecular hydrogen
-    constexpr bool include_CO = false;                           // Whether to include CO
-    constexpr bool ramses_rt_T_scheme = true;                    // Whether to use the ramses-rt temperature update
-    constexpr bool rosenbrock_T_scheme = false;                  // Whether to use the rosenbrocat temperature update
-    constexpr bool constant_temperature = false;                 // Whether to compute at constant temperature
+    double redshift = 0.0;
+    double aexp = 1.0 / (1.0 + redshift);
+    double metallicity = 1E-5;
 
-    // // Declare an array (list) of 3 elements (structs)
-    // Element elements[MAX_ELEMENTS];
-    // // ParticleIonData n_and_ion_fracs[MAX_ELEMENTS];
+    constexpr bool include_H2 = true;
+    constexpr bool include_CO = false;
+    constexpr bool ramses_rt_T_scheme = true;
+    constexpr bool constant_temperature = false;
 
-    // // Initialize the elements
-    // initialize_elements(elements);
-
-    // // Get the dust to gas mass ratio and the depletion factors
-    // double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements, metallicity);
-
-    // // Initialize the UV background data
-    // load_UVB_data();      // First load the UVB data from files
-    // update_UVB(redshift); // Interpolate to the correct redshift
-
-    // // Initialize cosmic ray rates
-    // initialize_cr_rates();
-
-    // // Initialize the charge transfer rates
-    // load_ct_rates();
-
-    // // Initialize high temperature cooling tables
-    // initialize_high_temperature_metal_cooling();
-
-    // // Initialize the low temperature cooling tables
-    // init_fine_structure_tables();
+    int NT = 300;
 
     Kokkos::initialize();
-
     {
-        RTZ<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO> rtz_solver;
-        rtz_solver.need_to_update_UVB(redshift);
+        RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO> rtz_solver;
+        // Zero out the UVB (matches reference include_UVB=false)
+        rtz_solver.need_to_update_UVB(1000.0);
 
-        int NT = 48;
-        int Nions = 113;
-        Kokkos::View<double **> xions("xions", NT, Nions);
-        Kokkos::View<double **> nelements("nelements", NT, MAX_ELEMENTS);
+        std::array<Element, MAX_ELEMENTS> elements;
+        initialize_elements(elements);
 
-        std::cout << "Starting chemistry and cooling calculations..." << std::endl;
+        // Update depletion factors based on dust-to-gas ratio BEFORE computing n_element
+        // (matches reference ordering: at low metallicity, depletion → 1.0)
+        {
+            double loc_z = 12.0 + log10(elements[8].z_solar * metallicity / (elements[1].z_solar + 1E-20));
+            double x = fmax(loc_z, 5.0);
+            double y;
+            if (loc_z > 8.10)
+                y = 2.21 + 1.00 * (8.69 - x);
+            else
+                y = 0.96 + 3.10 * (8.69 - x);
+            double G2D = pow(10.0, y);
+            double G2D_sol = pow(10.0, 2.21);
+            double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
+            for (int i = 1; i < MAX_ELEMENTS; i++) {
+                if (elements[i].atomic_number < 1) continue;
+                elements[i].depletion = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
+            }
+        }
 
-        // TabulatedData tabData;
+        // Initial density for first step
+        double rho_old = pow(10.0, -2.0 + 0.0 * 7.0 / (NT - 1));
+        std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs{};
+        initialize_ion_fracs(elements, n_and_ion_fracs, rho_old, metallicity, 2);
 
-        // // HM-related data
-        // copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
-        // copy_data_1D(G0_heating_rates, tabData.G0_heating_rates);
-
-        // // Cosmic ray and dust-related data
-        // copy_data_2D(cosmic_ray_ionization_rates, tabData.cosmic_ray_ionization_rates);
-        // copy_data_1D(cosmic_ray_ionization_rates_induced_UV, tabData.cosmic_ray_ionization_rates_induced_UV);
-        // copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, tabData.cosmic_ray_ionization_rates_induced_UV_heat);
-        // copy_data_2D(dust_rec_coefs, tabData.dust_rec_coefs);
-
-        // // Charge transfer
-        // copy_data_3D(CTRecomb, tabData.CTRecomb);
-        // copy_data_3D(CTIon, tabData.CTIon);
-
-        // // Fine structure cooling
-        // copy_data_3D(fs_cool_tab, tabData.fs_cool_tab);
-
-        // // High-T cooling rates
-        // copy_data_3D(high_t_cooling_rates, tabData.high_t_cooling_rates);
-        // copy_data_2D(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
-
-        // init_recombination_rates(tabData);
-        // init_collisional_ionization(tabData);
-
-
-        Kokkos::parallel_for("Solve rtz", NT, KOKKOS_LAMBDA(const int i) {
-            double TK = 1e6;
-            double rho = pow(10.0, -2 + 4.8 * i / double(NT));
-            // double rho = pow(10.0,-2+((double)i*0.1));
-
-            std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc;
-
-            std::array<Element, MAX_ELEMENTS> elements_loc;
-            // Initialize the elements
-            initialize_elements(elements_loc);
-
-            // Initialize the ion fractions
-            initialize_ion_fracs(elements_loc,n_and_ion_fracs_loc,rho,metallicity,1);
-
-            // get_chemical_eqm<constant_temperature, ramses_rt_T_scheme, rosenbrock_T_scheme, include_H2, include_CO>(elements_loc, n_and_ion_fracs_loc, TK, (1.0/redshift) - 1.0, -1.0, UV_background_G0,
-            //                 generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData);
-
-            // Loop over all elements
-            std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc;
-            std::array<double, MAX_ELEMENTS> nelements_loc;
+        // Flat ion-fraction array persists across steps (carry-over like reference)
+        std::array<double, MAX_ELEMENTS> nelements_loc{};
+        std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc{};
+        {
             int iion = 0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-                if (elements_loc[ii].atomic_number < 1) continue;
-
-                nelements_loc[ii] = n_and_ion_fracs_loc[ii].n_element;
-
-                for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
-                {
-                    xions_loc[iion] = n_and_ion_fracs_loc[ii].ion_fracs[jj];
-                    iion++;
-                }
+                if (elements[ii].atomic_number < 1) continue;
+                nelements_loc[ii] = n_and_ion_fracs[ii].n_element;
+                for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
+                    xions_loc[iion++] = n_and_ion_fracs[ii].ion_fracs[jj];
             }
+        }
 
-            //printf("Density: %e Temperature: %e\n", rho, TK);
+        double TK = 1e5;   // carried over between steps
 
-            rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, nelements_loc, xions_loc);
+        for (int i = 0; i < NT; i++) {
+            double rho = pow(10.0, -2.0 + (double)i * 7.0 / (NT - 1));
 
-            //printf("Density: %e Temperature: %e\n", rho, TK);
-
-            // Copy results back into the Kokkos Views for host retrieval
-            int iion_out = 0;
+            // Scale n_element by rho/rho_old (keep ion fracs unchanged — reference behaviour)
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-                if (elements_loc[ii].atomic_number < 1) continue;
-
-                nelements(i, ii) = nelements_loc[ii];
-
-                for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
-                {
-                    xions(i, iion_out) = xions_loc[iion_out];
-                    iion_out++;
-                }
+                if (elements[ii].atomic_number < 1) continue;
+                nelements_loc[ii] *= rho / rho_old;
             }
+            rho_old = rho;
 
-        });
+            double out_Tmu, out_mu;
+            int out_its;
+            double out_ddt;
 
-        // Copy the data back to the host
-        Kokkos::View<double **>::HostMirror xions_h = Kokkos::create_mirror_view(xions);
-        Kokkos::deep_copy(xions_h, xions);
-        Kokkos::View<double **>::HostMirror nelements_h = Kokkos::create_mirror_view(nelements);
-        Kokkos::deep_copy(nelements_h, nelements);
+            rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp,
+                                                   nelements_loc, xions_loc,
+                                                   &out_Tmu, &out_mu,
+                                                   &out_its, &out_ddt,
+                                                   20000, 40000);
 
-        // Print the data
-        for (int i = 0; i < NT; i++)
-        {
-            printf("%e %e ", -2 + 4.8 * i / double(NT), log10(1e6));
-            for (int j = 0; j < Nions; j++)
-            {
-                printf("%e ", xions_h(i, j));
-            }
-            printf("\n");
+            double T_actual = TK * out_mu;
+            fprintf(stderr, "step %d/%d rho=%e TK=%e its=%d\n", i+1, NT, rho, T_actual, out_its);
+
+            // xHI, xHII, xH2 are the first 3 entries (H is element 1, always first)
+            printf("%e %e %e %e %d %e %e %e %e\n",
+                   nelements_loc[1], T_actual, out_Tmu, out_mu, out_its,
+                   xions_loc[0], xions_loc[1], xions_loc[2], out_ddt);
         }
     }
-
     Kokkos::finalize();
     return 0;
 }

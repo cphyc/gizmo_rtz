@@ -61,7 +61,7 @@ void initialize_cr_rates(){
         cosmic_ray_ionization_rates_induced_UV[i] = 0.0;
     }
 
-    cosmic_ray_ionization_rates_induced_UV[1]  = 4.08e-16; // Hydrogen
+    cosmic_ray_ionization_rates_induced_UV[1]  = 0.00E+00; // Hydrogen
     cosmic_ray_ionization_rates_induced_UV[2]  = 0.00E+00; // Helium  --> ground state too high
     cosmic_ray_ionization_rates_induced_UV[6]  = 2.60E-14; // Carbon
     cosmic_ray_ionization_rates_induced_UV[7]  = 7.34E-17; // Nitrogen
@@ -72,14 +72,14 @@ void initialize_cr_rates(){
     cosmic_ray_ionization_rates_induced_UV[16] = 7.91E-14; // Sulfur
     cosmic_ray_ionization_rates_induced_UV[26] = 4.81E-14; // Iron
 
-    cosmic_ray_ionization_rates_induced_UV_heat[6]  = 0.96; // Carbon
-    cosmic_ray_ionization_rates_induced_UV_heat[7]  = 1.17; // Nitrogen
-    cosmic_ray_ionization_rates_induced_UV_heat[8]  = 1.72; // Oxygen
-    cosmic_ray_ionization_rates_induced_UV_heat[10] = 0.00; // Neon  --> ground state too high
-    cosmic_ray_ionization_rates_induced_UV_heat[12] = 2.55; // Magnesium
-    cosmic_ray_ionization_rates_induced_UV_heat[14] = 2.08; // Silicon
-    cosmic_ray_ionization_rates_induced_UV_heat[16] = 1.32; // Sulfur
-    cosmic_ray_ionization_rates_induced_UV_heat[26] = 2.32; // Iron
+    cosmic_ray_ionization_rates_induced_UV_heat[6]  = 0.8697; // Carbon
+    cosmic_ray_ionization_rates_induced_UV_heat[7]  = 0.2851; // Nitrogen
+    cosmic_ray_ionization_rates_induced_UV_heat[8]  = 0.4766; // Oxygen
+    cosmic_ray_ionization_rates_induced_UV_heat[10] = 0.0000; // Neon  --> ground state too high
+    cosmic_ray_ionization_rates_induced_UV_heat[12] = 1.9733; // Magnesium
+    cosmic_ray_ionization_rates_induced_UV_heat[14] = 2.1836; // Silicon
+    cosmic_ray_ionization_rates_induced_UV_heat[16] = 1.1771; // Sulfur
+    cosmic_ray_ionization_rates_induced_UV_heat[26] = 2.1590; // Iron
 
 }
 

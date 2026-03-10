@@ -38,6 +38,8 @@ typedef struct
     Kokkos::View<double[121][27][27]> high_t_cooling_rates {"high_t_cooling_rates"};
     Kokkos::View<bool[27][27]> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
 
+    Kokkos::View<double[3][9]> DR_rates_c_helium {"DR_rates_c_helium"};
+    Kokkos::View<double[3][9]> DR_rates_e_helium {"DR_rates_e_helium"};
     Kokkos::View<double[7][6]> RR_rates_carbon {"RR_rates_carbon"};
     Kokkos::View<double[7][9]> DR_rates_c_carbon {"DR_rates_c_carbon"};
     Kokkos::View<double[7][9]> DR_rates_e_carbon {"DR_rates_e_carbon"};
@@ -114,5 +116,13 @@ typedef struct
     Kokkos::View<double[26]> X_iron {"X_iron"};
     Kokkos::View<double[26]> K_iron {"K_iron"};
     Kokkos::View<double[26]> P_iron {"P_iron"};
+
+    // Cloudy radiative recombination data (from rad_rec.dat)
+    Kokkos::View<double[30][30][2]> rrec {"rrec"};
+    Kokkos::View<double[30][30][4]> rnew {"rnew"};
+    Kokkos::View<double[13][3]> fe {"fe"};
+
+    // Collisional ionization data (from collisional_ionization.dat)
+    Kokkos::View<double[27][27][5]> collisional_ionization_data {"collisional_ionization_data"};
 
 } TabulatedData;

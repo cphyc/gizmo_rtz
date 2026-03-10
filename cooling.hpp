@@ -25,27 +25,27 @@ double G0_heating_rates[27] = {
     0.0, // 3
     0.0, // 4
     0.0, // 5
-    3.39E-10 * 0.8399 * EV_2_ERG, // 6 - Carbon
+    4.6185e-22, // 6 - Carbon
     0.0, // 7 - Nitrogen
     0.0, // 8 - Oxygen
     0.0, // 9
     0.0, // 10 - Neon
-    0.0, // 11
-    6.59E-11 * 2.0113 * EV_2_ERG, // 12 - Magnesium
-    0.0, // 13
-    4.47E-9 * 1.840 * EV_2_ERG, // 14 - Silicon
+    9.0362e-23, // 11 - Sodium
+    1.2635e-22, // 12 - Magnesium
+    1.0445e-20, // 13 - Aluminum
+    9.8347e-21, // 14 - Silicon
     0.0, // 15
-    1.13E-9 * 1.126 * EV_2_ERG, // 16 - Sulfur
-    0.0, // 17
-    0.0, // 18
+    2.1308e-21, // 16 - Sulfur
+    0.0, // 17 - Chlorine
+    0.0, // 18 - Argon
     0.0, // 19
-    0.0, // 20
+    7.6333e-22, // 20 - Calcium
     0.0, // 21
     0.0, // 22
     0.0, // 23
     0.0, // 24
     0.0, // 25
-    4.71E-10  * 1.924 * EV_2_ERG, // 26 - Iron
+    1.4517e-21 // 26 - Iron
 };
 
 
@@ -56,7 +56,7 @@ double collisional_ionization_cooling_HI(double T){
     double term_2 = 1.0 /(1.0 + sqrt(T/1E5));
     double term_3 = exp(-157809.1/T);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -66,7 +66,7 @@ double collisional_ionization_cooling_HeI(double T){
     double term_2 = 1.0 /(1.0 + sqrt(T/1E5));
     double term_3 = exp(-285335.4/T);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -76,7 +76,7 @@ double collisional_ionization_cooling_HeII(double T){
     double term_2 = 1.0 /(1.0 + sqrt(T/1E5));
     double term_3 = exp(-631515.0/T);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -87,7 +87,7 @@ double recombination_cooling_case_B_HII(double T){
     double term_2 = pow(lam_HI,1.97);
     double term_3 = pow(1.0 + pow(lam_HI/2.25,0.376),-3.72);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -97,7 +97,7 @@ double recombination_cooling_case_B_HeII(double T){
     double term_1 = KB * T * 1.26E-14;
     double term_2 = pow(lam_HeI,0.75);
     double cooling_rate = term_1 * term_2;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -108,7 +108,7 @@ double recombination_cooling_case_B_HeIII(double T){
     double term_2 = pow(lam_HeII,1.97);
     double term_3 = pow(1.0 + pow(lam_HeII/2.25,0.376),-3.72);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 
@@ -119,18 +119,15 @@ double dielectronic_recombination_cooling_HeII(double T){
     double term_2 = exp(-470000.0/T);
     double term_3 = 1.0 + (0.3 * exp(-94000.0/T));
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 
 KOKKOS_INLINE_FUNCTION
 double collisional_excitation_cooling_HI(double T){
-    // From Cen 1992
-    double term_1 = 7.5E-19;
-    double term_2 = 1.0 /(1.0 + sqrt(T/1E5));
-    double term_3 = exp(-118348.0/T);
-    double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    // From Seon 2020
+    double cooling_rate = 4.13e-19 * exp(-117744.0/T);
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -140,14 +137,14 @@ double collisional_excitation_cooling_HeII(double T){
     double term_2 = 1.0 /(1.0 + sqrt(T/1E5));
     double term_3 = exp(-473638.0/T);
     double cooling_rate = term_1 * term_2 * term_3;
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
 double bremmstrahlung(double T){
     // Osterbrock and Ferland 2006
     double cooling_rate = 1.42E-27 * sqrt(T);
-    return cooling_rate;
+    return fmax(cooling_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -186,7 +183,7 @@ double H2_cooling(double nH, double nH2, double T){
     double f4 = 1.7E-23 * (pow(T3,1.50)) * exp(-4.0 / T3);
     f4 = f4 * (((0.45 * x4) / (1.0 + (x4/n4))) + ((0.55 * x4)/(1.0 + (x4/(10.0*n4)))));
 
-    return nH2 * (f1 + f2 + f3 + f4);
+    return fmax(nH2 * (f1 + f2 + f3 + f4), 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -1129,7 +1126,7 @@ double dust_recombination_cooling(double T, double G0, double ne, double f_dg, d
     // Dust recombination cooling
     double beta_drc = 0.74 / pow(T,0.068);
     // double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
-    double dust_recomb_cool = 4.65E-30 * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
+    double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
 
     return dust_recomb_cool;
 }
@@ -1150,7 +1147,7 @@ double dust_recombination_cooling_WD01(double T, double G0, double ne, double f_
 KOKKOS_INLINE_FUNCTION
 double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp, double nH, double f_dg){
     double dust_hc_const = 1.0E-33; //! For atomic dominated regions
-    dust_hc_const =  1.0E-33 + (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
+    dust_hc_const += (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
 
     double T_dust = 16.4 * pow(1.7 * G0,1.0/6.0);
     T_dust = fmax( T_dust, 2.725 * ( (1.0/aexp) - 1.0 ) ); // ! Limit dust temp minimum to CMB temp
@@ -1165,15 +1162,14 @@ double PE_efficiency(double G0, double T, double ne){
     double fact = G0 * sqrt(T) / (ne * phi_pah);
     double PE_efficiency = (4.9E-2/(1.0 + 4E-3 * pow(fact,0.73))) + (3.7E-2 * pow(T/1E4,0.7) / (1.0 + 2E-4 * fact));
     //double PE_efficiency = (4.9E-2/(1.0 + 5.9E-13 * pow(fact,0.73))) + (3.7E-2 * 0.01 * pow(T/1E4,0.7) / (1.0 + 3.4E-4 * fact));
-    return PE_efficiency;
+    return fmax(PE_efficiency, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
 double photoelectric_heating(double T, double G0, double ne, double f_dg, double nH){
     double eps_PE = PE_efficiency(G0, T, ne);
-    // double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
-    double HratePE = 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
-    return HratePE;
+    double HratePE = 1.50 * 1.3E-24 * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
+    return fmax(HratePE, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -1286,12 +1282,13 @@ double photoheating_UVB_G0(double G0,
 
     double heating_rate = 0.0;
 
-    // Loop over all elements
-    for (int i = 1; i < 27; i++) {
+    // Loop over all elements (no need for H and He here)
+    for (int i = 3; i < 27; i++) {
         double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        heating_rate += n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates[i] * G0; // erg/s/cm^3
+        double contrib = n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates(i) * G0;
+        heating_rate += contrib;
     }
 
     return heating_rate;
@@ -1343,7 +1340,7 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
 
     Hrate_H2_form += H2_formation_rate_prim * (E_form1_prim + E_form2_prim) * nH * nH * xHI; // erg/s/cm^3
     
-    return Hrate_H2_pd + Hrate_H2_form + Hrate_H2_pump;
+    return fmax(Hrate_H2_pd + Hrate_H2_form + Hrate_H2_pump, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -1390,7 +1387,7 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
     double loc_nHII = element_number_densities[1] * element_ion_fractions[1][1];
 
     // Helium
-    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * element_number_densities[2] * element_ion_fractions[1][1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
+    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * element_number_densities[2] * element_ion_fractions[2][1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
 
     // Carbon
     ct_hc_rate += charge_transfer_ionization(0, 6, T, tabData) * loc_nHII * element_number_densities[6] * element_ion_fractions[6][0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
@@ -1434,7 +1431,7 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
     // Sulfur
     ct_hc_rate += charge_transfer_recombination(1, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
     ct_hc_rate += charge_transfer_recombination(3, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[15][4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
 
     // Iron
     // Silicon
@@ -1482,9 +1479,6 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     double metal_cool_smooth_f1 = 0.5 * (tanh( (5E-3) * ( T - 1.E4 ) ) + 1.0 );
     double metal_cool_smooth_f2 = 0.5 * (tanh( (5E-3) * ( (-1.0 * T) + 1.E4 ) ) + 1.0 );
 
-    //TODO(code): remove
-    aexp = 1.0;
-
     // Cooling from primordial species
     double cooling_HI = (collisional_ionization_cooling_HI(T) + collisional_excitation_cooling_HI(T)) * ne * nH_I;
     double cooling_HII = recombination_cooling_case_B_HII(T) * ne * nH_II; 
@@ -1493,7 +1487,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     double cooling_HeIII = recombination_cooling_case_B_HeIII(T) * ne * nHe_III;
     double cooling_bremmstrahlung = bremmstrahlung(T) * ne * (nH_II + nHe_II + (4.0 * nHe_III));
     double cooling_compton = compton_cooling(T,aexp) * ne;
-    double cooling_H2 = H2_cooling(nH, nH2, T);
+    double cooling_H2 = H2_cooling(nH_I, nH2, T);
 
     double total_primordial_cooling = cooling_HI \
                                       + cooling_HII \
@@ -1563,11 +1557,11 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         // OIII cooling
         n_ion_fs = element_number_densities[8] * element_ion_fractions[8][2];
         if (n_ion_fs > MIN_COOL_ION) {
-            double cooling_fine_structure_OI = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
+            double cooling_fine_structure_OIII = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
                                                                    nHe_III, z,
                                                                    tabData);
-            total_fine_structure += cooling_fine_structure_OI;
+            total_fine_structure += cooling_fine_structure_OIII;
         }
 
         // NeII cooling

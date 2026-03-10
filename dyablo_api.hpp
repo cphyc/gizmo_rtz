@@ -14,7 +14,6 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
 template <
     bool constant_temperature,
     bool ramses_rt_T_scheme = true,
-    bool rosenbrock_T_scheme = false,
     bool include_H2 = true,
     bool include_CO = false
 >
@@ -32,7 +31,13 @@ public:
                                      const double metallicity,
                                      const double aexp,
                                      const std::array<double, MAX_ELEMENTS> &nelements_loc,
-                                     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc) const;
+                                     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+                                     double *out_Tmu = nullptr,
+                                     double *out_mu = nullptr,
+                                     int *out_its = nullptr,
+                                     double *out_ddt = nullptr,
+                                     int conv_its = 20000,
+                                     int max_its = 40000) const;
 
 private:
     // Tabulated rate data (lives on device)

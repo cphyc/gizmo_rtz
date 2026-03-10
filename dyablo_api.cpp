@@ -443,6 +443,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         const double UV_background_G0,
                         const double primary_cosmic_ray_ionization_rate,
                         const double dust_to_gas_mass_ratio_over_mw,
+                        double& nCO,
                         const TabulatedData& tabData,
                         const PhysicsFlags& flags,
                         const int conv_its = 20000,
@@ -494,8 +495,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
     int n_ions; // Number of ions --> reset per element
 
-    // Self-shielding (use hydrogen = element index 1)
-    double ss_factor = exp(-1.0 * n_and_ion_fracs[1].n_element / 1E-2);
+    // Self-shielding
+    double ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element / 1E-2);
 
     // Cooling
     double cooling_rate = 0.0;
@@ -540,6 +541,8 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             if (elements[i].atomic_number < 1)
                 continue;
 
+            n_and_ion_fracs[i].n_element_new = n_and_ion_fracs[i].n_element;
+
             int size = elements[i].n_ions + elements[i].n_mol;
             for (int j = 0; j < size; j++)
             {
@@ -547,10 +550,12 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             }
         } // End element loop
 
+        double nCO_new = nCO;
+
         // First get the electron number density
         ne = get_ne(elements, n_and_ion_fracs, false);
         // Update the electron fraction
-        xe = ne / n_and_ion_fracs[1].n_element;
+        xe = ne / n_and_ion_fracs[1].n_element_new;
         // Measure mu
         mu = get_mu(ne, elements, n_and_ion_fracs, true);
         // Get TK from Tmu_old
@@ -595,10 +600,9 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         //     Temperature     //
         /////////////////////////
 
-        // Loop over all elements
         for (int i = 1; i < MAX_ELEMENTS; i++)
         {
-            element_number_densities[i] = n_and_ion_fracs[i].n_element;
+            element_number_densities[i] = n_and_ion_fracs[i].n_element_new;
             element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
             for (int j = 0; j < element_number_ions[i]; j++)
             {
@@ -618,6 +622,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                            element_number_densities,
                                            element_number_ions,
                                            element_ion_fractions,
+                                           nCO,
                                            UV_background_G0,
                                            dust_to_gas_mass_ratio_over_mw,
                                            xe,
@@ -635,6 +640,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                                  element_number_densities,
                                                  element_number_ions,
                                                  element_ion_fractions,
+                                                 nCO,
                                                  UV_background_G0,
                                                  dust_to_gas_mass_ratio_over_mw,
                                                  xe,
@@ -703,7 +709,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 // TODO(code): update G0 to be the total G0
                 alpha_H2_loc = alpha_H2(TK, dust_to_gas_mass_ratio_over_mw, xe, H2_cosmic_ray_ionization_rate,
                                         UV_background_G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
-                                        n_and_ion_fracs[1].n_element); //! [cm3 s-1]
+                                        n_and_ion_fracs[1].n_element_new); //! [cm3 s-1]
 
                 // We can only create H2 if there is any HI and HII
                 cr_H2 += alpha_H2_loc;
@@ -722,10 +728,10 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 //                     n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element);  // nHeI
 
                 beta_H2_loc = beta_H2_krome(TK,
-                                            n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element,
+                                            n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new,
                                             ne,
-                                            xH2 * n_and_ion_fracs[1].n_element,
-                                            n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element);
+                                            xH2 * n_and_ion_fracs[1].n_element_new,
+                                            n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element_new);
 
                 de_H2 += beta_H2_loc;
 
@@ -756,18 +762,74 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     x_percent_rule = false;
                     // Break the loop over ions
                     compute_atoms = false;
+                } else {
+                    //  Update mu and T
+                    mu = get_mu(ne, elements, n_and_ion_fracs, true);
+                    TK = Tmu_new * mu;
+                    if constexpr (constant_temperature) TK = Tmu_old;
+                }
+            }
+
+            // CO
+            if constexpr (include_CO) {
+                if (compute_atoms) {
+                    if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > 1e-10) {
+
+                        double n_CII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
+                        double n_OI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
+                        double n_H2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / 2.0;
+                        double x_OI  = n_OI / n_and_ion_fracs[1].n_element_new;
+
+                        double cr_CO = alpha_CO(UV_background_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI);
+                        double de_CO = beta_CO(UV_background_G0, H2_cosmic_ray_ionization_rate);
+
+                        nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
+                        double delta_CO = nCO_new - nCO;
+
+                        double max_delta_CO = fmin(n_CII - 1e-30, n_OI - 1e-30);
+                        double min_delta_CO = -nCO + 1e-30;
+                        delta_CO = fmax(fmin(delta_CO, max_delta_CO), min_delta_CO);
+
+                        nCO_new = nCO + delta_CO;
+                        double nCII_new = n_CII - delta_CO;
+                        double nOI_new  = n_OI  - delta_CO;
+
+                        // Update C ion fractions
+                        double tot_C = n_and_ion_fracs[6].n_element_new - delta_CO;
+                        for (int ii=0; ii<elements[6].n_ions; ii++) {
+                            if (ii != 1) {
+                                n_and_ion_fracs[6].ion_fracs_new[ii] = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[ii] / tot_C;
+                            } else {
+                                n_and_ion_fracs[6].ion_fracs_new[ii] = nCII_new / tot_C;
+                            }
+                        }
+
+                        // Update O ion fractions
+                        double tot_O = n_and_ion_fracs[8].n_element_new - delta_CO;
+                        for (int ii=0; ii<elements[8].n_ions; ii++) {
+                            if (ii != 0) {
+                                n_and_ion_fracs[8].ion_fracs_new[ii] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[ii] / tot_O;
+                            } else {
+                                n_and_ion_fracs[8].ion_fracs_new[ii] = nOI_new / tot_O;
+                            }
+                        }
+
+                        residual = fabs(nCO_new - nCO) / (nCO + X_FM);
+                        max_residual_all = fmax(max_residual_all, residual);
+
+                        if (residual > X_PCT_RULE) {
+                            success_counter = 0;
+                            x_percent_rule = false;
+                            compute_atoms = false;
+                        } else {
+                            n_and_ion_fracs[6].n_element_new -= delta_CO;
+                            n_and_ion_fracs[8].n_element_new -= delta_CO;
+                        }
+                    }
                 }
             }
         }
 
-        // CO
-        // TODO(code)
-
-        if constexpr (!constant_temperature) {
-            // Update mu and T after molecule update
-            mu = get_mu(ne, elements, n_and_ion_fracs, true);
-            TK = Tmu_new * mu;
-        }
         if constexpr (constant_temperature) {
             TK = Tmu_old;
         }
@@ -776,7 +838,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         //        Atoms        //
         /////////////////////////
         // Update the HI number density in case it has changed e.g. due to charge exchange
-        double dust_effective_number_density = n_and_ion_fracs[1].n_element * dust_to_gas_mass_ratio_over_mw;
+        double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
         if (compute_atoms)
         {
             // Loop over all elements
@@ -950,7 +1012,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     // Get the new electron fraction
                     ne_initial = ne;
                     ne = get_ne(elements, n_and_ion_fracs, true);
-                    xe = ne / n_and_ion_fracs[1].n_element;
+                    xe = ne / n_and_ion_fracs[1].n_element_new;
 
                     phi_s = secondary_cr_rates(xe);
                     total_cosmic_ray_ionization_rate_loc = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
@@ -1048,7 +1110,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             ddt = fmin(0.9 * ddt / pow(0.07 + max_residual_all, 0.3), 2.0 * ddt);
         }
         // Density-dependent ddt cap (matches reference exactly)
-        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element) + 10.85714286;
+        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
         ddt = fmin(ddt, pow(10.0, tlimit));
 
         // If all elements completed
@@ -1066,12 +1128,18 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 if (elements[i].atomic_number < 1)
                     continue;
 
+                n_and_ion_fracs[i].n_element = n_and_ion_fracs[i].n_element_new;
+
                 int size = elements[i].n_ions + elements[i].n_mol;
                 for (int j = 0; j < size; j++)
                 {
                     n_and_ion_fracs[i].ion_fracs[j] = n_and_ion_fracs[i].ion_fracs_new[j];
                 } // End ion loop
             } // End element loop
+
+            if constexpr (include_CO) {
+                nCO = nCO_new;
+            }
         }
 
         // Update the success counter
@@ -1192,6 +1260,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
     const double aexp,
     const std::array<double, MAX_ELEMENTS> &nelements_loc,
     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+    double& nCO,
     double *out_Tmu,
     double *out_mu,
     int *out_its,
@@ -1234,7 +1303,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
             constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
         >(
             elements_loc, n_and_ion_fracs_loc, TK, aexp, -1.0, UV_background_G0,
-            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, tabData,
+            generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
             flags, conv_its, max_its, &loc_its, &loc_ddt
         );
 

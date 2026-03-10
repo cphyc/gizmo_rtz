@@ -32,6 +32,7 @@ public:
                                      const double aexp,
                                      const std::array<double, MAX_ELEMENTS> &nelements_loc,
                                      std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+                                     double& nCO,
                                      double *out_Tmu = nullptr,
                                      double *out_mu = nullptr,
                                      int *out_its = nullptr,

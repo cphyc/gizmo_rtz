@@ -614,6 +614,111 @@ void init_recombination_rates(TabulatedData &tabData) {
     copy2D(DR_rates_alt_iron, tabData.DR_rates_alt_iron);
 }
 
+template <int N, int M>
+KOKKOS_INLINE_FUNCTION
+double alpha_RR(const double T, const Kokkos::View<double [N][M]>& RR_rates, const int ion){
+    static_assert(M == 6, "The second dimension of RR_rates must be 6");
+    // #HK NOTE: in many cases C and T2 are 0 so B = B
+
+    // Unpack the values
+    double A  = RR_rates(ion, 0);
+    double B  = RR_rates(ion, 1);
+    double T0 = RR_rates(ion, 2);
+    double T1 = RR_rates(ion, 3);
+    double C  = RR_rates(ion, 4);
+    double T2 = RR_rates(ion, 5);
+
+    B = B + (C * exp(-T2/T));
+
+    double a0 = sqrt(T / T0);
+    double a1 = pow((1. + sqrt(T / T0)),(1. - B));
+    double a2 = pow((1. + sqrt(T / T1)),(1. + B));
+
+    return A/(a0 * a1 * a2);
+}
+
+template <int N, int M>
+KOKKOS_INLINE_FUNCTION
+double alpha_DR(const double T, const Kokkos::View<double [N][M]>& DR_rates_e, const Kokkos::View<double [N][M]>& DR_rates_c, const int ion){
+    static_assert(M == 9, "The second dimension of DR_rates_c must be 9");
+    // # ! Dielectronic recombination
+    // # ! T**(-3/2) * sum c_i * exp(-E_i/T)
+    double comp_Alpha = 0.0;
+    for (int i = 0; i < 9; i++) { 
+        if (DR_rates_e(ion, i) > 0.0){
+            comp_Alpha += ( pow(T,-3./2.) * DR_rates_c(ion, i) * exp(-1. * DR_rates_e(ion, i) / T) );
+        }
+    }
+    return comp_Alpha;
+}
+
+KOKKOS_FUNCTION
+double recombination(double T, int ion, int element_idx, const TabulatedData& tabData){
+    /*
+    recombination rate [cm^3 s^-1]
+    Radiative recombination from Cloudy (rad_rec.dat) + dielectronic recombination
+    */
+
+    double rec = 0.0;
+
+    // Radiative recombination from Cloudy tables
+    rec = cloudy_rad_rec(element_idx, element_idx - ion + 1, T, tabData);
+
+    switch (element_idx) {
+        case 1: // hydrogen
+            // rec = alpha_RR(T, RR_rates_hydrogen[ion]);
+            break;
+        case 2: // helium
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_helium, tabData.DR_rates_c_helium, ion);
+            break;
+        case 6: // carbon
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_carbon, tabData.DR_rates_c_carbon, ion);
+            break;
+        case 7: // nitrogen
+            // Dielectronic recombination
+            rec += alpha_DR(T,tabData.DR_rates_e_nitrogen, tabData.DR_rates_c_nitrogen, ion);
+            break;
+        case 8: // oxygen
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_oxygen, tabData.DR_rates_c_oxygen, ion);
+            break;
+        case 10: // neon
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_neon, tabData.DR_rates_c_neon, ion);
+            break;
+        case 12: // magnesium
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_magnesium, tabData.DR_rates_c_magnesium, ion);
+            break;
+        case 14: // silicon
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_silicon, tabData.DR_rates_c_silicon, ion);
+            break;
+        case 16: // sulfur
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
+            break;
+        case 26: // iron
+            // #! Radiative recombination
+            // if (RR_rates_iron[ion][0] != 0.0) {
+            //     rec = alpha_RR(T, RR_rates_iron[ion]);
+            // } else {
+            //     double A = RR_rates_alt_iron[ion][0];
+            //     double B = RR_rates_alt_iron[ion][1];
+            //     rec = A * pow(T/1.0E4,-1.0*B); 
+            // }
+
+            // rec = cloudy_rad_rec(26, 26 - ion + 1, T);
+
+            // Dielectronic recombination
+            rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
+            break;
+    }
+    return rec;
+}
+
 void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) {
     FILE *file;
     int i, j;
@@ -706,98 +811,4 @@ double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
     }
 
     return rate;
-}
-
-template <int N, int M>
-KOKKOS_INLINE_FUNCTION
-double alpha_RR(const double T, const Kokkos::View<double [N][M]>& RR_rates, const int ion){
-    static_assert(M == 6, "The second dimension of RR_rates must be 6");
-    // #HK NOTE: in many cases C and T2 are 0 so B = B
-
-    // Unpack the values
-    double A  = RR_rates(ion, 0);
-    double B  = RR_rates(ion, 1);
-    double T0 = RR_rates(ion, 2);
-    double T1 = RR_rates(ion, 3);
-    double C  = RR_rates(ion, 4);
-    double T2 = RR_rates(ion, 5);
-
-    B = B + (C * exp(-T2/T));
-
-    double a0 = sqrt(T / T0);
-    double a1 = pow((1. + sqrt(T / T0)),(1. - B));
-    double a2 = pow((1. + sqrt(T / T1)),(1. + B));
-
-    return A/(a0 * a1 * a2);
-}
-
-template <int N, int M>
-KOKKOS_INLINE_FUNCTION
-double alpha_DR(const double T, const Kokkos::View<double [N][M]>& DR_rates_e, const Kokkos::View<double [N][M]>& DR_rates_c, const int ion){
-    static_assert(M == 9, "The second dimension of DR_rates_c must be 9");
-    // # ! Dielectronic recombination
-    // # ! T**(-3/2) * sum c_i * exp(-E_i/T)
-    double comp_Alpha = 0.0;
-    for (int i = 0; i < 9; i++) { 
-        if (DR_rates_e(ion, i) > 0.0){
-            comp_Alpha += ( pow(T,-3./2.) * DR_rates_c(ion, i) * exp(-1. * DR_rates_e(ion, i) / T) );
-        }
-    }
-    return comp_Alpha;
-}
-
-KOKKOS_FUNCTION
-double recombination(double T, int ion, int element_idx, const TabulatedData& tabData){
-    /*
-    recombination rate [cm^3 s^-1]
-    Radiative recombination from Cloudy (rad_rec.dat) + dielectronic recombination
-    */
-
-    double rec = 0.0;
-
-    // Radiative recombination from Cloudy tables
-    rec = cloudy_rad_rec(element_idx, element_idx - ion + 1, T, tabData);
-
-    switch (element_idx) {
-        case 1: // hydrogen
-            // rec = alpha_RR(T, RR_rates_hydrogen[ion]);
-            break;
-        case 2: // helium
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_helium, tabData.DR_rates_c_helium, ion);
-            break;
-        case 6: // carbon
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_carbon, tabData.DR_rates_c_carbon, ion);
-            break;
-        case 7: // nitrogen
-            // Dielectronic recombination
-            rec += alpha_DR(T,tabData.DR_rates_e_nitrogen, tabData.DR_rates_c_nitrogen, ion);
-            break;
-        case 8: // oxygen
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_oxygen, tabData.DR_rates_c_oxygen, ion);
-            break;
-        case 10: // neon
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_neon, tabData.DR_rates_c_neon, ion);
-            break;
-        case 12: // magnesium
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_magnesium, tabData.DR_rates_c_magnesium, ion);
-            break;
-        case 14: // silicon
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_silicon, tabData.DR_rates_c_silicon, ion);
-            break;
-        case 16: // sulfur
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
-            break;
-        case 26: // iron
-            // Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
-            break;
-    }
-    return rec;
 }

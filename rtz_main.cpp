@@ -108,7 +108,7 @@ static int run_ism_test()
     int NT = 300;
 
     RTZ<false, true, true, true> rtz_solver("./data");
-    rtz_solver.need_to_update_UVB(1000.0);
+    rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
     flags.include_HM12_UVB = false;
@@ -184,7 +184,7 @@ static int run_cie_test()
     int NT = 296;
 
     RTZ<true, true, false, false> rtz_solver("./data");
-    rtz_solver.need_to_update_UVB(1000.0);
+    rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
     flags.include_collisional_ionization = true;

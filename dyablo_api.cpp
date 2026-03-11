@@ -879,7 +879,7 @@ double subcycle_chemistry(
 
                     // Photoionization of the less excited state
                     if (flags.include_HM12_UVB) {
-                        if (j > 0) cr += HM12_UVB_z[i][j-1][0] * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j > 0) cr += tabData.HM12_UVB_z(i, j-1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
                     }
                     
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -889,10 +889,10 @@ double subcycle_chemistry(
 
                     // Cosmic ray ionization of the less excited state
                     if (flags.include_cosmic_ray_ionization) {
-                        if (j > 0) cr += cosmic_ray_ionization_rates[i][j-1] * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j > 0) cr += tabData.cosmic_ray_ionization_rates(i, j-1) * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
 
                         // Cosmic ray ionization of the less excited state from induced UV
-                        if (j == 1) cr += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
                     }
 
                     // Recombination on dust for the more excited state
@@ -917,7 +917,7 @@ double subcycle_chemistry(
 
                     // Photoionization
                     if (flags.include_HM12_UVB) {
-                        if (j < (n_ions - 1)) de += HM12_UVB_z[i][j][0] * ss_factor;
+                        if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(i, j, 0) * ss_factor;
                     }
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -930,10 +930,10 @@ double subcycle_chemistry(
 
                     // Cosmic ray ionization
                     if (flags.include_cosmic_ray_ionization) {
-                        if (j < (n_ions - 1)) de += cosmic_ray_ionization_rates[i][j] * total_cosmic_ray_ionization_rate;
+                        if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(i, j) * total_cosmic_ray_ionization_rate;
 
                         // Cosmic ray ionization from induced UV
-                        if (j == 0) de += cosmic_ray_ionization_rates_induced_UV[i] * cosmic_ray_scale_factor;
+                        if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(i) * cosmic_ray_scale_factor;
                     }
 
                     // Recombination on dust

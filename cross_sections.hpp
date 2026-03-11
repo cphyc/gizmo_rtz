@@ -14,7 +14,7 @@ constexpr double group_E_max[N_GROUPS] = { 500.0 };
 // -------------------------------------------------------------------------
 // Initialization Routine (Runs on Host)
 // -------------------------------------------------------------------------
-void initialize_cross_sections(TabulatedData &tabData) {
+void initialize_cross_sections(const std::string& path_to_data, TabulatedData &tabData) {
     // 1. Create Host Mirrors
     auto h_tot = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_tot);
     auto h_nl  = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_nl);
@@ -29,7 +29,7 @@ void initialize_cross_sections(TabulatedData &tabData) {
 
     // 3. Load Total Cross Sections
     // TODO(code): generalize location of data files
-    std::ifstream file_tot("./data/verner_cross_sections/phfit_tot.dat");
+    std::ifstream file_tot(path_to_data + "/verner_cross_sections/phfit_tot.dat");
     int i1, i2;
     double E_th, E_max, E_0, sig_0, y_a, P, y_w, y_0, y_1;
 
@@ -52,7 +52,7 @@ void initialize_cross_sections(TabulatedData &tabData) {
 
     // 4. Load n,l-resolved Cross Sections
     // TODO(code): generalize location of data files
-    std::ifstream file_nl("./data/verner_cross_sections/phfit.dat");
+    std::ifstream file_nl(path_to_data + "/verner_cross_sections/phfit.dat");
     int a, b, c, d;
 
     while (file_nl >> a >> b >> c >> d >> E_th >> E_0 >> sig_0 >> y_a >> P >> y_w) {
@@ -346,8 +346,6 @@ void update_cross_sections(double T, TabulatedData &tabData) {
     
     auto grp_element_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, 27});
     Kokkos::parallel_for("update_cross_sections", grp_element_policy, KOKKOS_LAMBDA(const int i, const int j) {
-    // for (int i = 0; i < N_GROUPS; i++){ // Loop over photon groups
-
         // First get the group energy in eV
         double group_energy = e_bar(group_E_min(i), group_E_max(i), T);
 

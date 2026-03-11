@@ -1301,7 +1301,7 @@ RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ(std::
         init_fine_structure_tables(path_to_data);
 
         // Initialize cross sections
-        initialize_cross_sections(tabData);
+        initialize_cross_sections(path_to_data, tabData);
 
         // Hardcode some stuff for now
         UV_background_G0 = 1.0;

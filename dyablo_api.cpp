@@ -32,6 +32,7 @@ const double T_MAX = 1E9;
 
 #define uint unsigned int
 
+
 template<typename T, typename T2>
 void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
@@ -609,7 +610,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             double phAbs = 0.0;
 
             // First get the opacity
-            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups  
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
 
                 phAbs = 0.0; // zero out absorption
 
@@ -620,14 +621,14 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     n_ions = elements[i].n_ions;
 
                     for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
-                        phAbs += (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0)); 
+                        phAbs += (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0));
                     } // End loop over ions
                 } // End loop over elements
 
                 // Deal with molecular hydrogen separately if needed
                 if constexpr (include_H2) {
                     // TODO(code): for better accuracy need to include self-shielding here
-                    phAbs += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs_new[1] * tabData.cs_ph(1,2,k,0)); 
+                    phAbs += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs_new[1] * tabData.cs_ph(1,2,k,0));
                 }
 
                 // Next deplete the photons from the group
@@ -654,7 +655,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     compute_atoms = false;
                 }
             } // End loop over photon groups
-        } 
+        }
 
         /////////////////////////
         //     Temperature     //
@@ -729,6 +730,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
 
                     TK = Tmu_new * mu;
                     residual = fmax(dUU, fabs(Tmu_new - Tmu_old)) / (Tmu_old + T_MIN);
+                    recompute_tables(TK);
 
                     // Convergence
                     // X% rule
@@ -833,6 +835,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                     mu = get_mu(ne, elements, n_and_ion_fracs, true);
                     TK = Tmu_new * mu;
                     if constexpr (constant_temperature) TK = Tmu_old;
+                    recompute_tables(TK);
                 }
             }
 
@@ -1091,6 +1094,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         mu = get_mu(ne, elements, n_and_ion_fracs, true);
                         if constexpr (!constant_temperature) {
                             TK = Tmu_new * mu;
+                            recompute_tables(TK);
                         }
                     }
 
@@ -1209,29 +1213,31 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             if constexpr (include_CO) {
                 nCO = nCO_new;
             }
-        }
 
-        // Update the RT quantities if needed
-        if constexpr (rt_advect) {
-            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups  
-                // Update the photon properties
-                N_PHOT[k] = fmax(N_phot_new[k],1E-20);
-                // TODO(code): update for NDIM
-                F_PHOT[k][0] = F_phot_new[k][0];
-                F_PHOT[k][1] = F_phot_new[k][1];
-                // Reduce the flux if needed
-                // TODO(code): update for NDIM
-                double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
-                if (fred > 1.0) {
+            // Update the total time
+            total_time += ddt;
+
+            // Update the RT quantities if needed
+            if constexpr (rt_advect) {
+                for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                    // Update the photon properties
+                    N_PHOT[k] = fmax(N_phot_new[k],1E-20);
                     // TODO(code): update for NDIM
-                    F_PHOT[k][0] /= fred;
-                    F_PHOT[k][1] /= fred;
-                }
-            } // End loop over photon groups
-        }  
-
-        // Update the success counter
-        success_counter += 1;
+                    F_PHOT[k][0] = F_phot_new[k][0];
+                    F_PHOT[k][1] = F_phot_new[k][1];
+                    // Reduce the flux if needed
+                    // TODO(code): update for NDIM
+                    double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
+                    if (fred > 1.0) {
+                        // TODO(code): update for NDIM
+                        F_PHOT[k][0] /= fred;
+                        F_PHOT[k][1] /= fred;
+                    }
+                } // End loop over photon groups
+            }
+            // Update the success counter
+            success_counter += 1;
+        }
 
         // Check if we are converged (match reference: conv_its successful steps)
         if (success_counter > conv_its)
@@ -1242,9 +1248,6 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         {
             model_converged = true;
         }
-
-        // Update the total time
-        total_time += ddt;
 
         // Break the infinite loop if the timestep has been reached
         if (total_dt > 0.0)
@@ -1354,7 +1357,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need
 template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
 KOKKOS_FUNCTION
 void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solve_chemistry_and_cooling(
-    double &TK,
+    double TK,
     const double metallicity,
     const double aexp,
     const double total_dt,
@@ -1378,6 +1381,9 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+            // Deactivate elements with zero abundance to save time in the chemistry solver
+            if (nelements_loc[ii] == 0.0) elements_loc[ii].atomic_number = -1;
+
             if (elements_loc[ii].atomic_number < 1) continue;
 
             n_and_ion_fracs_loc[ii].n_element = nelements_loc[ii];
@@ -1405,9 +1411,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         int loc_its = 0;
         double loc_ddt = 0.0;
         // get_chemical_eqm returns Tmu (= T/mu), matching the reference
-        double Tmu_final = get_chemical_eqm<
-            constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
-        >(
+        double Tmu_final = get_chemical_eqm<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>(
             elements_loc, n_and_ion_fracs_loc, N_PHOT, F_PHOT, TK, aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
             flags, loc_its, loc_ddt, conv_its, max_its

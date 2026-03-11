@@ -652,6 +652,42 @@ double alpha_DR(const double T, const Kokkos::View<double [N][M]>& DR_rates_e, c
     return comp_Alpha;
 }
 
+KOKKOS_INLINE_FUNCTION
+double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
+	/*
+     *** HK NOTE: this function was taken from CLOUDY
+
+	 *** Input parameters:  iz - atomic number 
+	 ***                    in - number of electrons from 1 to iz 
+	 ***                    t  - temperature, K
+	 *** return result:  - rate coefficient, cm^3 s^(-1)
+
+	 */
+    double tt;
+    double rate;
+
+    if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
+        (iz == 26 && in_ > 11)) {
+        tt = sqrt(t / tabData.rnew(in_ - 1, iz - 1, 2));
+        rate = tabData.rnew(in_ - 1, iz - 1, 0) /
+               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, iz - 1, 1)) *
+                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, iz - 1, 3)),
+                    1.0 + tabData.rnew(in_ - 1, iz - 1, 1)));
+    } else {
+        tt = t * 1.0e-04;
+        if (iz == 26 && in_ <= 13) {
+            rate = tabData.fe(in_ - 1, 0) /
+                   pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
+        } else {
+            rate = tabData.rrec(in_ - 1, iz - 1, 0) /
+                   pow(tt, tabData.rrec(in_ - 1, iz - 1, 1));
+        }
+    }
+
+    return rate;
+}
+
+
 KOKKOS_FUNCTION
 double recombination(double T, int ion, int element_idx, const TabulatedData& tabData){
     /*
@@ -809,39 +845,4 @@ void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) 
                 h(a, b) = fe[a][b];
         Kokkos::deep_copy(tabData.fe, h);
     }
-}
-
-KOKKOS_INLINE_FUNCTION
-double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
-	/*
-     *** HK NOTE: this function was taken from CLOUDY
-
-	 *** Input parameters:  iz - atomic number 
-	 ***                    in - number of electrons from 1 to iz 
-	 ***                    t  - temperature, K
-	 *** return result:  - rate coefficient, cm^3 s^(-1)
-
-	 */
-    double tt;
-    double rate;
-
-    if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
-        (iz == 26 && in_ > 11)) {
-        tt = sqrt(t / tabData.rnew(in_ - 1, iz - 1, 2));
-        rate = tabData.rnew(in_ - 1, iz - 1, 0) /
-               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, iz - 1, 1)) *
-                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, iz - 1, 3)),
-                    1.0 + tabData.rnew(in_ - 1, iz - 1, 1)));
-    } else {
-        tt = t * 1.0e-04;
-        if (iz == 26 && in_ <= 13) {
-            rate = tabData.fe(in_ - 1, 0) /
-                   pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
-        } else {
-            rate = tabData.rrec(in_ - 1, iz - 1, 0) /
-                   pow(tt, tabData.rrec(in_ - 1, iz - 1, 1));
-        }
-    }
-
-    return rate;
 }

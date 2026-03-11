@@ -666,53 +666,77 @@ double recombination(double T, int ion, int element_idx, const TabulatedData& ta
 
     switch (element_idx) {
         case 1: // hydrogen
-            // rec = alpha_RR(T, RR_rates_hydrogen[ion]);
+            // rec = alpha_RR(T, tabData.RR_rates_hydrogen, ion);
             break;
         case 2: // helium
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_helium, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_helium, tabData.DR_rates_c_helium, ion);
             break;
         case 6: // carbon
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_carbon, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_carbon, tabData.DR_rates_c_carbon, ion);
             break;
         case 7: // nitrogen
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_nitrogen, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T,tabData.DR_rates_e_nitrogen, tabData.DR_rates_c_nitrogen, ion);
             break;
         case 8: // oxygen
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_oxygen, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_oxygen, tabData.DR_rates_c_oxygen, ion);
             break;
         case 10: // neon
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_neon, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_neon, tabData.DR_rates_c_neon, ion);
             break;
         case 12: // magnesium
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_magnesium, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_magnesium, tabData.DR_rates_c_magnesium, ion);
             break;
         case 14: // silicon
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_silicon, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_silicon, tabData.DR_rates_c_silicon, ion);
             break;
         case 16: // sulfur
-            // Dielectronic recombination
+            // #! Radiative recombination
+            // rec = alpha_RR(T, tabData.RR_rates_sulfur, ion);
+
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
             break;
         case 26: // iron
             // #! Radiative recombination
-            // if (RR_rates_iron[ion][0] != 0.0) {
-            //     rec = alpha_RR(T, RR_rates_iron[ion]);
+            // if (tabData.RR_rates_iron(ion, 0) != 0.0) {
+            //     rec = alpha_RR(T, tabData.RR_rates_iron, ion);
             // } else {
-            //     double A = RR_rates_alt_iron[ion][0];
-            //     double B = RR_rates_alt_iron[ion][1];
+            //     double A = tabData.RR_rates_alt_iron(ion, 0);
+            //     double B = tabData.RR_rates_alt_iron(ion, 1);
             //     rec = A * pow(T/1.0E4,-1.0*B); 
             // }
 
             // rec = cloudy_rad_rec(26, 26 - ion + 1, T);
 
-            // Dielectronic recombination
+            // #!  Dielectronic recombination
             rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
             break;
     }
@@ -789,6 +813,15 @@ void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) 
 
 KOKKOS_INLINE_FUNCTION
 double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
+	/*
+     *** HK NOTE: this function was taken from CLOUDY
+
+	 *** Input parameters:  iz - atomic number 
+	 ***                    in - number of electrons from 1 to iz 
+	 ***                    t  - temperature, K
+	 *** return result:  - rate coefficient, cm^3 s^(-1)
+
+	 */
     double tt;
     double rate;
 

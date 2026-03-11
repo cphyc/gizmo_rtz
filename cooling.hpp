@@ -203,7 +203,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     printf("Initializing high temperature cooling tables\n");
 
     // Temperatures
-    file = fopen((path_to_data + "/data/high_T_cooling/temperatures.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/temperatures.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling temperatures file\n");
     }
@@ -226,7 +226,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     }
 
     // Carbon
-    file = fopen((path_to_data + "/data/high_T_cooling/CARBON/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/CARBON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling carbon rates\n");
     }
@@ -241,7 +241,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Nitrogen
-    file = fopen((path_to_data + "/data/high_T_cooling/NITROGEN/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/NITROGEN/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling nitrogen rates\n");
     }
@@ -256,7 +256,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Oxygen
-    file = fopen((path_to_data + "/data/high_T_cooling/OXYGEN/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/OXYGEN/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling oxygen rates\n");
     }
@@ -271,7 +271,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Neon
-    file = fopen((path_to_data + "/data/high_T_cooling/NEON/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/NEON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling neon rates\n");
     }
@@ -286,7 +286,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Magnesium
-    file = fopen((path_to_data + "/data/high_T_cooling/MAGNESIUM/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/MAGNESIUM/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling magnesium rates\n");
     }
@@ -301,7 +301,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Silicon
-    file = fopen((path_to_data + "/data/high_T_cooling/SILICON/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/SILICON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling silicon rates\n");
     }
@@ -316,7 +316,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // Sulfur
-    file = fopen((path_to_data + "/data/high_T_cooling/SULPHUR/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/SULPHUR/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling sulphur rates\n");
     }
@@ -331,7 +331,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
     fclose(file);
 
     // IRON
-    file = fopen((path_to_data + "/data/high_T_cooling/IRON/all_cool.dat").c_str(), "r");
+    file = fopen((path_to_data + "/high_T_cooling/IRON/all_cool.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open high temperature cooling iron rates\n");
     }
@@ -462,7 +462,7 @@ void init_fine_structure_tables(std::string path_to_data){
         "SI_17um_rates.dat", "SI_25um_rates.dat", "SI_56um_rates.dat"
     };
 
-    std::string fs_cooling_dir = path_to_data + "/data/fine_structure_data/";
+    std::string fs_cooling_dir = path_to_data + "/fine_structure_data/";
 
     char file_path[512];
     FILE* file;

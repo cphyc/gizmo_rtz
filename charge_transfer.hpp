@@ -16,7 +16,7 @@ void load_ct_rates(std::string path_to_data){
     FILE *file;
 
     // Ionization
-    file = fopen((path_to_data + "/data/charge_transfer/ct_ionization.dat").c_str(), "r");
+    file = fopen((path_to_data + "/charge_transfer/ct_ionization.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open charge transfer ionization file\n");
     }
@@ -40,7 +40,7 @@ void load_ct_rates(std::string path_to_data){
     }
 
     // Recombination
-    file = fopen((path_to_data + "/data/charge_transfer/ct_recombination.dat").c_str(), "r");
+    file = fopen((path_to_data + "/charge_transfer/ct_recombination.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open charge transfer recombination file\n");
     }

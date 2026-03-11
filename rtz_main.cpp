@@ -107,7 +107,7 @@ static int run_ism_test()
     double metallicity = 1E0;
     int NT = 300;
 
-    RTZ<false, true, true, true> rtz_solver("./");
+    RTZ<false, true, true, true> rtz_solver("./data");
     rtz_solver.need_to_update_UVB(1000.0);
 
     PhysicsFlags flags;
@@ -183,7 +183,7 @@ static int run_cie_test()
     double metallicity = 1E0;
     int NT = 296;
 
-    RTZ<true, true, false, false> rtz_solver(".");
+    RTZ<true, true, false, false> rtz_solver("./data");
     rtz_solver.need_to_update_UVB(1000.0);
 
     PhysicsFlags flags;

@@ -28,7 +28,7 @@ void load_UVB_data(std::string path_to_data) {
     printf("Initializing UV background data\n");
 
     // Redshifts
-    file = fopen((path_to_data + "/data/HM12/redshifts.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/redshifts.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Redshifts UVB file\n");
     }
@@ -41,7 +41,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Hydrogen
-    file = fopen((path_to_data + "/data/HM12/hydrogen_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/hydrogen_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Hydrogen UVB file\n");
     }
@@ -55,7 +55,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/hydrogen_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/hydrogen_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Hydrogen UVB heat file\n");
     }
@@ -70,7 +70,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Helium
-    file = fopen((path_to_data + "/data/HM12/helium_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/helium_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Helium UVB file\n");
     }
@@ -84,7 +84,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/helium_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/helium_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Helium UVB heat file\n");
     }
@@ -99,7 +99,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Carbon
-    file = fopen((path_to_data + "/data/HM12/carbon_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/carbon_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Carbon UVB file\n");
     }
@@ -113,7 +113,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/carbon_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/carbon_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Carbon UVB heat file\n");
     }
@@ -128,7 +128,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Nitrogen
-    file = fopen((path_to_data + "/data/HM12/nitrogen_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/nitrogen_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Nitrogen UVB file\n");
     }
@@ -142,7 +142,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/nitrogen_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/nitrogen_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Nitrogen UVB heat file\n");
     }
@@ -157,7 +157,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Oxygen
-    file = fopen((path_to_data + "/data/HM12/oxygen_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/oxygen_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Oxygen UVB file\n");
     }
@@ -171,7 +171,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/oxygen_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/oxygen_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Oxygen UVB heat file\n");
     }
@@ -186,7 +186,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Neon
-    file = fopen((path_to_data + "/data/HM12/neon_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/neon_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Neon UVB file\n");
     }
@@ -200,7 +200,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/neon_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/neon_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Neon UVB heat file\n");
     }
@@ -215,7 +215,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Magnesium
-    file = fopen((path_to_data + "/data/HM12/magnesium_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/magnesium_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Magnesium UVB file\n");
     }
@@ -229,7 +229,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/magnesium_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/magnesium_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Magnesium UVB heat file\n");
     }
@@ -244,7 +244,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Silicon
-    file = fopen((path_to_data + "/data/HM12/silicon_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/silicon_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Silicon UVB file\n");
     }
@@ -258,7 +258,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/silicon_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/silicon_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Silicon UVB heat file\n");
     }
@@ -273,7 +273,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Sulfur
-    file = fopen((path_to_data + "/data/HM12/sulfur_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/sulfur_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Sulfur UVB file\n");
     }
@@ -287,7 +287,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/sulfur_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/sulfur_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Sulfur UVB heat file\n");
     }
@@ -302,7 +302,7 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 
     // Iron
-    file = fopen((path_to_data + "/data/HM12/iron_pi.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/iron_pi.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Iron UVB file\n");
     }
@@ -316,7 +316,7 @@ void load_UVB_data(std::string path_to_data) {
     // Close the file
     fclose(file);
 
-    file = fopen((path_to_data + "/data/HM12/iron_ph.dat").c_str(), "r");
+    file = fopen((path_to_data + "/HM12/iron_ph.dat").c_str(), "r");
     if (file == NULL) {
         printf("Error: Could not open Iron UVB heat file\n");
     }

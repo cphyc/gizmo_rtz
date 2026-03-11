@@ -19,9 +19,9 @@ void init_collisional_ionization(std::string path_to_data, TabulatedData& tabDat
 
     printf("Initializing collisional ionization rates\n");
 
-    file = fopen((path_to_data + "/data/collisional_ionization.dat").c_str(), "r");
+    file = fopen((path_to_data + "/collisional_ionization.dat").c_str(), "r");
     if (file == NULL) {
-        fprintf(stderr, "Error: Could not open %s/data/collisional_ionization.dat\n", path_to_data);
+        fprintf(stderr, "Error: Could not open %s/collisional_ionization.dat\n", path_to_data);
         return;
     }
 

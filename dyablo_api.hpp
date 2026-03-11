@@ -11,12 +11,7 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements);
 KOKKOS_FUNCTION
 void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype);
 
-template <
-    bool constant_temperature,
-    bool ramses_rt_T_scheme = true,
-    bool include_H2 = true,
-    bool include_CO = false
->
+template <bool ...args>
 class RTZ {
 public:
     // Constructor: initializes elements, loads all tabulated data
@@ -39,8 +34,6 @@ public:
                                      double& nCO,
                                      double& out_Tmu,
                                      double& out_mu,
-                                     int& out_its,
-                                     double& out_ddt,
                                      int conv_its,
                                      int max_its,
                                      PhysicsFlags flags) const;

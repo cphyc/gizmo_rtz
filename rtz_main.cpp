@@ -44,10 +44,9 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
 }
 
 struct StepResult {
-    double nH, T_actual, Tmu, mu, ddt;
+    double nH, T_actual, Tmu, mu;
     double xHI, xHII, xH2;
     double n_C, nCO;
-    int its;
 };
 
 template <typename SolverType>
@@ -70,13 +69,10 @@ void solve_one_step(const SolverType &rtz_solver,
         double nCO = d_nCO(0);
 
         double out_Tmu, out_mu;
-        int out_its;
-        double out_ddt;
 
         rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, -1.0,
                                                nel_loc, xions_loc, nCO,
                                                out_Tmu, out_mu,
-                                               out_its, out_ddt,
                                                conv_its, max_its, flags);
 
         // Write results back to views
@@ -89,8 +85,6 @@ void solve_one_step(const SolverType &rtz_solver,
         d_result(0).T_actual = TK * out_mu;
         d_result(0).Tmu = out_Tmu;
         d_result(0).mu = out_mu;
-        d_result(0).its = out_its;
-        d_result(0).ddt = out_ddt;
         d_result(0).xHI = xions_loc[0];
         d_result(0).xHII = xions_loc[1];
         d_result(0).xH2 = xions_loc[2];
@@ -107,7 +101,7 @@ static int run_ism_test()
     double metallicity = 1E0;
     int NT = 300;
 
-    RTZ<false, true, true, true> rtz_solver("./data");
+    RTZ<false, true, true, true, false> rtz_solver("./data");
     rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
@@ -168,10 +162,10 @@ static int run_ism_test()
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
-        fprintf(stderr, "step %d/%d rho=%e TK=%e its=%d\n", i+1, NT, rho, r.T_actual, r.its);
-        printf("%.15e %.15e %.15e %.15e %d %.15e %.15e %.15e\n",
-               r.nH, r.T_actual, r.Tmu, r.mu, r.its,
-               r.n_C, r.nCO, r.ddt);
+        fprintf(stderr, "step %d/%d rho=%e TK=%e\n", i+1, NT, rho, r.T_actual);
+        printf("%.15e %.15e %.15e %.15e %.15e %.15e\n",
+               r.nH, r.T_actual, r.Tmu, r.mu,
+               r.n_C, r.nCO);
     }
     return 0;
 }
@@ -183,7 +177,7 @@ static int run_cie_test()
     double metallicity = 1E0;
     int NT = 296;
 
-    RTZ<true, true, false, false> rtz_solver("./data");
+    RTZ<true, true, false, false, false> rtz_solver("./data");
     rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
@@ -230,10 +224,10 @@ static int run_cie_test()
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
-        fprintf(stderr, "step %d/%d TK=%e its=%d\n", i+1, NT, r.T_actual, r.its);
-        printf("%e %e %e %e %d %e %e %e %e\n",
-               r.nH, r.T_actual, r.Tmu, r.mu, r.its,
-               r.xHI, r.xHII, r.xH2, r.ddt);
+        fprintf(stderr, "step %d/%d TK=%e\n", i+1, NT, r.T_actual);
+        printf("%e %e %e %e %e %e\n",
+               r.nH, r.T_actual, r.Tmu, r.mu,
+               r.xHI, r.xHII, r.xH2);
     }
     return 0;
 }

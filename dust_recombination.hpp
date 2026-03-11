@@ -1,4 +1,6 @@
 // charge_transfer.h
+// See https://iopscience.iop.org/article/10.1086/324035/pdf
+// Note that this approximation is only good between 10 and 10^3 K
 #pragma once
 
 #include <Kokkos_Core.hpp>

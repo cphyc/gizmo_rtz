@@ -19,18 +19,23 @@ void init_collisional_ionization(std::string path_to_data, TabulatedData& tabDat
 
     printf("Initializing collisional ionization rates\n");
 
+    // Check that file exists
     file = fopen((path_to_data + "/collisional_ionization.dat").c_str(), "r");
     if (file == NULL) {
         fprintf(stderr, "Error: Could not open %s/collisional_ionization.dat\n", path_to_data.c_str());
         return;
     }
 
-    for (int i = 1; i < 27; i++) {
-        for (int j = i; j > 0; j--) {
+    // Load in the data
+    for (int i = 1; i < 27; i++) { // Loop over elements
+        for (int j = i; j > 0; j--) { // Loop over number of electrons
+            // Read 5 doubles per line
             int items = fscanf(file, "%lf %lf %lf %lf %lf",
                         &data[i][j][0], &data[i][j][1],
                         &data[i][j][2], &data[i][j][3],
                         &data[i][j][4]);
+
+            // Basic error checking
             if (items != 5) {
                 fprintf(stderr, "Error parsing collisional ionization data at i=%d j=%d\n", i, j);
                 fclose(file);
@@ -62,7 +67,10 @@ double coll_ion(double T, double dE, double A, double X, double K, double P){
 
 KOKKOS_FUNCTION
 double collisional_ionization(double T, int ion, int element_idx, const TabulatedData& tabData) {
-    // Unified Voronov (1997) collisional ionization using data file
+    /*
+    collisional ionization rate
+    */
+
     double col = 0.0;
 
     int n_electron = element_idx - ion;

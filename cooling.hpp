@@ -1102,7 +1102,6 @@ KOKKOS_INLINE_FUNCTION
 double dust_recombination_cooling(double T, double G0, double ne, double f_dg, double nH){
     // Dust recombination cooling
     double beta_drc = 0.74 / pow(T,0.068);
-    // double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
     double dust_recomb_cool = (1.5 * 4.65E-30) * pow(T,0.94) * pow(G0 * sqrt(T) / (0.5*ne),beta_drc) * ne * 0.5 * f_dg * nH;
 
     return dust_recomb_cool;
@@ -1125,7 +1124,6 @@ double PE_efficiency(double G0, double T, double ne){
     double phi_pah = 0.5; //! wolfire+(03)
     double fact = G0 * sqrt(T) / (ne * phi_pah);
     double PE_efficiency = (4.9E-2/(1.0 + 4E-3 * pow(fact,0.73))) + (3.7E-2 * pow(T/1E4,0.7) / (1.0 + 2E-4 * fact));
-    //double PE_efficiency = (4.9E-2/(1.0 + 5.9E-13 * pow(fact,0.73))) + (3.7E-2 * 0.01 * pow(T/1E4,0.7) / (1.0 + 3.4E-4 * fact));
     return fmax(PE_efficiency, 1e-100);
 }
 
@@ -1234,8 +1232,7 @@ double photoheating_UVB_G0(double G0,
         double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        double contrib = n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates(i) * G0;
-        heating_rate += contrib;
+        heating_rate += n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates(i) * G0; // erg/s/cm^3
     }
 
     return heating_rate;
@@ -1375,7 +1372,7 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
         double n_element = element_number_densities[ii];
         if (n_element < MIN_COOL_ION) continue;
         int n_ions = element_number_ions[ii];
-        for (int jj = 0; jj < n_ions - 1; jj++) {
+        for (int jj = 0; jj < n_ions - 1; jj++) { // This comes from ionization --> no heating for final ion
             for (int kk = 0; kk < nGroups - 1; kk++) {
                 rate += dNp[kk] * element_number_densities[ii]
                        * element_ion_fractions[ii][jj] * tabData.cs_ph(ii,jj,kk,2);
@@ -1387,6 +1384,7 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
 
 KOKKOS_INLINE_FUNCTION
 double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double T) {
+    // CO cooling
     double T_pivot = 3080.0;
     double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / n;
 
@@ -1401,6 +1399,7 @@ double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double
     // CO Vibrational cooling (HI collisions)
     double vib_H = nHI * nCO * T_pivot * KB * 3.0e-12 * sqrt(T) * exp(-pow(2000.0 / T, 3.43)) * exp(-T_pivot / T);
 
+    // Sum the rate
     double rate = rot + vib_H2 + vib_H;
 
     return fmax(rate,1e-100);
@@ -1609,7 +1608,6 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
 
     // Photoelectric heating --> note factor of 1.7 is because IUV
     double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
-    // double photoelectric_heat = photoelectric_heating_WD01(T, G0, ne, f_dg, element_number_densities[1]);
 
     // Cosmic ray heating
     double cosmic_ray_heat = 0.0;

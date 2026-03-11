@@ -14,6 +14,7 @@
 #include "molecules.hpp"
 #include "cooling.hpp"
 #include "dyablo_api.hpp"
+#include "cross_sections.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -1299,6 +1300,9 @@ RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ(std::
         // Initialize the low temperature cooling tables
         init_fine_structure_tables(path_to_data);
 
+        // Initialize cross sections
+        initialize_cross_sections(tabData);
+
         // Hardcode some stuff for now
         UV_background_G0 = 1.0;
         generic_cosmic_ray_ionization_rate = 1E-16;
@@ -1334,8 +1338,16 @@ template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, b
 void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need_to_update_UVB(double redshift)
 {
     update_UVB(redshift);
+
     // Re-copy updated global array into tabData Kokkos view
     copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
+}
+
+template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
+void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need_to_update_cross_sections(double T_blackbody)
+{
+    // Update cross sections
+    update_cross_sections(T_blackbody, tabData);
 }
 
 

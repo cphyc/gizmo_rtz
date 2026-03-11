@@ -37,6 +37,30 @@ typedef struct
     std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
 
+// Define the structure equivalent to the Fortran type
+typedef struct {
+    double E_th;
+    double E_max;
+    double E_0;
+    double sig_0;
+    double y_a;
+    double P;
+    double y_w;
+    double y_0;
+    double y_1;
+} CrossSections;
+
+
+typedef struct {
+    double E_th; // @HarleyKatz IS THIS CORRECT?
+    double E_0;
+    double sig_0;
+    double y_a;
+    double P;
+    double y_w;
+    int l;
+} CrossSectionsNL;
+
 typedef struct
 {
     Kokkos::View<double[27][27][2]> HM12_UVB_z {"HM12_UVB_z"};
@@ -140,10 +164,14 @@ typedef struct
     Kokkos::View<double[27][27][5]> collisional_ionization_data {"collisional_ionization_data"};
 
     // Verner cross sections
-    Kokkos::View<double[27][27][9]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
-    Kokkos::View<double[27][27][7][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
+    Kokkos::View<CrossSections[27][27]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
+    Kokkos::View<CrossSectionsNL[27][27][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
-    // TODO(code): add cs_ph here
+    // Photoionization cross sections and photoheating rates for each group, element, and ion
     Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};
+
+    // Photon bins
+    Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
+    Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
 
 } TabulatedData;

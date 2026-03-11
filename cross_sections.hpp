@@ -8,6 +8,9 @@
 #include "constants.hpp"
 #include "types.hpp"
 
+constexpr int n_int_points = 10000;
+constexpr double group_E_min[N_GROUPS] = { 13.6 };
+constexpr double group_E_max[N_GROUPS] = { 500.0 };
 // -------------------------------------------------------------------------
 // Initialization Routine (Runs on Host)
 // -------------------------------------------------------------------------
@@ -17,26 +20,32 @@ void initialize_cross_sections(TabulatedData &tabData) {
     auto h_nl  = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_nl);
 
     // 2. Initialize to large negative numbers
-    Kokkos::deep_copy(h_tot, -999.0);
-    Kokkos::deep_copy(h_nl, -999.0);
+    Kokkos::parallel_for("Cross sections",
+        Kokkos::MDRangePolicy({0, 0}, {MAX_ELEMENTS, MAX_ELEMENTS}), KOKKOS_LAMBDA(const int i, const int j)
+    {
+        h_tot(i, j) = {-999, -999, -999, -999, -999, -999, -999, -999, -999};
+        for (auto k = 0; k < 7; ++k) h_nl(i, j, k) = {-999, -999, -999, -999, -999, -999, -1};
+    });
 
     // 3. Load Total Cross Sections
     // TODO(code): generalize location of data files
     std::ifstream file_tot("./data/verner_cross_sections/phfit_tot.dat");
     int i1, i2;
-    double x1, x2, x3, x4, x5, x6, x7, x8, x9;
+    double E_th, E_max, E_0, sig_0, y_a, P, y_w, y_0, y_1;
 
-    while (file_tot >> i1 >> i2 >> x1 >> x2 >> x3 >> x4 >> x5 >> x6 >> x7 >> x8 >> x9) {
+    while (file_tot >> i1 >> i2 >> E_th >> E_max >> E_0 >> sig_0 >> y_a >> P >> y_w >> y_0 >> y_1) {
         if (i1 < 27) {
-            h_tot(i1, i1 - i2 + 1, 1) = x1;
-            h_tot(i1, i1 - i2 + 1, 2) = x2;
-            h_tot(i1, i1 - i2 + 1, 3) = x3;
-            h_tot(i1, i1 - i2 + 1, 4) = x4;
-            h_tot(i1, i1 - i2 + 1, 5) = x5;
-            h_tot(i1, i1 - i2 + 1, 6) = x6;
-            h_tot(i1, i1 - i2 + 1, 7) = x7;
-            h_tot(i1, i1 - i2 + 1, 8) = x8;
-            h_tot(i1, i1 - i2 + 1, 9) = x9;
+            h_tot(i1, i1 - i2 + 1) = {
+                .E_th  = E_th,
+                .E_max = E_max,
+                .E_0   = E_0,
+                .sig_0 = sig_0,
+                .y_a   = y_a,
+                .P     = P,
+                .y_w   = y_w,
+                .y_0   = y_0,
+                .y_1   = y_1
+            };
         }
     }
     file_tot.close();
@@ -45,9 +54,8 @@ void initialize_cross_sections(TabulatedData &tabData) {
     // TODO(code): generalize location of data files
     std::ifstream file_nl("./data/verner_cross_sections/phfit.dat");
     int a, b, c, d;
-    double nx1, nx2, nx3, nx4, nx5, nx6;
 
-    while (file_nl >> a >> b >> c >> d >> nx1 >> nx2 >> nx3 >> nx4 >> nx5 >> nx6) {
+    while (file_nl >> a >> b >> c >> d >> E_th >> E_0 >> sig_0 >> y_a >> P >> y_w) {
         if (a < 27) {
             int nl_state = 0;
             if      (c == 1 && d == 0) nl_state = 1; // 1s
@@ -59,13 +67,15 @@ void initialize_cross_sections(TabulatedData &tabData) {
             else if (c == 4 && d == 0) nl_state = 7; // 4s
 
             if (nl_state != 0) {
-                h_nl(a, a - b + 1, nl_state, 1) = nx1;
-                h_nl(a, a - b + 1, nl_state, 2) = nx2;
-                h_nl(a, a - b + 1, nl_state, 3) = nx3;
-                h_nl(a, a - b + 1, nl_state, 4) = nx4;
-                h_nl(a, a - b + 1, nl_state, 5) = nx5;
-                h_nl(a, a - b + 1, nl_state, 6) = nx6;
-                h_nl(a, a - b + 1, nl_state, 7) = static_cast<double>(d);
+                h_nl(a, a - b + 1, nl_state) = {
+                    .E_th  = E_th,
+                    .E_0   = E_0,
+                    .sig_0 = sig_0,
+                    .y_a   = y_a,
+                    .P     = P,
+                    .y_w   = y_w,
+                    .l     = d
+                };
             }
         }
     }
@@ -99,7 +109,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     double cross_sec = 0.0;
 
     // Convert lambda into ev
-    double E = hplanck * c_cgs / (lambda * 1.0e-8) / eV2erg;
+    double E = H_PLANCK * C_CGS / (lambda * 1.0e-8) / EV_2_ERG;
 
     // Deal with molecular hydrogen separately
     if (element == 1 && ion == 3) {
@@ -120,15 +130,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     }
 
     // Access global Kokkos views directly
-    double E_th  = tabData.photoionization_cross_sections_tot(element, ion, 1);
-    double E_max = tabData.photoionization_cross_sections_tot(element, ion, 2);
-    double E_0_tot = tabData.photoionization_cross_sections_tot(element, ion, 3);
-    double sig_0_tot = tabData.photoionization_cross_sections_tot(element, ion, 4);
-    double y_a   = tabData.photoionization_cross_sections_tot(element, ion, 5);
-    double P_tot = tabData.photoionization_cross_sections_tot(element, ion, 6);
-    double y_w   = tabData.photoionization_cross_sections_tot(element, ion, 7);
-    double y_0   = tabData.photoionization_cross_sections_tot(element, ion, 8);
-    double y_1   = tabData.photoionization_cross_sections_tot(element, ion, 9);
+    auto &[E_th, E_max, E_0_tot, sig_0_tot, y_a, P_tot, y_w, y_0, y_1] = tabData.photoionization_cross_sections_tot(element, ion);
 
     if (E < E_th) {
         return 0.0;
@@ -147,13 +149,13 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     if (E > E_max) {
         cross_sec = 0.0;
         for (int i = 1; i <= 7; ++i) {
-            double l = tabData.photoionization_cross_sections_nl(element, ion, i, 7);
+            double l = tabData.photoionization_cross_sections_nl(element, ion, i).l;
             if (l >= 0.0) {
-                double E_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i, 2);
-                double sig_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i, 3);
-                double ya_nl = tabData.photoionization_cross_sections_nl(element, ion, i, 4);
-                double P_nl = tabData.photoionization_cross_sections_nl(element, ion, i, 5);
-                double yw_nl = tabData.photoionization_cross_sections_nl(element, ion, i, 6);
+                double E_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).E_0;
+                double sig_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).sig_0;
+                double ya_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_a;
+                double P_nl = tabData.photoionization_cross_sections_nl(element, ion, i).P;
+                double yw_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_w;
                 
                 cross_sec += verner_cs_nl(E, sig_0_nl, E_0_nl, yw_nl, ya_nl, P_nl, l);
             }
@@ -164,6 +166,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     return cross_sec;
 }
 
+KOKKOS_INLINE_FUNCTION
 double blackbody_nu(double T, double nu){
     // Blackbody function B_lam
     // T --> temeprature [K]
@@ -176,15 +179,19 @@ double blackbody_nu(double T, double nu){
     return B_nu;
 }
 
-double sigma_N_num(double nu, double T, int element, int ion){
-    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion) * blackbody_nu(T, nu) / (H_PLANCK * nu);
+KOKKOS_INLINE_FUNCTION
+double sigma_N_num(double nu, double T, int element, int ion, const TabulatedData& tabData){
+    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion, tabData) * blackbody_nu(T, nu) / (H_PLANCK * nu);
 }
+
+KOKKOS_INLINE_FUNCTION
 
 double sigma_N_den(double nu, double T, int element, int ion){
     return blackbody_nu(T, nu) / (H_PLANCK * nu);
 }
 
-double sigma_N(double E0, double E1, double T, int element, int ion){
+KOKKOS_INLINE_FUNCTION
+double sigma_N(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData){
     // Photon number-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -196,14 +203,14 @@ double sigma_N(double E0, double E1, double T, int element, int ion){
     double sum = 0.0;
 
     // Simpson's rule for sigma * B / hnu
-    sum = sigma_N_num(a, T, element, ion);
-    sum += sigma_N_num(b, T, element, ion);
+    sum = sigma_N_num(a, T, element, ion, tabData);
+    sum += sigma_N_num(b, T, element, ion, tabData);
     for (int i = 1; i < n_int_points; i++) {
         double x = a + i * h;
         if (i % 2 == 0) {
-            sum += 2 * sigma_N_num(x, T, element, ion);
+            sum += 2 * sigma_N_num(x, T, element, ion, tabData);
         } else {
-            sum += 4 * sigma_N_num(x, T, element, ion);
+            sum += 4 * sigma_N_num(x, T, element, ion, tabData);
         }
     }
     double numerator = sum * h / 3.0;
@@ -224,15 +231,18 @@ double sigma_N(double E0, double E1, double T, int element, int ion){
     return numerator / denominator;
 }
 
-double sigma_E_num(double nu, double T, int element, int ion){
-    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion) * blackbody_nu(T, nu);
+KOKKOS_INLINE_FUNCTION
+double sigma_E_num(double nu, double T, int element, int ion, const TabulatedData& tabData){
+    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion, tabData) * blackbody_nu(T, nu);
 }
 
+KOKKOS_INLINE_FUNCTION
 double sigma_E_den(double nu, double T, int element, int ion){
     return blackbody_nu(T, nu);
 }
 
-double sigma_E(double E0, double E1, double T, int element, int ion){
+KOKKOS_INLINE_FUNCTION
+double sigma_E(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData){
     // Photon energy-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -244,14 +254,14 @@ double sigma_E(double E0, double E1, double T, int element, int ion){
     double sum = 0.0;
 
     // Simpson's rule for sigma * B / hnu
-    sum = sigma_E_num(a, T, element, ion);
-    sum += sigma_E_num(b, T, element, ion);
+    sum = sigma_E_num(a, T, element, ion, tabData);
+    sum += sigma_E_num(b, T, element, ion, tabData);
     for (int i = 1; i < n_int_points; i++) {
         double x = a + i * h;
         if (i % 2 == 0) {
-            sum += 2 * sigma_E_num(x, T, element, ion);
+            sum += 2 * sigma_E_num(x, T, element, ion, tabData);
         } else {
-            sum += 4 * sigma_E_num(x, T, element, ion);
+            sum += 4 * sigma_E_num(x, T, element, ion, tabData);
         }
     }
     double numerator = sum * h / 3.0;
@@ -272,14 +282,17 @@ double sigma_E(double E0, double E1, double T, int element, int ion){
     return numerator / denominator;
 }
 
+KOKKOS_INLINE_FUNCTION
 double e_bar_num(double nu, double T){
     return blackbody_nu(T, nu);
 }
 
+KOKKOS_INLINE_FUNCTION
 double e_bar_den(double nu, double T){
     return blackbody_nu(T, nu) / (H_PLANCK * nu);
 }
 
+KOKKOS_INLINE_FUNCTION
 double e_bar(double E0, double E1, double T){
     // Mean energy in the bin
     // E0 lower energy of the bin in eV
@@ -321,46 +334,49 @@ double e_bar(double E0, double E1, double T){
 }
 
 // TODO(code): Declate the 4D array and then copy to the tabdata
-void update_cross_sections(double T){
+void update_cross_sections(double T, TabulatedData &tabData) {
     // Updates the cross sections for each element and group
     // TODO(code): update C_CGS with the reduced speed of light if needed
-
     printf("Updating cross sections to a %e K blackbody\n",T);
 
-    double group_energy;
-
-    for (int i = 0; i < N_GROUPS; i++){ // Loop over photon groups
+    auto &cs_ph = tabData.cs_ph;
+    const auto &verner_cross_sections = tabData.photoionization_cross_sections_tot;
+    const auto &group_E_min = tabData.group_E_min;
+    const auto &group_E_max = tabData.group_E_max;
+    
+    auto grp_element_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, 27});
+    Kokkos::parallel_for("update_cross_sections", grp_element_policy, KOKKOS_LAMBDA(const int i, const int j) {
+    // for (int i = 0; i < N_GROUPS; i++){ // Loop over photon groups
 
         // First get the group energy in eV
-        group_energy = e_bar(group_E_min[i], group_E_max[i], T);
+        double group_energy = e_bar(group_E_min(i), group_E_max(i), T);
 
-        for (int j = 0; j < 27; j++){ // Loop over elements
-            // Initialize everything to 0 first
-            for (int k = 0; k < 27; k++){
-                cs_ph[j][k][i][0] = 0.0;
-                cs_ph[j][k][i][1] = 0.0;
-                cs_ph[j][k][i][2] = 0.0;
-            }
+        // Initialize everything to 0 first
+        for (int k = 0; k < 27; k++){
+            cs_ph(j, k, i, 0) = 0.0;
+            cs_ph(j, k, i, 1) = 0.0;
+            cs_ph(j, k, i, 2) = 0.0;
+        }
 
-            // Now calculate cross sections
-            for (int k = 0; k < j; k++){ // Loop over ions
-                // Update number-weighted cross section
-                cs_ph[j][k][i][0] = sigma_N(group_E_min[i], group_E_max[i], T, j, k) * C_CGS; // cm^3 / s
+        // Now calculate cross sections
+        for (int k = 0; k < j; k++){ // Loop over ions
+            // Update number-weighted cross section
+            cs_ph(j, k, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, j, k, tabData) * C_CGS; // cm^3 / s
 
-                // Update energy-weighted cross section
-                cs_ph[j][k][i][1] = sigma_E(group_E_min[i], group_E_max[i], T, j, k) * C_CGS; // cm^3 / s
+            // Update energy-weighted cross section
+            cs_ph(j, k, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, j, k, tabData) * C_CGS; // cm^3 / s
 
-                // Update photoheating rates
-                cs_ph[j][k][i][2] = (cs_ph[j][k][i][1] * group_energy) - (cs_ph[j][k][i][0] * verner_cross_sections.E_th[j][k]);
-                cs_ph[j][k][i][2] = fmax(cs_ph[j][k][i][2],0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
-            }
+            // Update photoheating rates
+            cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
+            cs_ph(j, k, i, 2) = fmax(cs_ph(j, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
         } // End loop over elements
 
-        // Deal with H2 separately
-        cs_ph[1][2][i][0] = sigma_N(group_E_min[i], group_E_max[i], T, 1, 2); // cm^3 / s
-        cs_ph[1][2][i][1] = sigma_E(group_E_min[i], group_E_max[i], T, 1, 2); // cm^3 / s
-        cs_ph[1][2][i][2] = (cs_ph[1][2][i][1] * group_energy) - (cs_ph[1][2][i][0] * verner_cross_sections.E_th[1][2]);
-        cs_ph[1][2][i][2] = fmax(cs_ph[1][2][i][2],0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
-
-    } // End loop over photon groups
+        if (i == 0) {
+            // Deal with H2 separately
+            cs_ph(1, 2, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, 1, 2, tabData) * C_CGS; // cm^3 / s
+            cs_ph(1, 2, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, 1, 2, tabData) * C_CGS; // cm^3 / s
+            cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
+            cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+        }
+    });
 }

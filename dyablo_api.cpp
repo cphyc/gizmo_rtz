@@ -78,7 +78,7 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
 
 // Structs for element properties
 KOKKOS_FUNCTION
-void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements)
+void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool include_h2)
 {
     // Initialize
     for (int i = 0; i < MAX_ELEMENTS; i++)
@@ -98,7 +98,7 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements)
     elements[1].z_solar = 1.0;
     elements[1].G0_photo_rate = 0.0; // No subionizing PI
     elements[1].n_ions = elements[1].atomic_number + 1;
-    elements[1].n_mol = 1;
+    elements[1].n_mol = include_h2 ? 1 : 0;
     elements[1].depletion = 1.0;
 
     // Element 2: Helium
@@ -320,6 +320,8 @@ double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const std::arra
             }
             else
             {
+                double a = n_and_ion_fracs[i].n_element;
+                double b = n_and_ion_fracs[i].ion_fracs[j];
                 ne += n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j] * j;
             }
         } // End loop ion fracs
@@ -1173,8 +1175,8 @@ double subcycle_chemistry(
 }
 
 
-template <bool ...args>
-RTZ<args...>::RTZ(std::string path_to_data)
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::RTZ(std::string path_to_data)
 {
         // initialize data structures
 
@@ -1183,7 +1185,7 @@ RTZ<args...>::RTZ(std::string path_to_data)
         // ParticleIonData n_and_ion_fracs[MAX_ELEMENTS];
 
         // Initialize the elements
-        initialize_elements(elements);
+        initialize_elements(elements, include_H2);
 
         // Initialize the UV background data
         load_UVB_data(path_to_data);      // First load the UVB data from files
@@ -1233,8 +1235,8 @@ RTZ<args...>::RTZ(std::string path_to_data)
         init_collisional_ionization(path_to_data, tabData);
 }
 
-template <bool ...args>
-void RTZ<args...>::need_to_update_UVB(double redshift)
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_UVB(double redshift)
 {
     update_UVB(redshift);
 
@@ -1242,17 +1244,17 @@ void RTZ<args...>::need_to_update_UVB(double redshift)
     copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
 }
 
-template <bool ...args>
-void RTZ<args...>::need_to_update_cross_sections(double T_blackbody)
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_cross_sections(double T_blackbody)
 {
     // Update cross sections
     update_cross_sections(T_blackbody, tabData);
 }
 
 
-template <bool ...args>
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
 KOKKOS_FUNCTION
-void RTZ<args...>::solve_chemistry_and_cooling(
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::solve_chemistry_and_cooling(
     double TK,
     const double metallicity,
     const double aexp,
@@ -1268,7 +1270,7 @@ void RTZ<args...>::solve_chemistry_and_cooling(
 {
 
         std::array<Element, MAX_ELEMENTS> elements_loc;
-        initialize_elements(elements_loc);
+        initialize_elements(elements_loc, include_H2);
 
         // solve for ionization balance and cooling rates
         std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc{};
@@ -1303,7 +1305,7 @@ void RTZ<args...>::solve_chemistry_and_cooling(
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
         // get_chemical_eqm returns Tmu (= T/mu), matching the reference
-        double Tmu_final = subcycle_chemistry<args...>(
+        double Tmu_final = subcycle_chemistry<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             elements_loc, n_and_ion_fracs_loc,
             nCO, TK,
             aexp, total_dt, UV_background_G0,

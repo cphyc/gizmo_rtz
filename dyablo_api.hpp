@@ -6,12 +6,13 @@
 // MAX_ELEMENTS is already defined in types.hpp
 
 KOKKOS_FUNCTION
-void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements);
+void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool include_h2);
 
 KOKKOS_FUNCTION
 void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype);
 
-template <bool ...args>
+
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
 class RTZ {
 public:
     // Constructor: initializes elements, loads all tabulated data

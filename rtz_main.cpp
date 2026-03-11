@@ -11,7 +11,7 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
                            std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
                            double rho, double metallicity)
 {
-    initialize_elements(elements);
+    initialize_elements(elements, false);
 
     // Update depletion factors based on dust-to-gas ratio BEFORE computing n_element
     {

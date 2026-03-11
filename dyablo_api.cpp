@@ -1175,17 +1175,6 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         //   More Convergence  //
         /////////////////////////
 
-        // Set new dt (matches reference strategy)
-        max_residual_all /= (X_PCT_RULE);
-        if (!x_percent_rule) {
-            ddt /= 2.0;
-        } else {
-            ddt = fmin(0.9 * ddt / pow(0.07 + max_residual_all, 0.3), 2.0 * ddt);
-        }
-        // Density-dependent ddt cap (matches reference exactly)
-        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
-        ddt = fmin(ddt, pow(10.0, tlimit));
-
         // If all elements completed
         // Loop over elements and ions and
         // set old values to new values
@@ -1238,6 +1227,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             // Update the success counter
             success_counter += 1;
         }
+
+        // Set new dt (matches reference strategy)
+        max_residual_all /= (X_PCT_RULE);
+        if (!x_percent_rule) {
+            ddt /= 2.0;
+        } else {
+            ddt = fmin(0.9 * ddt / pow(0.07 + max_residual_all, 0.3), 2.0 * ddt);
+        }
+        // Density-dependent ddt cap (matches reference exactly)
+        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
+        ddt = fmin(ddt, pow(10.0, tlimit));
 
         // Check if we are converged (match reference: conv_its successful steps)
         if (success_counter > conv_its)

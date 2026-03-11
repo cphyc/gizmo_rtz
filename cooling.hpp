@@ -464,7 +464,6 @@ void init_fine_structure_tables(std::string path_to_data){
 
     std::string fs_cooling_dir = path_to_data + "/fine_structure_data/";
 
-    char file_path[512];
     FILE* file;
     bool ok;
 

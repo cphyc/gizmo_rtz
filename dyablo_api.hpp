@@ -25,6 +25,9 @@ public:
     // Update the UV background for a given redshift
     void need_to_update_UVB(double redshift);
 
+    // Update cross sections
+    void need_to_update_cross_sections(double T_blackbody);
+
     // Solve the chemistry network and cooling for a single cell
     KOKKOS_FUNCTION
     void solve_chemistry_and_cooling(double &TK,

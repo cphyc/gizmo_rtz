@@ -603,7 +603,7 @@ void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) 
     printf("loading rec data\n");
     file = fopen((path_to_data + "/rad_rec.dat").c_str(), "r");
     if (file == NULL) {
-        fprintf(stderr, "Error: Could not open %s/rad_rec.dat\n", path_to_data);
+        fprintf(stderr, "Error: Could not open %s/rad_rec.dat\n", path_to_data.c_str());
         return;
     }
 

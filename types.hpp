@@ -2,7 +2,10 @@
 #include <Kokkos_Core.hpp>
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
+#define N_GROUPS 1
+#define N_DIM 3
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
+using Array2D_RT = std::array<std::array<double, N_GROUPS>, N_DIM>;
 
 typedef struct
 {
@@ -26,7 +29,6 @@ struct PhysicsFlags {
     bool include_self_shielding = false;
 };
 
-
 typedef struct
 {
     double n_element;
@@ -34,6 +36,30 @@ typedef struct
     std::array<double, MAX_ELEMENTS> ion_fracs;
     std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
+
+// Define the structure equivalent to the Fortran type
+typedef struct {
+    double E_th;
+    double E_max;
+    double E_0;
+    double sig_0;
+    double y_a;
+    double P;
+    double y_w;
+    double y_0;
+    double y_1;
+} CrossSections;
+
+
+typedef struct {
+    double E_th; // @HarleyKatz IS THIS CORRECT?
+    double E_0;
+    double sig_0;
+    double y_a;
+    double P;
+    double y_w;
+    int l;
+} CrossSectionsNL;
 
 typedef struct
 {
@@ -136,5 +162,16 @@ typedef struct
 
     // Collisional ionization data (from collisional_ionization.dat)
     Kokkos::View<double[27][27][5]> collisional_ionization_data {"collisional_ionization_data"};
+
+    // Verner cross sections
+    Kokkos::View<CrossSections[27][27]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
+    Kokkos::View<CrossSectionsNL[27][27][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
+
+    // Photoionization cross sections and photoheating rates for each group, element, and ion
+    Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};
+
+    // Photon bins
+    Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
+    Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
 
 } TabulatedData;

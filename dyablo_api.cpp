@@ -14,6 +14,7 @@
 #include "molecules.hpp"
 #include "cooling.hpp"
 #include "dyablo_api.hpp"
+#include "cross_sections.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -432,11 +433,14 @@ template <
     bool constant_temperature,
     bool ramses_rt_T_scheme=true,
     bool include_H2=true,
-    bool include_CO=false
+    bool include_CO=false,
+    bool rt_advect=false
 >
 KOKKOS_FUNCTION
 double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs,
+                        std::array<double, N_GROUPS> &N_PHOT,
+                        Array2D_RT &F_PHOT,
                         double TK,
                         const double aexp,
                         const double total_dt,
@@ -476,6 +480,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
     bool x_percent_rule = true;
     bool compute_atoms = true;
     bool compute_molecules = true;
+    bool compute_temperature = true;
     double total_time = 0.E0;
     double residual;
     double ne_residual;
@@ -530,12 +535,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         }
     };
 
+    // Radiation
+    std::array<double, N_GROUPS> N_phot_new{};
+    Array2D_RT F_phot_new{};
+
     // # infinite loop
     while (1)
     { // Infinite loop: TODO(code): put a max loop counter here and then call an error function
         total_iterations += 1;
         compute_atoms = true;
         compute_molecules = true;
+        compute_temperature = true;
 
         // Loop over elements and set the ion_fracs new to
         // the old ion fracs
@@ -595,96 +605,148 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         /////////////////////////
         //      Radiation      //
         /////////////////////////
-        // TODO(code): need to add radiation variable
-        // This is a place holder for now as I will deal with it
-        // later
+        if constexpr (rt_advect) {
+            double phAbs = 0.0;
 
-        /////////////////////////
-        //     Temperature     //
-        /////////////////////////
+            // First get the opacity
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups  
 
-        for (int i = 1; i < MAX_ELEMENTS; i++)
-        {
-            element_number_densities[i] = n_and_ion_fracs[i].n_element_new;
-            element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
-            for (int j = 0; j < element_number_ions[i]; j++)
-            {
-                element_ion_fractions[i][j] = n_and_ion_fracs[i].ion_fracs_new[j];
-            }
-        }
+                phAbs = 0.0; // zero out absorption
 
-        // Is we use the ramses-rt scheme for the temperature update
-        // then we perform the update first
-        double loc_rho = get_rho(elements, n_and_ion_fracs);
-        double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
-        if constexpr (!constant_temperature)
-        {
-            if constexpr (ramses_rt_T_scheme)
-            {
-                cooling_rate = all_cooling(TK, ne, aexp,
-                                           element_number_densities,
-                                           element_number_ions,
-                                           element_ion_fractions,
-                                           nCO,
-                                           UV_background_G0,
-                                           dust_to_gas_mass_ratio_over_mw,
-                                           xe,
-                                           primary_cosmic_ray_ionization_rate,
-                                           H2_cosmic_ray_ionization_rate,
-                                           ss_factor,
-                                           flags.include_photoionization,
-                                           flags.include_cosmic_ray_ionization,
-                                           flags.include_HM12_UVB,
-                                           flags.include_dust_recombination,
-                                           flags.include_charge_exchange,
-                                           tabData);
+                for (int i = 1; i < MAX_ELEMENTS; i++) { // Loop over all elements
+                    if (elements[i].atomic_number < 1) continue;
 
-                cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-                                                 element_number_densities,
-                                                 element_number_ions,
-                                                 element_ion_fractions,
-                                                 nCO,
-                                                 UV_background_G0,
-                                                 dust_to_gas_mass_ratio_over_mw,
-                                                 xe,
-                                                 primary_cosmic_ray_ionization_rate,
-                                                 H2_cosmic_ray_ionization_rate,
-                                                 ss_factor,
-                                                 flags.include_photoionization,
-                                                 flags.include_cosmic_ray_ionization,
-                                                 flags.include_HM12_UVB,
-                                                 flags.include_dust_recombination,
-                                                 flags.include_charge_exchange,
-                                                 tabData);
+                    // Get the number of ions
+                    n_ions = elements[i].n_ions;
 
-                cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001 * TK) - TK);
+                    for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
+                        phAbs += (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0)); 
+                    } // End loop over ions
+                } // End loop over elements
 
-                cooling_rate *= X_nHkb;
-                cooling_rate_prime *= (-X_nHkb) * mu;
+                // Deal with molecular hydrogen separately if needed
+                if constexpr (include_H2) {
+                    // TODO(code): for better accuracy need to include self-shielding here
+                    phAbs += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs_new[1] * tabData.cs_ph(1,2,k,0)); 
+                }
 
-                // Integrate in T/mu space (reference scheme)
-                double dUU = fabs(fmax(T_MIN, Tmu_old + cooling_rate * ddt) - Tmu_old);
-                Tmu_new = fmax(T_MIN, Tmu_old + cooling_rate * ddt / (1. - cooling_rate_prime * ddt));
+                // Next deplete the photons from the group
+                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * phAbs);
+                // TODO(code): loop over dimensions here and update RT
+                F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
+                F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
 
-                TK = Tmu_new * mu;
-                residual = fmax(dUU, fabs(Tmu_new - Tmu_old)) / (Tmu_old + T_MIN);
-
-                // Convergence
-                // X% rule
-
-                // Max residual over all elements
+                // Measure the redisual
+                residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
                 max_residual_all = fmax(max_residual_all, residual);
 
-                if (residual > X_PCT_RULE)
-                {
+                if (residual > X_PCT_RULE){
+                    // printf("Broken photons %e %e %e %e %e %d %e %e %e %e %e\n",Tmu_new,Tmu_old,residual,mu,ddt,total_iterations,element_ion_fractions[1][0],element_ion_fractions[1][1],element_ion_fractions[1][2],cooling_rate,cooling_rate_prime);
                     // Reset the success counter
                     success_counter = 0;
                     // Declare the x-percent rule was violated
                     x_percent_rule = false;
+                    // Don't compute temperature
+                    compute_temperature = false;
                     // Dont compute molecules
                     compute_molecules = false;
                     // Don't compute atoms
                     compute_atoms = false;
+                }
+            } // End loop over photon groups
+        } 
+
+        /////////////////////////
+        //     Temperature     //
+        /////////////////////////
+        if (compute_temperature)
+        {
+            for (int i = 1; i < MAX_ELEMENTS; i++)
+            {
+                element_number_densities[i] = n_and_ion_fracs[i].n_element_new;
+                element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
+                for (int j = 0; j < element_number_ions[i]; j++)
+                {
+                    element_ion_fractions[i][j] = n_and_ion_fracs[i].ion_fracs_new[j];
+                }
+            }
+
+            // Is we use the ramses-rt scheme for the temperature update
+            // then we perform the update first
+            double loc_rho = get_rho(elements, n_and_ion_fracs);
+            double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
+            if constexpr (!constant_temperature)
+            {
+                if constexpr (ramses_rt_T_scheme)
+                {
+                    // TODO(code): pass photon number densities
+                    cooling_rate = all_cooling(TK, ne, aexp,
+                                            element_number_densities,
+                                            element_number_ions,
+                                            element_ion_fractions,
+                                            N_PHOT,
+                                            nCO,
+                                            UV_background_G0,
+                                            dust_to_gas_mass_ratio_over_mw,
+                                            xe,
+                                            primary_cosmic_ray_ionization_rate,
+                                            H2_cosmic_ray_ionization_rate,
+                                            ss_factor,
+                                            flags.include_photoionization,
+                                            flags.include_cosmic_ray_ionization,
+                                            flags.include_HM12_UVB,
+                                            flags.include_dust_recombination,
+                                            flags.include_charge_exchange,
+                                            tabData);
+
+                    cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
+                                                    element_number_densities,
+                                                    element_number_ions,
+                                                    element_ion_fractions,
+                                                    N_PHOT,
+                                                    nCO,
+                                                    UV_background_G0,
+                                                    dust_to_gas_mass_ratio_over_mw,
+                                                    xe,
+                                                    primary_cosmic_ray_ionization_rate,
+                                                    H2_cosmic_ray_ionization_rate,
+                                                    ss_factor,
+                                                    flags.include_photoionization,
+                                                    flags.include_cosmic_ray_ionization,
+                                                    flags.include_HM12_UVB,
+                                                    flags.include_dust_recombination,
+                                                    flags.include_charge_exchange,
+                                                    tabData);
+
+                    cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001 * TK) - TK);
+
+                    cooling_rate *= X_nHkb;
+                    cooling_rate_prime *= (-X_nHkb) * mu;
+
+                    // Integrate in T/mu space (reference scheme)
+                    double dUU = fabs(fmax(T_MIN, Tmu_old + cooling_rate * ddt) - Tmu_old);
+                    Tmu_new = fmax(T_MIN, Tmu_old + cooling_rate * ddt / (1. - cooling_rate_prime * ddt));
+
+                    TK = Tmu_new * mu;
+                    residual = fmax(dUU, fabs(Tmu_new - Tmu_old)) / (Tmu_old + T_MIN);
+
+                    // Convergence
+                    // X% rule
+
+                    // Max residual over all elements
+                    max_residual_all = fmax(max_residual_all, residual);
+
+                    if (residual > X_PCT_RULE)
+                    {
+                        // Reset the success counter
+                        success_counter = 0;
+                        // Declare the x-percent rule was violated
+                        x_percent_rule = false;
+                        // Dont compute molecules
+                        compute_molecules = false;
+                        // Don't compute atoms
+                        compute_atoms = false;
+                    }
                 }
             }
         }
@@ -692,6 +754,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         /////////////////////////
         //      Molecules      //
         /////////////////////////
+        // TODO (CODE): update to account for local radiation field
         double alpha_H2_loc = 0.0;
         double beta_H2_loc = 0.0;
         double cr_H2 = 0.E0;
@@ -840,6 +903,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         /////////////////////////
         //        Atoms        //
         /////////////////////////
+        // TODO (CODE): update to account for local radiation field
         // Update the HI number density in case it has changed e.g. due to charge exchange
         double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
         if (compute_atoms)
@@ -1147,6 +1211,25 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
             }
         }
 
+        // Update the RT quantities if needed
+        if constexpr (rt_advect) {
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups  
+                // Update the photon properties
+                N_PHOT[k] = fmax(N_phot_new[k],1E-20);
+                // TODO(code): update for NDIM
+                F_PHOT[k][0] = F_phot_new[k][0];
+                F_PHOT[k][1] = F_phot_new[k][1];
+                // Reduce the flux if needed
+                // TODO(code): update for NDIM
+                double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
+                if (fred > 1.0) {
+                    // TODO(code): update for NDIM
+                    F_PHOT[k][0] /= fred;
+                    F_PHOT[k][1] /= fred;
+                }
+            } // End loop over photon groups
+        }  
+
         // Update the success counter
         success_counter += 1;
 
@@ -1217,6 +1300,9 @@ RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::RTZ(std::
         // Initialize the low temperature cooling tables
         init_fine_structure_tables(path_to_data);
 
+        // Initialize cross sections
+        initialize_cross_sections(path_to_data, tabData);
+
         // Hardcode some stuff for now
         UV_background_G0 = 1.0;
         generic_cosmic_ray_ionization_rate = 1E-16;
@@ -1252,8 +1338,16 @@ template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, b
 void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need_to_update_UVB(double redshift)
 {
     update_UVB(redshift);
+
     // Re-copy updated global array into tabData Kokkos view
     copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
+}
+
+template <bool constant_temperature, bool ramses_rt_T_scheme, bool include_H2, bool include_CO>
+void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::need_to_update_cross_sections(double T_blackbody)
+{
+    // Update cross sections
+    update_cross_sections(T_blackbody, tabData);
 }
 
 
@@ -1295,6 +1389,16 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
             }
         }
 
+        // initialize RT arrays
+        std::array<double, N_GROUPS> N_PHOT;
+        Array2D_RT F_PHOT;
+        for (int ii = 1; ii < N_GROUPS; ii++) {
+            N_PHOT[ii] = 0.0;
+            for (int jj = 1; jj < N_GROUPS; jj++) {
+                F_PHOT[ii][jj] = 0.0;
+            }
+        }
+
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
@@ -1304,7 +1408,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         double Tmu_final = get_chemical_eqm<
             constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
         >(
-            elements_loc, n_and_ion_fracs_loc, TK, aexp, total_dt, UV_background_G0,
+            elements_loc, n_and_ion_fracs_loc, N_PHOT, F_PHOT, TK, aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
             flags, loc_its, loc_ddt, conv_its, max_its
         );

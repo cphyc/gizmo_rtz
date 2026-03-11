@@ -438,6 +438,8 @@ template <
 KOKKOS_FUNCTION
 double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                         std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs,
+                        std::array<double, N_GROUPS> &N_PHOT,
+                        Array2D_RT &F_PHOT,
                         double TK,
                         const double aexp,
                         const double total_dt,
@@ -628,13 +630,13 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                 }
 
                 // Next deplete the photons from the group
-                N_phot_new[k] = N_phot[k] / (1.0 + ddt * phAbs);
+                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * phAbs);
                 // TODO(code): loop over dimensions here and update RT
-                F_phot_new[k][0] = F_phot[k][0] / (1.0 + ddt * phAbs);
-                F_phot_new[k][1] = F_phot[k][1] / (1.0 + ddt * phAbs);
+                F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
+                F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
 
                 // Measure the redisual
-                residual = fabs((N_phot_new[k] - N_phot[k]) / (N_phot[k] + 1E-13));
+                residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
                 max_residual_all = fmax(max_residual_all, residual);
 
                 if (residual > X_PCT_RULE){
@@ -681,6 +683,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                             element_number_densities,
                                             element_number_ions,
                                             element_ion_fractions,
+                                            N_PHOT,
                                             nCO,
                                             UV_background_G0,
                                             dust_to_gas_mass_ratio_over_mw,
@@ -699,6 +702,7 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
                                                     element_number_densities,
                                                     element_number_ions,
                                                     element_ion_fractions,
+                                                    N_PHOT,
                                                     nCO,
                                                     UV_background_G0,
                                                     dust_to_gas_mass_ratio_over_mw,
@@ -1210,17 +1214,17 @@ double get_chemical_eqm(const std::array<Element, MAX_ELEMENTS> &elements,
         if constexpr (rt_advect) {
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups  
                 // Update the photon properties
-                N_phot[k] = fmax(N_phot_new[k],1E-20);
+                N_PHOT[k] = fmax(N_phot_new[k],1E-20);
                 // TODO(code): update for NDIM
-                F_phot[k][0] = F_phot_new[k][0];
-                F_phot[k][1] = F_phot_new[k][1];
+                F_PHOT[k][0] = F_phot_new[k][0];
+                F_PHOT[k][1] = F_phot_new[k][1];
                 // Reduce the flux if needed
                 // TODO(code): update for NDIM
-                double fred = sqrt(pow(F_phot[k][0],2.0) + pow(F_phot[k][1],2.0)) / (C_CGS * N_phot[k]);
+                double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
                 if (fred > 1.0) {
                     // TODO(code): update for NDIM
-                    F_phot[k][0] /= fred;
-                    F_phot[k][1] /= fred;
+                    F_PHOT[k][0] /= fred;
+                    F_PHOT[k][1] /= fred;
                 }
             } // End loop over photon groups
         }  
@@ -1373,6 +1377,16 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
             }
         }
 
+        // initialize RT arrays
+        std::array<double, N_GROUPS> N_PHOT;
+        Array2D_RT F_PHOT;
+        for (int ii = 1; ii < N_GROUPS; ii++) {
+            N_PHOT[ii] = 0.0;
+            for (int jj = 1; jj < N_GROUPS; jj++) {
+                F_PHOT[ii][jj] = 0.0;
+            }
+        }
+
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
@@ -1382,7 +1396,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         double Tmu_final = get_chemical_eqm<
             constant_temperature, ramses_rt_T_scheme, include_H2, include_CO
         >(
-            elements_loc, n_and_ion_fracs_loc, TK, aexp, total_dt, UV_background_G0,
+            elements_loc, n_and_ion_fracs_loc, N_PHOT, F_PHOT, TK, aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate, dust_to_gas_mass_ratio_over_mw, nCO, tabData,
             flags, loc_its, loc_ddt, conv_its, max_its
         );

@@ -144,5 +144,6 @@ typedef struct
     Kokkos::View<double[27][27][7][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
     // TODO(code): add cs_ph here
+    Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};
 
 } TabulatedData;

@@ -1654,12 +1654,14 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
 	}
 
     // TODO(code): call local photoheating
+    double local_phot_heat = local_photoheating(dNp, N_GROUPS, xe, element_number_densities,
+                                                element_number_ions, element_ion_fractions, tabData);
 
     // Sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling + CO_cooling;
 
     // Sum all of the heating rates
-    double total_heating = (photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat + charge_transfer_heat_cool);
+    double total_heating = photoelectric_heat + cosmic_ray_heat + uvb_photoheat + uvb_photoheat_G0 + h2_heat + charge_transfer_heat_cool + local_phot_heat;
 
     return total_heating - total_cooling;
 }

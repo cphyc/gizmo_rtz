@@ -1416,12 +1416,7 @@ void RTZ<constant_temperature, ramses_rt_T_scheme, include_H2, include_CO>::solv
         out_its = loc_its;
         out_ddt = loc_ddt;
         {
-            double ne_final = 0.0;
-            for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-                if (elements_loc[ii].atomic_number < 1) continue;
-                for (int jj = 0; jj < elements_loc[ii].n_ions - 1; jj++)
-                    ne_final += n_and_ion_fracs_loc[ii].n_element * (jj + 1) * n_and_ion_fracs_loc[ii].ion_fracs[jj + 1];
-            }
+            double ne_final = get_ne(elements_loc, n_and_ion_fracs_loc, false);
             double mu_final = get_mu(ne_final, elements_loc, n_and_ion_fracs_loc, false);
             out_mu = mu_final;
             out_Tmu = Tmu_final;

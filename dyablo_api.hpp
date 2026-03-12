@@ -33,6 +33,8 @@ public:
                                      std::array<double, MAX_ELEMENTS> &nelements_loc,
                                      std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
                                      double& nCO,
+                                     std::array<double, N_GROUPS> &N_PHOT_loc,
+                                     Array2D_RT &F_PHOT_loc,
                                      double& out_Tmu,
                                      double& out_mu,
                                      int conv_its,

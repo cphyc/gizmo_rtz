@@ -1262,6 +1262,8 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     std::array<double, MAX_ELEMENTS> &nelements_loc,
     std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
     double& nCO,
+    std::array<double, N_GROUPS> &N_PHOT_loc,
+    Array2D_RT &F_PHOT_loc,
     double& out_Tmu,
     double& out_mu,
     int conv_its,
@@ -1291,16 +1293,6 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             }
         }
 
-        // initialize RT arrays
-        std::array<double, N_GROUPS> N_PHOT;
-        Array2D_RT F_PHOT;
-        for (int ii = 1; ii < N_GROUPS; ii++) {
-            N_PHOT[ii] = 0.0;
-            for (int jj = 1; jj < N_GROUPS; jj++) {
-                F_PHOT[ii][jj] = 0.0;
-            }
-        }
-
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
 
@@ -1314,7 +1306,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             conv_its, max_its,
             tabData,
             flags,
-            N_PHOT, F_PHOT
+            N_PHOT_loc, F_PHOT_loc
         );
 
         {

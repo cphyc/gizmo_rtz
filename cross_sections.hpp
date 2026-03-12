@@ -28,7 +28,6 @@ void initialize_cross_sections(const std::string& path_to_data, TabulatedData &t
     });
 
     // 3. Load Total Cross Sections
-    // TODO(code): generalize location of data files
     std::ifstream file_tot(path_to_data + "/verner_cross_sections/phfit_tot.dat");
     int i1, i2;
     double E_th, E_max, E_0, sig_0, y_a, P, y_w, y_0, y_1;

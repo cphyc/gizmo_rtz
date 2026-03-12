@@ -531,7 +531,7 @@ double subcycle_chemistry(
 
     //# infinite loop
     while (1) {  // Infinite loop: TODO(code): put a max loop counter here and then call an error function
-        printf("%e %e %e\n",ddt,total_dt,total_time);
+        //printf("%e %e %e\n",ddt,total_dt,total_time);
         total_iterations += 1;
         compute_atoms = true;
         compute_molecules = true;
@@ -586,6 +586,9 @@ double subcycle_chemistry(
         /////////////////////////
         //      Radiation      //
         /////////////////////////
+        double f_shd_H2 = 1.0;
+        double f_shd_CO = 1.0;
+
         if constexpr (rt_advect) {
             double phAbs = 0.0;
 
@@ -616,6 +619,7 @@ double subcycle_chemistry(
                 // TODO(code): loop over dimensions here and update RT
                 F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
                 F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
+                F_phot_new[k][2] = F_PHOT[k][2] / (1.0 + ddt * phAbs);
 
                 // Measure the redisual
                 residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
@@ -636,8 +640,6 @@ double subcycle_chemistry(
                 }
             } // End loop over photon groups
         }
-        double f_shd_H2 = 1.0;
-        double f_shd_CO = 1.0;
 
         /////////////////////////
         //     Temperature     //
@@ -673,7 +675,8 @@ double subcycle_chemistry(
                                     xe, 
                                     primary_cosmic_ray_ionization_rate, 
                                     H2_cosmic_ray_ionization_rate,
-                                    ss_factor, 
+                                    ss_factor,
+                                    rt_advect,
                                     flags.include_photoionization,
                                     flags.include_cosmic_ray_ionization, 
                                     flags.include_HM12_UVB,
@@ -692,7 +695,8 @@ double subcycle_chemistry(
                                             xe, 
                                             primary_cosmic_ray_ionization_rate, 
                                             H2_cosmic_ray_ionization_rate,
-                                            ss_factor, 
+                                            ss_factor,
+                                            rt_advect, 
                                             flags.include_photoionization,
                                             flags.include_cosmic_ray_ionization, 
                                             flags.include_HM12_UVB,
@@ -949,6 +953,16 @@ double subcycle_chemistry(
                         if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density * n_and_ion_fracs[i].ion_fracs_new[j+1];
                     }
 
+
+                    // Photoionization of the less excited state from local radiation field
+                    if (rt_advect) {
+                        if (j > 0) {
+                            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                                cr += N_phot_new[k] * tabData.cs_ph(i, j-1, k, 0) * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                            } // End loop over photon groups
+                        }
+                    }
+
                     /////////////////////////
                     //     Destruction     //
                     /////////////////////////
@@ -988,6 +1002,16 @@ double subcycle_chemistry(
                     // Recombination on dust
                     if (flags.include_dust_recombination) {
                         if (j > 0) de += dust_recombination_rates(j, i, TK, UV_background_G0, ne, tabData.dust_rec_coefs) * dust_effective_number_density;
+                    }
+
+
+                    // Photoionization from local radiation field
+                    if (rt_advect) {
+                        if (j < (n_ions - 1)) {
+                            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                                de += N_phot_new[k] * tabData.cs_ph(i, j, k, 0);
+                            } // End loop over photon groups
+                        }
                     }
 
                     /////////////////////////
@@ -1168,13 +1192,15 @@ double subcycle_chemistry(
                     // TODO(code): update for NDIM
                     F_PHOT[k][0] = F_phot_new[k][0];
                     F_PHOT[k][1] = F_phot_new[k][1];
+                    F_PHOT[k][2] = F_phot_new[k][2];
                     // Reduce the flux if needed
                     // TODO(code): update for NDIM
-                    double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
+                    double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0) + pow(F_PHOT[k][2],2.0)) / (C_CGS * N_PHOT[k]);
                     if (fred > 1.0) {
                         // TODO(code): update for NDIM
                         F_PHOT[k][0] /= fred;
                         F_PHOT[k][1] /= fred;
+                        F_PHOT[k][2] /= fred;
                     }
                 } // End loop over photon groups
             }
@@ -1223,7 +1249,7 @@ double subcycle_chemistry(
 
     } // End infinite loop
 
-    printf("%e %e %e %e %d %e %e %e %e %e\n",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt,total_time);
+    //printf("%e %e %e %e %d %e %e %e %e %e\n",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt,total_time);
     // printf("%e %e %e %e %d %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[6].n_element,nCO,ddt);
 
     // printf("%e ",Tmu_old);
@@ -1316,6 +1342,17 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     update_cross_sections(T_blackbody, tabData);
 }
 
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_photon_groups(std::array<double, N_GROUPS> E_min, std::array<double, N_GROUPS> E_max) {
+    auto E_min_h = Kokkos::create_mirror_view(tabData.group_E_min);
+    auto E_max_h = Kokkos::create_mirror_view(tabData.group_E_max);
+    for (size_t i = 0; i < N_GROUPS; i++) {
+        E_min_h(i) = E_min[i];
+        E_max_h(i) = E_max[i];
+    }
+    Kokkos::deep_copy(tabData.group_E_min, E_min_h);
+    Kokkos::deep_copy(tabData.group_E_max, E_max_h);
+}
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
 KOKKOS_FUNCTION
@@ -1404,6 +1441,9 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 template class RTZ<false,true,false,false,false>;
 template class RTZ<false,false,false,false,false>;
 template class RTZ<false,true,true,true,false>;
+template class RTZ<false, true, false, true, false>;
 
 template class RTZ<true,true,false,false,false>;
 template class RTZ<true,false,false,false,false>;
+template class RTZ<true,true,true,true,false>;
+template class RTZ<true, true, false, true, false>;

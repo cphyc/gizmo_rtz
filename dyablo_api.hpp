@@ -24,6 +24,9 @@ public:
     // Update cross sections
     void need_to_update_cross_sections(double T_blackbody);
 
+    // Set the photon group energy bins
+    void set_photon_groups(std::array<double, N_GROUPS> E_min, std::array<double, N_GROUPS> E_max);
+
     // Solve the chemistry network and cooling for a single cell
     KOKKOS_FUNCTION
     void solve_chemistry_and_cooling(double TK,

@@ -1360,26 +1360,32 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
 
     return ct_hc_rate;
 }
+
+    
 KOKKOS_FUNCTION
-double local_photoheating(std::array<double, N_GROUPS>& dNp, 
-                          int nGroups, double x_e,
+double local_photoheating(std::array<double, N_GROUPS>& dNp,
                           std::array<double, MAX_ELEMENTS>& element_number_densities,
                           std::array<int, MAX_ELEMENTS>& element_number_ions,
                           Array2D& element_ion_fractions,
                           const TabulatedData& tabData) {
-    double rate = 0.0;
-    for (int ii = 1; ii < 27; ii++) {
-        double n_element = element_number_densities[ii];
+    // Heading due to the local radiation field
+
+    double heating_rate = 0.0; 
+
+    for (int i = 1; i < 27; i++) { // Loop over elements
+        double n_element = element_number_densities[i];
         if (n_element < MIN_COOL_ION) continue;
-        int n_ions = element_number_ions[ii];
-        for (int jj = 0; jj < n_ions - 1; jj++) { // This comes from ionization --> no heating for final ion
-            for (int kk = 0; kk < nGroups - 1; kk++) {
-                rate += dNp[kk] * element_number_densities[ii]
-                       * element_ion_fractions[ii][jj] * tabData.cs_ph(ii,jj,kk,2);
-            }
-        }
-    }
-    return fmax(rate, 1.e-100);
+
+        int n_ions = element_number_ions[i];
+        
+        for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
+
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                heating_rate += (dNp[k] * element_number_densities[i] * element_ion_fractions[i][j] * tabData.cs_ph(i, j, k, 2));
+            } // End loop over photon groups
+        } // End loop over ions
+    } // End loop over elements
+    return fmax(heating_rate,1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -1412,6 +1418,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
                    double nCO,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
+                   bool rt_advect,
                    bool rtz_include_photoionization,
                    bool rtz_include_cosmic_ray_ionization,
                    bool rtz_include_HM12_UVB,
@@ -1651,8 +1658,10 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
 	}
 
     // TODO(code): call local photoheating
-    double local_phot_heat = local_photoheating(dNp, N_GROUPS, xe, element_number_densities,
-                                                element_number_ions, element_ion_fractions, tabData);
+    double local_phot_heat = 0.0;
+    if (rt_advect) {
+        local_phot_heat += local_photoheating(dNp, element_number_densities, element_number_ions, element_ion_fractions, tabData);
+    }
 
     // Sum all of the cooling rates
     double total_cooling = total_primordial_cooling + high_T_metal_cooling + total_fine_structure + dust_cooling + CO_cooling;

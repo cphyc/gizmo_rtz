@@ -586,9 +586,56 @@ double subcycle_chemistry(
         /////////////////////////
         //      Radiation      //
         /////////////////////////
-        // TODO(code): need to add radiation variable
-        // This is a place holder for now as I will deal with it
-        // later
+        if constexpr (rt_advect) {
+            double phAbs = 0.0;
+
+            // First get the opacity
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+
+                phAbs = 0.0; // zero out absorption
+
+                for (int i = 1; i < MAX_ELEMENTS; i++) { // Loop over all elements
+                    if (elements[i].atomic_number < 1) continue;
+
+                    // Get the number of ions
+                    n_ions = elements[i].n_ions;
+
+                    for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
+                        phAbs += (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0));
+                    } // End loop over ions
+                } // End loop over elements
+
+                // Deal with molecular hydrogen separately if needed
+                if constexpr (include_H2) {
+                    // TODO(code): for better accuracy need to include self-shielding here
+                    phAbs += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs_new[1] * tabData.cs_ph(1,2,k,0));
+                }
+
+                // Next deplete the photons from the group
+                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * phAbs);
+                // TODO(code): loop over dimensions here and update RT
+                F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
+                F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
+
+                // Measure the redisual
+                residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
+                max_residual_all = fmax(max_residual_all, residual);
+
+                if (residual > X_PCT_RULE){
+                    // printf("Broken photons %e %e %e %e %e %d %e %e %e %e %e\n",Tmu_new,Tmu_old,residual,mu,ddt,total_iterations,element_ion_fractions[1]
+                    // Reset the success counter
+                    success_counter = 0;
+                    // Declare the x-percent rule was violated
+                    x_percent_rule = false;
+                    // // Don't compute temperature
+                    // compute_temperature = false;
+                    // Dont compute molecules
+                    compute_molecules = false;
+                    // Don't compute atoms
+                    compute_atoms = false;
+                }
+            } // End loop over photon groups
+        }
         double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
 
@@ -1112,6 +1159,24 @@ double subcycle_chemistry(
             // Update CO if needed
             if (include_CO) {
                 nCO = nCO_new;
+            }
+
+            if constexpr (rt_advect) {
+                for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                    // Update the photon properties
+                    N_PHOT[k] = fmax(N_phot_new[k],1E-20);
+                    // TODO(code): update for NDIM
+                    F_PHOT[k][0] = F_phot_new[k][0];
+                    F_PHOT[k][1] = F_phot_new[k][1];
+                    // Reduce the flux if needed
+                    // TODO(code): update for NDIM
+                    double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0)) / (C_CGS * N_PHOT[k]);
+                    if (fred > 1.0) {
+                        // TODO(code): update for NDIM
+                        F_PHOT[k][0] /= fred;
+                        F_PHOT[k][1] /= fred;
+                    }
+                } // End loop over photon groups
             }
 
             // Update the total time --> only if the run converged

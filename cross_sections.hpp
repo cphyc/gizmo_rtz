@@ -20,12 +20,12 @@ void initialize_cross_sections(const std::string& path_to_data, TabulatedData &t
     auto h_nl  = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_nl);
 
     // 2. Initialize to large negative numbers
-    Kokkos::parallel_for("Cross sections",
-        Kokkos::MDRangePolicy({0, 0}, {MAX_ELEMENTS, MAX_ELEMENTS}), KOKKOS_LAMBDA(const int i, const int j)
-    {
-        h_tot(i, j) = {-999, -999, -999, -999, -999, -999, -999, -999, -999};
-        for (auto k = 0; k < 7; ++k) h_nl(i, j, k) = {-999, -999, -999, -999, -999, -999, -1};
-    });
+    for (int i = 0; i < MAX_ELEMENTS; ++i) {
+        for (int j = 0; j < MAX_ELEMENTS; ++j) {
+            h_tot(i, j) = {-999, -999, -999, -999, -999, -999, -999, -999, -999};
+            for (int k = 0; k < 7; ++k) h_nl(i, j, k) = {-999, -999, -999, -999, -999, -999, -1};
+        }
+    }
 
     // 3. Load Total Cross Sections
     std::ifstream file_tot(path_to_data + "/verner_cross_sections/phfit_tot.dat");

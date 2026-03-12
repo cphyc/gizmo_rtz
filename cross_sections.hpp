@@ -358,10 +358,10 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         // Now calculate cross sections
         for (int k = 0; k < j; k++){ // Loop over ions
             // Update number-weighted cross section
-            cs_ph(j, k, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, j, k, tabData) * C_CGS; // cm^3 / s
+            cs_ph(j, k, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, j, k+1, tabData) * C_CGS; // cm^3 / s
 
             // Update energy-weighted cross section
-            cs_ph(j, k, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, j, k, tabData) * C_CGS; // cm^3 / s
+            cs_ph(j, k, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, j, k+1, tabData) * C_CGS; // cm^3 / s
 
             // Update photoheating rates
             cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
@@ -370,8 +370,8 @@ void update_cross_sections(double T, TabulatedData &tabData) {
 
         if (i == 0) {
             // Deal with H2 separately
-            cs_ph(1, 2, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, 1, 2, tabData) * C_CGS; // cm^3 / s
-            cs_ph(1, 2, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, 1, 2, tabData) * C_CGS; // cm^3 / s
+            cs_ph(1, 2, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData) * C_CGS; // cm^3 / s
+            cs_ph(1, 2, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData) * C_CGS; // cm^3 / s
             cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
             cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
         }

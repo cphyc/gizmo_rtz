@@ -387,7 +387,7 @@ KOKKOS_FUNCTION
 double get_high_t_cooling_rates(double T, double ne, 
                                 std::array<double, MAX_ELEMENTS>& element_number_densities,
                                 std::array<int, MAX_ELEMENTS>& element_number_ions,
-                                Array2D& element_ion_fractions,
+                                CompactArray2D& element_ion_fractions,
                                 double temp_smooth,
                                 const TabulatedData& tabData){
     // Computes the high-temperature cooling rates
@@ -1139,7 +1139,7 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
                           std::array<double, MAX_ELEMENTS>& element_number_densities,
                           std::array<int, MAX_ELEMENTS>& element_number_ions,
-                          Array2D& element_ion_fractions,
+                          CompactArray2D& element_ion_fractions,
                           const TabulatedData& tabData
                         ){
     double q_cr = 6.43 * ( 1.0 + 4.06 * sqrt( xe / (0.07 + xe) ) ) * EV_2_ERG; //! Bialy 2019
@@ -1197,7 +1197,7 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
 KOKKOS_INLINE_FUNCTION
 double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densities,
                         std::array<int, MAX_ELEMENTS>& element_number_ions,
-                        Array2D& element_ion_fractions,
+                        CompactArray2D& element_ion_fractions,
                         const TabulatedData& tabData){
     // Photoheating contribution from a UVB
 
@@ -1220,7 +1220,7 @@ double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densiti
 KOKKOS_INLINE_FUNCTION
 double photoheating_UVB_G0(double G0,
                            std::array<double, MAX_ELEMENTS>& element_number_densities,
-                           Array2D& element_ion_fractions,
+                           CompactArray2D& element_ion_fractions,
                            const TabulatedData& tabData){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
@@ -1289,7 +1289,7 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
 
 KOKKOS_INLINE_FUNCTION
 double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_densities,
-                    Array2D& element_ion_fractions, const TabulatedData& tabData){
+                    CompactArray2D& element_ion_fractions, const TabulatedData& tabData){
     // Heating and cooling from charge exchange reactions
 
     double ct_hc_rate = 0.0;
@@ -1366,7 +1366,7 @@ KOKKOS_FUNCTION
 double local_photoheating(std::array<double, N_GROUPS>& dNp,
                           std::array<double, MAX_ELEMENTS>& element_number_densities,
                           std::array<int, MAX_ELEMENTS>& element_number_ions,
-                          Array2D& element_ion_fractions,
+                          CompactArray2D& element_ion_fractions,
                           const TabulatedData& tabData) {
     // Heading due to the local radiation field
 
@@ -1413,7 +1413,7 @@ double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double
 
 KOKKOS_FUNCTION
 double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEMENTS>& element_number_densities, 
-                   std::array<int, MAX_ELEMENTS>& element_number_ions, Array2D& element_ion_fractions,
+                   std::array<int, MAX_ELEMENTS>& element_number_ions, CompactArray2D& element_ion_fractions,
                    std::array<double, N_GROUPS>& dNp,
                    double nCO,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,

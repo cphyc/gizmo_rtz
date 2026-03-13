@@ -293,7 +293,7 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
 }
 
 KOKKOS_FUNCTION
-double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, const bool use_new)
+double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const CompactIonData &n_and_ion_fracs, const bool use_new)
 {
     /*
     Returns the electron number density by looping over all elements
@@ -332,7 +332,7 @@ double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const std::arra
 
 KOKKOS_FUNCTION
 double get_rho(const std::array<Element, MAX_ELEMENTS>& elements,
-               const std::array<ParticleIonData, MAX_ELEMENTS>& n_and_ion_fracs)
+               const CompactIonData& n_and_ion_fracs)
 {
     double rho = 0.0;
     for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -345,7 +345,7 @@ double get_rho(const std::array<Element, MAX_ELEMENTS>& elements,
 KOKKOS_FUNCTION
 double get_mu(double ne,
               const std::array<Element, MAX_ELEMENTS>& elements,
-              const std::array<ParticleIonData, MAX_ELEMENTS>& n_and_ion_fracs,
+              const CompactIonData& n_and_ion_fracs,
               bool use_new, bool include_H2) {
     /*
     Calculated the mean molecular weight
@@ -456,7 +456,7 @@ template <
 KOKKOS_FUNCTION
 double subcycle_chemistry(
                       const std::array<Element, MAX_ELEMENTS> &elements,
-                      std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs,
+                      CompactIonData &n_and_ion_fracs,
                       double nCO, double T2, 
                       double aexp, double total_dt, double UV_background_G0,
                       double primary_cosmic_ray_ionization_rate,
@@ -504,7 +504,8 @@ double subcycle_chemistry(
 
     std::array<double, MAX_ELEMENTS> element_number_densities{};
     std::array<int, MAX_ELEMENTS> element_number_ions{};
-    Array2D element_ion_fractions{};
+    CompactArray2D element_ion_fractions{};
+    element_ion_fractions.init_offsets(elements.data());
 
     // Radiation
     std::array<double, N_GROUPS> N_phot_new{};
@@ -1362,7 +1363,8 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     const double aexp,
     const double total_dt,
     std::array<double, MAX_ELEMENTS> &nelements_loc,
-    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+    double* xions_loc,
+    int n_total_ions,
     double& nCO,
     std::array<double, N_GROUPS> &N_PHOT_loc,
     Array2D_RT &F_PHOT_loc,
@@ -1377,7 +1379,8 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         initialize_elements(elements_loc, include_H2);
 
         // solve for ionization balance and cooling rates
-        std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs_loc{};
+        CompactIonData n_and_ion_fracs_loc{};
+        n_and_ion_fracs_loc.init_offsets(elements_loc.data());
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
@@ -1386,7 +1389,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 
             if (elements_loc[ii].atomic_number < 1) continue;
 
-            n_and_ion_fracs_loc[ii].n_element = nelements_loc[ii];
+            n_and_ion_fracs_loc.n_element[ii] = nelements_loc[ii];
 
             for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
             {
@@ -1426,7 +1429,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
             if (elements_loc[ii].atomic_number < 1) continue;
 
-            nelements_loc[ii] = n_and_ion_fracs_loc[ii].n_element;
+            nelements_loc[ii] = n_and_ion_fracs_loc.n_element[ii];
 
             for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
             {

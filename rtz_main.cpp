@@ -8,7 +8,7 @@
 // Common initialization: elements + depletion + ion fractions
 static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
                            std::array<double, MAX_ELEMENTS> &nelements_loc,
-                           std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> &xions_loc,
+                           double* xions_loc,
                            double rho, double metallicity)
 {
     initialize_elements(elements, false);
@@ -52,26 +52,27 @@ struct StepResult {
 template <typename SolverType>
 void solve_one_step(const SolverType &rtz_solver,
                     Kokkos::View<double[MAX_ELEMENTS]> &d_nel,
-                    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> &d_xions,
+                    Kokkos::View<double[MAX_TOTAL_IONS]> &d_xions,
                     Kokkos::View<double[1]> &d_TK,
                     Kokkos::View<double[1]> &d_nCO,
                     double metallicity, double aexp, PhysicsFlags flags,
                     int conv_its, int max_its,
+                    int n_total_ions,
                     Kokkos::View<StepResult[1]> &d_result)
 {
     Kokkos::parallel_for("solve_step", 1, KOKKOS_LAMBDA(int) {
         // Copy views into local arrays
         std::array<double, MAX_ELEMENTS> nel_loc{};
-        std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc{};
+        double xions_loc[MAX_TOTAL_IONS] = {};
         for (int i = 0; i < MAX_ELEMENTS; i++) nel_loc[i] = d_nel(i);
-        for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) xions_loc[i] = d_xions(i);
+        for (int i = 0; i < n_total_ions; i++) xions_loc[i] = d_xions(i);
         double TK = d_TK(0);
         double nCO = d_nCO(0);
 
         double out_Tmu, out_mu;
 
         rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, -1.0,
-                                               nel_loc, xions_loc, nCO,
+                                               nel_loc, xions_loc, n_total_ions, nCO,
                                                out_Tmu, out_mu,
                                                conv_its, max_its, flags);
 
@@ -79,7 +80,7 @@ void solve_one_step(const SolverType &rtz_solver,
         d_TK(0) = TK;
         d_nCO(0) = nCO;
         for (int i = 0; i < MAX_ELEMENTS; i++) d_nel(i) = nel_loc[i];
-        for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) d_xions(i) = xions_loc[i];
+        for (int i = 0; i < n_total_ions; i++) d_xions(i) = xions_loc[i];
 
         d_result(0).nH = nel_loc[1];
         d_result(0).T_actual = TK * out_mu;
@@ -109,14 +110,21 @@ static int run_ism_test()
 
     std::array<Element, MAX_ELEMENTS> elements;
     std::array<double, MAX_ELEMENTS> nelements_loc{};
-    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc{};
+    double xions_loc[MAX_TOTAL_IONS] = {};
 
     double rho_old = pow(10.0, -2.0);
     setup_elements(elements, nelements_loc, xions_loc, rho_old, metallicity);
 
+    // Compute total ion count
+    int n_total_ions = 0;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
+        n_total_ions += elements[i].n_ions + elements[i].n_mol;
+    }
+
     // Device views for mutable state
     Kokkos::View<double[MAX_ELEMENTS]> d_nel("nel");
-    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> d_xions("xions");
+    Kokkos::View<double[MAX_TOTAL_IONS]> d_xions("xions");
     Kokkos::View<double[1]> d_TK("TK");
     Kokkos::View<double[1]> d_nCO("nCO");
     Kokkos::View<StepResult[1]> d_result("result");
@@ -129,7 +137,7 @@ static int run_ism_test()
     auto h_result = Kokkos::create_mirror_view(d_result);
 
     for (int i = 0; i < MAX_ELEMENTS; i++) h_nel(i) = nelements_loc[i];
-    for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) h_xions(i) = xions_loc[i];
+    for (int i = 0; i < n_total_ions; i++) h_xions(i) = xions_loc[i];
     h_TK(0) = 1e5;
     h_nCO(0) = 0.0;
     Kokkos::deep_copy(d_nel, h_nel);
@@ -158,7 +166,7 @@ static int run_ism_test()
         Kokkos::deep_copy(d_nCO, h_nCO);
 
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, d_result);
+                       metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
@@ -190,14 +198,21 @@ static int run_cie_test()
 
     std::array<Element, MAX_ELEMENTS> elements;
     std::array<double, MAX_ELEMENTS> nelements_loc{};
-    std::array<double, MAX_ELEMENTS * MAX_ELEMENTS> xions_loc{};
+    double xions_loc[MAX_TOTAL_IONS] = {};
 
     double rho = 1e-2;
     setup_elements(elements, nelements_loc, xions_loc, rho, metallicity);
 
+    // Compute total ion count
+    int n_total_ions = 0;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
+        n_total_ions += elements[i].n_ions + elements[i].n_mol;
+    }
+
     // Device views
     Kokkos::View<double[MAX_ELEMENTS]> d_nel("nel");
-    Kokkos::View<double[MAX_ELEMENTS * MAX_ELEMENTS]> d_xions("xions");
+    Kokkos::View<double[MAX_TOTAL_IONS]> d_xions("xions");
     Kokkos::View<double[1]> d_TK("TK");
     Kokkos::View<double[1]> d_nCO("nCO");
     Kokkos::View<StepResult[1]> d_result("result");
@@ -209,7 +224,7 @@ static int run_cie_test()
     auto h_result = Kokkos::create_mirror_view(d_result);
 
     for (int i = 0; i < MAX_ELEMENTS; i++) h_nel(i) = nelements_loc[i];
-    for (int i = 0; i < MAX_ELEMENTS * MAX_ELEMENTS; i++) h_xions(i) = xions_loc[i];
+    for (int i = 0; i < n_total_ions; i++) h_xions(i) = xions_loc[i];
     h_nCO(0) = 0.0;
     Kokkos::deep_copy(d_nel, h_nel);
     Kokkos::deep_copy(d_xions, h_xions);
@@ -220,7 +235,7 @@ static int run_cie_test()
         Kokkos::deep_copy(d_TK, h_TK);
 
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, d_result);
+                       metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);

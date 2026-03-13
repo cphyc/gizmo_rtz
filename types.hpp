@@ -2,10 +2,14 @@
 #include <Kokkos_Core.hpp>
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
+// Maximum total ion+molecule states across all elements:
+// H(3) + He(3) + C(7) + N(8) + O(9) + Ne(11) + Mg(13) + Si(15) + S(17) + Fe(27) = 113
+#define MAX_TOTAL_IONS 113
 #define N_GROUPS 1
 #define N_DIM 3
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
 using Array2D_RT = std::array<std::array<double, N_DIM>, N_GROUPS>;
+
 
 typedef struct
 {
@@ -35,6 +39,96 @@ typedef struct
     std::array<double, MAX_ELEMENTS> ion_fracs;
     std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
+
+// Compact 2D array for element-indexed ion data. Uses flat MAX_TOTAL_IONS
+// storage with per-element offsets, preserving [element][ion] access syntax.
+struct CompactArray2D {
+    double data[MAX_TOTAL_IONS];
+    int offsets[MAX_ELEMENTS];
+
+    struct RowProxy {
+        double* row;
+        KOKKOS_INLINE_FUNCTION double& operator[](int j) { return row[j]; }
+        KOKKOS_INLINE_FUNCTION const double& operator[](int j) const { return row[j]; }
+    };
+    struct ConstRowProxy {
+        const double* row;
+        KOKKOS_INLINE_FUNCTION const double& operator[](int j) const { return row[j]; }
+    };
+
+    KOKKOS_INLINE_FUNCTION RowProxy operator[](int i) { return {data + offsets[i]}; }
+    KOKKOS_INLINE_FUNCTION ConstRowProxy operator[](int i) const { return {data + offsets[i]}; }
+
+    KOKKOS_INLINE_FUNCTION
+    void init_offsets(const Element* elements) {
+        for (int i = 0; i < MAX_ELEMENTS; i++) offsets[i] = 0;
+        for (int i = 0; i < MAX_TOTAL_IONS; i++) data[i] = 0.0;
+        int offset = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            offsets[i] = offset;
+            offset += elements[i].n_ions + elements[i].n_mol;
+        }
+    }
+};
+
+// Compact version that stores ion fractions in flat arrays with element offsets.
+// Provides the same n_and_ion_fracs[element].ion_fracs[ion] access pattern as
+// std::array<ParticleIonData, MAX_ELEMENTS> but uses MAX_TOTAL_IONS storage
+// instead of MAX_ELEMENTS * MAX_ELEMENTS.
+struct CompactIonData {
+    double n_element[MAX_ELEMENTS];
+    double n_element_new[MAX_ELEMENTS];
+    double ion_fracs_flat[MAX_TOTAL_IONS];
+    double ion_fracs_new_flat[MAX_TOTAL_IONS];
+    int offsets[MAX_ELEMENTS]; // offset into flat arrays, -1 if inactive
+
+    // Proxy to support n_and_ion_fracs[i].ion_fracs[j] syntax
+    struct ElementProxy {
+        double& n_element;
+        double& n_element_new;
+        double* ion_fracs;
+        double* ion_fracs_new;
+    };
+    struct ConstElementProxy {
+        const double& n_element;
+        const double& n_element_new;
+        const double* ion_fracs;
+        const double* ion_fracs_new;
+    };
+
+    KOKKOS_INLINE_FUNCTION
+    ElementProxy operator[](int i) {
+        return {n_element[i], n_element_new[i],
+                ion_fracs_flat + offsets[i],
+                ion_fracs_new_flat + offsets[i]};
+    }
+    KOKKOS_INLINE_FUNCTION
+    ConstElementProxy operator[](int i) const {
+        return {n_element[i], n_element_new[i],
+                ion_fracs_flat + offsets[i],
+                ion_fracs_new_flat + offsets[i]};
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    void init_offsets(const Element* elements) {
+        for (int i = 0; i < MAX_ELEMENTS; i++) {
+            n_element[i] = 0.0;
+            n_element_new[i] = 0.0;
+            offsets[i] = 0;  // safe default (points to start of flat array)
+        }
+        for (int i = 0; i < MAX_TOTAL_IONS; i++) {
+            ion_fracs_flat[i] = 0.0;
+            ion_fracs_new_flat[i] = 0.0;
+        }
+        int offset = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            offsets[i] = offset;
+            offset += elements[i].n_ions + elements[i].n_mol;
+        }
+    }
+};
 
 // Define the structure equivalent to the Fortran type
 typedef struct {

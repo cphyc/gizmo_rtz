@@ -258,7 +258,7 @@ typedef struct
 
     // Verner cross sections
     Kokkos::View<CrossSections[27][27]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
-    Kokkos::View<CrossSectionsNL[27][27][7]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
+    Kokkos::View<CrossSectionsNL[27][27][8]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
     // Photoionization cross sections and photoheating rates for each group, element, and ion
     Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};

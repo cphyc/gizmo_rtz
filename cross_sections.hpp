@@ -23,7 +23,7 @@ void initialize_cross_sections(const std::string& path_to_data, TabulatedData &t
     for (int i = 0; i < MAX_ELEMENTS; ++i) {
         for (int j = 0; j < MAX_ELEMENTS; ++j) {
             h_tot(i, j) = {-999, -999, -999, -999, -999, -999, -999, -999, -999};
-            for (int k = 0; k < 7; ++k) h_nl(i, j, k) = {-999, -999, -999, -999, -999, -999, -1};
+            for (int k = 0; k < 8; ++k) h_nl(i, j, k) = {-999, -999, -999, -999, -999, -999, -1};
         }
     }
 

@@ -183,7 +183,7 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool inclu
 
 KOKKOS_FUNCTION
 double get_dust_mass_and_depletion(
-    std::array<Element, MAX_ELEMENTS> &elements, const double metallicity)
+    const Element* elements, double* depletion_out, const double metallicity)
 {
     // Parameters for the RR14 dust-to-gas mass ratio
     double a = 2.21;
@@ -217,7 +217,7 @@ double get_dust_mass_and_depletion(
     {
         if (elements[i].atomic_number < 1)
             continue;
-        elements[i].depletion = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
+        depletion_out[i] = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
     }
 
     return y_ratio;
@@ -293,7 +293,7 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
 }
 
 KOKKOS_FUNCTION
-double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const CompactIonData &n_and_ion_fracs, const bool use_new)
+double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, const bool use_new)
 {
     /*
     Returns the electron number density by looping over all elements
@@ -304,7 +304,7 @@ double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const CompactIo
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++)
     {
-        if (elements[i].atomic_number < 1)
+        if (n_and_ion_fracs.n_element[i] == 0.0)
             continue;
 
         // Get the number of ions
@@ -331,20 +331,21 @@ double get_ne(const std::array<Element, MAX_ELEMENTS> &elements, const CompactIo
 }
 
 KOKKOS_FUNCTION
-double get_rho(const std::array<Element, MAX_ELEMENTS>& elements,
+double get_rho(const Element* elements,
+               const double* depletion,
                const CompactIonData& n_and_ion_fracs)
 {
     double rho = 0.0;
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (elements[i].atomic_number < 1) continue;
-        rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass / elements[i].depletion;
+        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass / depletion[i];
     }
     return rho;
 }
 
 KOKKOS_FUNCTION
 double get_mu(double ne,
-              const std::array<Element, MAX_ELEMENTS>& elements,
+              const Element* elements,
               const CompactIonData& n_and_ion_fracs,
               bool use_new, bool include_H2) {
     /*
@@ -355,7 +356,7 @@ double get_mu(double ne,
 
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (elements[i].atomic_number < 1) continue;
+        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
         // Get the number of ions
         int n_ions = elements[i].n_ions;
@@ -455,7 +456,8 @@ template <
 >
 KOKKOS_FUNCTION
 double subcycle_chemistry(
-                      const std::array<Element, MAX_ELEMENTS> &elements,
+                      const Element* elements,
+                      const double* depletion,
                       CompactIonData &n_and_ion_fracs,
                       double nCO, double T2, 
                       double aexp, double total_dt, double UV_background_G0,
@@ -505,7 +507,7 @@ double subcycle_chemistry(
     std::array<double, MAX_ELEMENTS> element_number_densities{};
     std::array<int, MAX_ELEMENTS> element_number_ions{};
     CompactArray2D element_ion_fractions{};
-    element_ion_fractions.init_offsets(elements.data());
+    element_ion_fractions.init_offsets(elements);
 
     // Radiation
     std::array<double, N_GROUPS> N_phot_new{};
@@ -525,7 +527,7 @@ double subcycle_chemistry(
     double cooling_rate_prime = 0.0;
 
     // Compute effective rho
-    double loc_rho = get_rho(elements, n_and_ion_fracs);
+    double loc_rho = get_rho(elements, depletion, n_and_ion_fracs);
 
     // First get the electron number density
     ne_initial = get_ne(elements, n_and_ion_fracs, false);
@@ -541,7 +543,7 @@ double subcycle_chemistry(
         //the old ion fracs
         //do the same for the number densities
         for (int i = 1; i < MAX_ELEMENTS; i++) {
-            if (elements[i].atomic_number < 1) continue;
+            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
             n_and_ion_fracs[i].n_element_new = n_and_ion_fracs[i].n_element;
 
@@ -599,7 +601,7 @@ double subcycle_chemistry(
                 phAbs = 0.0; // zero out absorption
 
                 for (int i = 1; i < MAX_ELEMENTS; i++) { // Loop over all elements
-                    if (elements[i].atomic_number < 1) continue;
+                    if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
                     // Get the number of ions
                     n_ions = elements[i].n_ions;
@@ -901,9 +903,7 @@ double subcycle_chemistry(
         if (compute_atoms) {
             // Loop over all elements
             for (int i = 1; i < MAX_ELEMENTS; i++) {
-                if (elements[i].atomic_number < 1) continue;
-
-                // Get the atomic number
+                if (n_and_ion_fracs.n_element[i] == 0.0) continue;
                 atomic_number = elements[i].atomic_number;
 
                 // Get the number of ions
@@ -1025,7 +1025,7 @@ double subcycle_chemistry(
                         if (i == 1) {  // If element is hydrogen
                             // Loop over all other elements
                             for (int ii = 2; ii < MAX_ELEMENTS; ii++){
-                                if (elements[ii].atomic_number < 1) continue;
+                                if (n_and_ion_fracs.n_element[ii] == 0.0) continue;
 
                                 // Loop over all other ionization states
                                 for (int jj = 0; jj < elements[ii].n_ions; jj++) {
@@ -1171,7 +1171,7 @@ double subcycle_chemistry(
             }
             // Update atomic data
             for (int i = 1; i < MAX_ELEMENTS; i++) {
-                if (elements[i].atomic_number < 1) continue;
+                if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
                 n_and_ion_fracs[i].n_element = n_and_ion_fracs[i].n_element_new;
 
@@ -1279,6 +1279,12 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
         // Initialize the elements
         initialize_elements(elements, include_H2);
 
+        // Copy elements to device view for use in solve_chemistry_and_cooling
+        elements_d = Kokkos::View<Element*>("elements", MAX_ELEMENTS);
+        auto elements_h = Kokkos::create_mirror_view(elements_d);
+        for (int i = 0; i < MAX_ELEMENTS; i++) elements_h(i) = elements[i];
+        Kokkos::deep_copy(elements_d, elements_h);
+
         // Initialize the UV background data
         load_UVB_data(path_to_data);      // First load the UVB data from files
 
@@ -1375,23 +1381,22 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     PhysicsFlags flags) const
 {
 
-        std::array<Element, MAX_ELEMENTS> elements_loc;
-        initialize_elements(elements_loc, include_H2);
+        const Element* elements = elements_d.data();
+        double depletion_loc[MAX_ELEMENTS];
+        for (int i = 0; i < MAX_ELEMENTS; i++) depletion_loc[i] = elements[i].depletion;
 
         // solve for ionization balance and cooling rates
         CompactIonData n_and_ion_fracs_loc{};
-        n_and_ion_fracs_loc.init_offsets(elements_loc.data());
+        n_and_ion_fracs_loc.init_offsets(elements);
 
         int iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            // Deactivate elements with zero abundance to save time in the chemistry solver
-            if (nelements_loc[ii] == 0.0) elements_loc[ii].atomic_number = -1;
-
-            if (elements_loc[ii].atomic_number < 1) continue;
+            // Skip unconfigured elements AND elements with zero abundance
+            if (elements[ii].atomic_number < 1 || nelements_loc[ii] == 0.0) continue;
 
             n_and_ion_fracs_loc.n_element[ii] = nelements_loc[ii];
 
-            for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
+            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
             {
                 n_and_ion_fracs_loc[ii].ion_fracs[jj] = xions_loc[iion];
                 iion++;
@@ -1399,11 +1404,11 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         }
 
         // Get the dust to gas mass ratio and the depletion factors
-        double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements_loc, metallicity);
+        double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements, depletion_loc, metallicity);
 
         // get_chemical_eqm returns Tmu (= T/mu), matching the reference
         double Tmu_final = subcycle_chemistry<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
-            elements_loc, n_and_ion_fracs_loc,
+            elements, depletion_loc, n_and_ion_fracs_loc,
             nCO, TK,
             aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate,
@@ -1415,8 +1420,8 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         );
 
         {
-            double ne_final = get_ne(elements_loc, n_and_ion_fracs_loc, false);
-            double mu_final = get_mu(ne_final, elements_loc, n_and_ion_fracs_loc, false, true);
+            double ne_final = get_ne(elements, n_and_ion_fracs_loc, false);
+            double mu_final = get_mu(ne_final, elements, n_and_ion_fracs_loc, false, true);
             out_mu = mu_final;
             out_Tmu = Tmu_final;
             TK = Tmu_final;
@@ -1427,11 +1432,11 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         // Loop over all elements
         iion = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            if (elements_loc[ii].atomic_number < 1) continue;
+            if (elements[ii].atomic_number < 1 || n_and_ion_fracs_loc.n_element[ii] == 0.0) continue;
 
             nelements_loc[ii] = n_and_ion_fracs_loc.n_element[ii];
 
-            for (int jj = 0; jj < elements_loc[ii].n_ions + elements_loc[ii].n_mol; jj++)
+            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
             {
                 xions_loc[iion] = n_and_ion_fracs_loc[ii].ion_fracs[jj];
                 iion++;

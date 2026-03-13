@@ -46,6 +46,9 @@ public:
                                      PhysicsFlags flags) const;
 
 private:
+    // Constant element data (lives on device, shared across threads)
+    Kokkos::View<Element*> elements_d;
+
     // Tabulated rate data (lives on device)
     TabulatedData tabData;
 

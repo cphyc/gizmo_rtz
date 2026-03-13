@@ -61,35 +61,57 @@ void solve_one_step(const SolverType &rtz_solver,
                     Kokkos::View<StepResult[1]> &d_result)
 {
     Kokkos::parallel_for("solve_step", 1, KOKKOS_LAMBDA(int) {
-        // Copy views into local arrays
-        std::array<double, MAX_ELEMENTS> nel_loc{};
-        double xions_loc[MAX_TOTAL_IONS] = {};
-        for (int i = 0; i < MAX_ELEMENTS; i++) nel_loc[i] = d_nel(i);
-        for (int i = 0; i < n_total_ions; i++) xions_loc[i] = d_xions(i);
+        // Build CompactIonData from views
+        const Element* elements = rtz_solver.elements_d.data();
+        CompactIonData n_and_ion_fracs{};
+        n_and_ion_fracs.init_offsets(elements);
+
+        int iion = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            double nel = d_nel(i);
+            if (nel == 0.0) continue;
+            n_and_ion_fracs.n_element[i] = nel;
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
+                n_and_ion_fracs[i].ion_fracs[j] = d_xions(iion);
+                iion++;
+            }
+        }
+
         double TK = d_TK(0);
         double nCO = d_nCO(0);
-
         double out_Tmu, out_mu;
+        std::array<double, N_GROUPS> N_PHOT{};
+        Array2D_RT F_PHOT{};
 
         rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, -1.0,
-                                               nel_loc, xions_loc, n_total_ions, nCO,
+                                               n_and_ion_fracs, nCO,
+                                               N_PHOT, F_PHOT,
                                                out_Tmu, out_mu,
                                                conv_its, max_its, flags);
 
         // Write results back to views
         d_TK(0) = TK;
         d_nCO(0) = nCO;
-        for (int i = 0; i < MAX_ELEMENTS; i++) d_nel(i) = nel_loc[i];
-        for (int i = 0; i < n_total_ions; i++) d_xions(i) = xions_loc[i];
+        iion = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+            d_nel(i) = n_and_ion_fracs.n_element[i];
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
+                d_xions(iion) = n_and_ion_fracs[i].ion_fracs[j];
+                iion++;
+            }
+        }
 
-        d_result(0).nH = nel_loc[1];
+        d_result(0).nH = n_and_ion_fracs.n_element[1];
         d_result(0).T_actual = TK * out_mu;
         d_result(0).Tmu = out_Tmu;
         d_result(0).mu = out_mu;
-        d_result(0).xHI = xions_loc[0];
-        d_result(0).xHII = xions_loc[1];
-        d_result(0).xH2 = xions_loc[2];
-        d_result(0).n_C = nel_loc[6];
+        d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
+        d_result(0).xHII = n_and_ion_fracs[1].ion_fracs[1];
+        d_result(0).xH2 = n_and_ion_fracs[1].ion_fracs[2];
+        d_result(0).n_C = n_and_ion_fracs.n_element[6];
         d_result(0).nCO = nCO;
     });
     Kokkos::fence();

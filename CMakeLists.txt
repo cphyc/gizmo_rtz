@@ -11,23 +11,35 @@ else()
 endif()
 
 ###################################################################
-# gizmo_rtz library (always built)
+# gizmo_rtz library
 ###################################################################
-add_library(gizmo_rtz STATIC dyablo_api.cpp)
-target_include_directories(gizmo_rtz PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(gizmo_rtz PUBLIC Kokkos::kokkos)
-set_target_properties(gizmo_rtz PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-)
-
-if(Kokkos_ENABLE_CUDA)
-    target_compile_options(gizmo_rtz PRIVATE --expt-extended-lambda --expt-relaxed-constexpr -rdc=true)
-    target_compile_definitions(gizmo_rtz PRIVATE DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION)
-    target_link_options(gizmo_rtz PRIVATE -rdc=true)
+if(GIZMO_RTZ_STANDALONE)
+    add_library(gizmo_rtz STATIC dyablo_api.cpp)
+    set_target_properties(gizmo_rtz PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+    )
+    if(Kokkos_ENABLE_CUDA)
+        target_compile_options(gizmo_rtz PRIVATE --expt-extended-lambda --expt-relaxed-constexpr -rdc=true)
+        target_compile_definitions(gizmo_rtz PRIVATE DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION)
+        target_link_options(gizmo_rtz PRIVATE -rdc=true)
+    endif()
+    target_compile_options(gizmo_rtz PRIVATE -Wall -Wextra)
+else()
+    # When embedded, provide only headers. The source is compiled as part of
+    # PRISM (included from CoolingUpdate_PRISM.cpp) so that CUDA device
+    # functions are visible within the same translation unit, avoiding the
+    # need for relocatable device code (-rdc=true) and the duplicate
+    # __constant__ memory symbols it causes with Kokkos.
+    add_library(gizmo_rtz INTERFACE)
 endif()
-
-target_compile_options(gizmo_rtz PRIVATE -Wall -Wextra)
+if(GIZMO_RTZ_STANDALONE)
+    target_include_directories(gizmo_rtz PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(gizmo_rtz PUBLIC Kokkos::kokkos)
+else()
+    target_include_directories(gizmo_rtz INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(gizmo_rtz INTERFACE Kokkos::kokkos)
+endif()
 
 ###################################################################
 # Standalone executable and tests (only when building standalone)

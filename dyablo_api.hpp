@@ -33,9 +33,7 @@ public:
                                      const double metallicity,
                                      const double aexp,
                                      const double total_dt,
-                                     std::array<double, MAX_ELEMENTS> &nelements_loc,
-                                     double* xions_loc,
-                                     int n_total_ions,
+                                     CompactIonData& n_and_ion_fracs_loc,
                                      double& nCO,
                                      std::array<double, N_GROUPS> &N_PHOT_loc,
                                      Array2D_RT &F_PHOT_loc,
@@ -45,9 +43,10 @@ public:
                                      int max_its,
                                      PhysicsFlags flags) const;
 
-private:
     // Constant element data (lives on device, shared across threads)
     Kokkos::View<Element*> elements_d;
+
+private:
 
     // Tabulated rate data (lives on device)
     TabulatedData tabData;

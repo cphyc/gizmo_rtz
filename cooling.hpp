@@ -385,9 +385,8 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
 
 KOKKOS_FUNCTION
 double get_high_t_cooling_rates(double T, double ne, 
-                                std::array<double, MAX_ELEMENTS>& element_number_densities,
-                                std::array<int, MAX_ELEMENTS>& element_number_ions,
-                                CompactArray2D& element_ion_fractions,
+                                const CompactIonData& n_and_ion_fracs,
+                                const Element* elements,
                                 double temp_smooth,
                                 const TabulatedData& tabData){
     // Computes the high-temperature cooling rates
@@ -420,12 +419,12 @@ double get_high_t_cooling_rates(double T, double ne,
 
     // Loop over all ions -- not including H and He
     for (int i = 3; i < 27; i++) {
-        if (element_number_densities[i] > MIN_METAL_COOL_DENS){
+        if (n_and_ion_fracs.n_element_new[i] > MIN_METAL_COOL_DENS){
             // Get the element number density
-            double n_element = element_number_densities[i];
-            for (int j = 0; j < element_number_ions[i]; j++) { 
+            double n_element = n_and_ion_fracs.n_element_new[i];
+            for (int j = 0; j < (elements[i].n_ions + elements[i].n_mol); j++) { 
                 // Get the element ion fraction
-                double n_ion = element_ion_fractions[i][j];
+                double n_ion = n_and_ion_fracs[i].ion_fracs_new[j];
 
                 // Interpolate the cooling rate for the ion
                 double loc_cooling_rate = (frac_low * tabData.high_t_cooling_rates(idx_low, i, j));
@@ -1137,9 +1136,8 @@ double photoelectric_heating(double T, double G0, double ne, double f_dg, double
 KOKKOS_INLINE_FUNCTION
 double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
                           double ne, double xi_h_cr,
-                          std::array<double, MAX_ELEMENTS>& element_number_densities,
-                          std::array<int, MAX_ELEMENTS>& element_number_ions,
-                          CompactArray2D& element_ion_fractions,
+                          const CompactIonData& n_and_ion_fracs,
+                          const Element* elements,
                           const TabulatedData& tabData
                         ){
     double q_cr = 6.43 * ( 1.0 + 4.06 * sqrt( xe / (0.07 + xe) ) ) * EV_2_ERG; //! Bialy 2019
@@ -1169,13 +1167,13 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
     // --> Here we skip H and He as it's done separately above
     double induced_UV_heat_scale_fac = H2_cosmic_ray_ionization_rate_primary / 1E-16;
     for (int i = 3; i < 27; i++) {
-        double n_element = element_number_densities[i];
+        double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        int n_ions = element_number_ions[i];
+        int n_ions = (elements[i].n_ions + elements[i].n_mol);
         
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
-            double x_ion = element_ion_fractions[i][j];
+            double x_ion = n_and_ion_fracs[i].ion_fracs_new[j];
 
             // This is the primary heating term from ionization
             cr_heating_tot += (n_element * x_ion * q_cr * tabData.cosmic_ray_ionization_rates(i, j) * total_cosmic_ray_ionization_rate); // erg/s/cm^3
@@ -1195,9 +1193,8 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
 }
 
 KOKKOS_INLINE_FUNCTION
-double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densities,
-                        std::array<int, MAX_ELEMENTS>& element_number_ions,
-                        CompactArray2D& element_ion_fractions,
+double photoheating_UVB(const CompactIonData& n_and_ion_fracs,
+                        const Element* elements,
                         const TabulatedData& tabData){
     // Photoheating contribution from a UVB
 
@@ -1205,12 +1202,12 @@ double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densiti
 
     // Loop over all elements
     for (int i = 1; i < 27; i++) {
-        double n_element = element_number_densities[i];
+        double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        int n_ions = element_number_ions[i];
+        int n_ions = (elements[i].n_ions + elements[i].n_mol);
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
-            heating_rate += (n_element * element_ion_fractions[i][j] * tabData.HM12_UVB_z(i, j, 1)); // erg/s/cm^3
+            heating_rate += (n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.HM12_UVB_z(i, j, 1)); // erg/s/cm^3
         }
     }
 
@@ -1219,8 +1216,7 @@ double photoheating_UVB(std::array<double, MAX_ELEMENTS>& element_number_densiti
 
 KOKKOS_INLINE_FUNCTION
 double photoheating_UVB_G0(double G0,
-                           std::array<double, MAX_ELEMENTS>& element_number_densities,
-                           CompactArray2D& element_ion_fractions,
+                           const CompactIonData& n_and_ion_fracs,
                            const TabulatedData& tabData){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
@@ -1229,10 +1225,10 @@ double photoheating_UVB_G0(double G0,
 
     // Loop over all elements (no need for H and He here)
     for (int i = 3; i < 27; i++) {
-        double n_element = element_number_densities[i];
+        double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        heating_rate += n_element * element_ion_fractions[i][0] * tabData.G0_heating_rates(i) * G0; // erg/s/cm^3
+        heating_rate += n_element * n_and_ion_fracs[i].ion_fracs_new[0] * tabData.G0_heating_rates(i) * G0; // erg/s/cm^3
     }
 
     return heating_rate;
@@ -1288,8 +1284,8 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
 }
 
 KOKKOS_INLINE_FUNCTION
-double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_densities,
-                    CompactArray2D& element_ion_fractions, const TabulatedData& tabData){
+double CT_heat_cool(double T, const CompactIonData& n_and_ion_fracs,
+                    const TabulatedData& tabData){
     // Heating and cooling from charge exchange reactions
 
     double ct_hc_rate = 0.0;
@@ -1301,62 +1297,62 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
     //nN(ixHII) --> nHI
     //nI(2) == nI(ixHII)   == nHII
 
-    double loc_nHI = element_number_densities[1] * element_ion_fractions[1][0];
-    double loc_nHII = element_number_densities[1] * element_ion_fractions[1][1];
+    double loc_nHI = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
+    double loc_nHII = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
 
     // Helium
-    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * element_number_densities[2] * element_ion_fractions[2][1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
+    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
 
     // Carbon
-    ct_hc_rate += charge_transfer_ionization(0, 6, T, tabData) * loc_nHII * element_number_densities[6] * element_ion_fractions[6][0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][1] * (-2.34) * EV_2_ERG; // H + C+ -> C + H+
-    ct_hc_rate += charge_transfer_recombination(2, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][2] * 4.01 * EV_2_ERG; // H + C++ -> C+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][3] * 5.73 * EV_2_ERG; // H + C+++ -> C++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 6, T, tabData) * loc_nHI * element_number_densities[6] * element_ion_fractions[6][4] * 11.3 * EV_2_ERG; // H + C++++ -> C+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 6, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[1] * (-2.34) * EV_2_ERG; // H + C+ -> C + H+
+    ct_hc_rate += charge_transfer_recombination(2, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[2] * 4.01 * EV_2_ERG; // H + C++ -> C+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + C+++ -> C++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[4] * 11.3 * EV_2_ERG; // H + C++++ -> C+++ + H+
 
     // Nitrogen
-    ct_hc_rate += charge_transfer_ionization(0, 7, T, tabData) * loc_nHII * element_number_densities[7] * element_ion_fractions[7][0] * (-0.94) * EV_2_ERG; // H+ + N -> N+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][1] * 0.94 * EV_2_ERG; // H + N+ -> N + H+
-    ct_hc_rate += charge_transfer_recombination(2, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][2] * 4.56 * EV_2_ERG; // H + N++ -> N+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][3] * 6.40 * EV_2_ERG; // H + N+++ -> N++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 7, T, tabData) * loc_nHI * element_number_densities[7] * element_ion_fractions[7][4] * 11.0 * EV_2_ERG; // H + N++++ -> N+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 7, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[0] * (-0.94) * EV_2_ERG; // H+ + N -> N+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[1] * 0.94 * EV_2_ERG; // H + N+ -> N + H+
+    ct_hc_rate += charge_transfer_recombination(2, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[2] * 4.56 * EV_2_ERG; // H + N++ -> N+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[3] * 6.40 * EV_2_ERG; // H + N+++ -> N++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[4] * 11.0 * EV_2_ERG; // H + N++++ -> N+++ + H+
 
     // Oxygen
-    ct_hc_rate += charge_transfer_ionization(0, 8, T, tabData) * loc_nHII * element_number_densities[8] * element_ion_fractions[8][0] * (-0.02) * EV_2_ERG; // H+ + O -> O+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][1] * 0.02 * EV_2_ERG; // H + O+ -> O + H+
-    ct_hc_rate += charge_transfer_recombination(2, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][2] * 6.65 * EV_2_ERG; // H + O++ -> O+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][3] * 5.00 * EV_2_ERG; // H + O+++ -> O++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 8, T, tabData) * loc_nHI * element_number_densities[8] * element_ion_fractions[8][4] * 8.47 * EV_2_ERG; // H + O++++ -> O+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 8, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[0] * (-0.02) * EV_2_ERG; // H+ + O -> O+ + H
+    ct_hc_rate += charge_transfer_recombination(1, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[1] * 0.02 * EV_2_ERG; // H + O+ -> O + H+
+    ct_hc_rate += charge_transfer_recombination(2, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[2] * 6.65 * EV_2_ERG; // H + O++ -> O+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[3] * 5.00 * EV_2_ERG; // H + O+++ -> O++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[4] * 8.47 * EV_2_ERG; // H + O++++ -> O+++ + H+
 
     // Neon
-    ct_hc_rate += charge_transfer_recombination(3, 10, T, tabData) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][3] * 5.82 * EV_2_ERG; // H + Ne+++ -> Ne++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 10, T, tabData) * loc_nHI * element_number_densities[10] * element_ion_fractions[10][4] * 8.60 * EV_2_ERG; // H + Ne++++ -> Ne+++ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 10, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[10] * n_and_ion_fracs[10].ion_fracs_new[3] * 5.82 * EV_2_ERG; // H + Ne+++ -> Ne++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 10, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[10] * n_and_ion_fracs[10].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + Ne++++ -> Ne+++ + H+
 
     // Magnesium
-    ct_hc_rate += charge_transfer_ionization(0, 12, T, tabData) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][0] * 1.52 * EV_2_ERG; // H+ + Mg -> Mg+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 12, T, tabData) * loc_nHII * element_number_densities[12] * element_ion_fractions[12][1] * (-1.44) * EV_2_ERG; // H+ + Mg+ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][2] * 1.44 * EV_2_ERG; // H + Mg++ -> Mg+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][3] * 5.73 * EV_2_ERG; // H + Mg+++ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 12, T, tabData) * loc_nHI * element_number_densities[12] * element_ion_fractions[12][4] * 8.60 * EV_2_ERG; // H + Mg++++ -> Mg+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 12, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[0] * 1.52 * EV_2_ERG; // H+ + Mg -> Mg+ + H
+    ct_hc_rate += charge_transfer_ionization(1, 12, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[1] * (-1.44) * EV_2_ERG; // H+ + Mg+ -> Mg++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[2] * 1.44 * EV_2_ERG; // H + Mg++ -> Mg+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + Mg+++ -> Mg++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + Mg++++ -> Mg+++ + H+
 
     // Silicon
-    ct_hc_rate += charge_transfer_ionization(0, 14, T, tabData) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][0] * 0.12 * EV_2_ERG; // H+ + Si -> Si+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 14, T, tabData) * loc_nHII * element_number_densities[14] * element_ion_fractions[14][1] * (-2.72) * EV_2_ERG; // H+ + Si+ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][2] * 2.72 * EV_2_ERG; // H + Si++ -> Si+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][3] * 4.23 * EV_2_ERG; // H + Si+++ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 14, T, tabData) * loc_nHI * element_number_densities[14] * element_ion_fractions[14][4] * 7.49 * EV_2_ERG; // H + Si++++ -> Si+++ + H+
+    ct_hc_rate += charge_transfer_ionization(0, 14, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[0] * 0.12 * EV_2_ERG; // H+ + Si -> Si+ + H
+    ct_hc_rate += charge_transfer_ionization(1, 14, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[1] * (-2.72) * EV_2_ERG; // H+ + Si+ -> Si++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[2] * 2.72 * EV_2_ERG; // H + Si++ -> Si+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[3] * 4.23 * EV_2_ERG; // H + Si+++ -> Si++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[4] * 7.49 * EV_2_ERG; // H + Si++++ -> Si+++ + H+
 
     // Sulfur
-    ct_hc_rate += charge_transfer_recombination(1, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
-    ct_hc_rate += charge_transfer_recombination(3, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * element_number_densities[16] * element_ion_fractions[16][4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
+    ct_hc_rate += charge_transfer_recombination(1, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
+    ct_hc_rate += charge_transfer_recombination(3, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
 
     // Iron
     // Silicon
-    ct_hc_rate += charge_transfer_ionization(1, 26, T, tabData) * loc_nHII * element_number_densities[26] * element_ion_fractions[26][1] * (-2.56) * EV_2_ERG; // H+ + Fe+ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][2] * 2.56 * EV_2_ERG; // H + Fe++ -> Fe+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][3] * 6.30 * EV_2_ERG; // H + Fe+++ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 26, T, tabData) * loc_nHI * element_number_densities[26] * element_ion_fractions[26][4] * 10.0 * EV_2_ERG; // H + Fe++++ -> Fe+++ + H+
+    ct_hc_rate += charge_transfer_ionization(1, 26, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[1] * (-2.56) * EV_2_ERG; // H+ + Fe+ -> Fe++ + H+
+    ct_hc_rate += charge_transfer_recombination(2, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[2] * 2.56 * EV_2_ERG; // H + Fe++ -> Fe+ + H+
+    ct_hc_rate += charge_transfer_recombination(3, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[3] * 6.30 * EV_2_ERG; // H + Fe+++ -> Fe++ + H+
+    ct_hc_rate += charge_transfer_recombination(4, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[4] * 10.0 * EV_2_ERG; // H + Fe++++ -> Fe+++ + H+
 
     return ct_hc_rate;
 }
@@ -1364,24 +1360,23 @@ double CT_heat_cool(double T, std::array<double, MAX_ELEMENTS>& element_number_d
     
 KOKKOS_FUNCTION
 double local_photoheating(std::array<double, N_GROUPS>& dNp,
-                          std::array<double, MAX_ELEMENTS>& element_number_densities,
-                          std::array<int, MAX_ELEMENTS>& element_number_ions,
-                          CompactArray2D& element_ion_fractions,
+                          const CompactIonData& n_and_ion_fracs,
+                          const Element* elements,
                           const TabulatedData& tabData) {
     // Heading due to the local radiation field
 
     double heating_rate = 0.0; 
 
     for (int i = 1; i < 27; i++) { // Loop over elements
-        double n_element = element_number_densities[i];
+        double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        int n_ions = element_number_ions[i];
+        int n_ions = (elements[i].n_ions + elements[i].n_mol);
         
         for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
 
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                heating_rate += (dNp[k] * element_number_densities[i] * element_ion_fractions[i][j] * tabData.cs_ph(i, j, k, 2));
+                heating_rate += (dNp[k] * n_and_ion_fracs.n_element_new[i] * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i, j, k, 2));
             } // End loop over photon groups
         } // End loop over ions
     } // End loop over elements
@@ -1412,8 +1407,8 @@ double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double
 }
 
 KOKKOS_FUNCTION
-double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEMENTS>& element_number_densities, 
-                   std::array<int, MAX_ELEMENTS>& element_number_ions, CompactArray2D& element_ion_fractions,
+double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and_ion_fracs, 
+                   const Element* elements,
                    std::array<double, N_GROUPS>& dNp,
                    double nCO,
                    double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
@@ -1430,9 +1425,8 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     T --> Temperature [K]
     ne --> Electron number density [cm^-3]
     aexp --> Scale factor
-    element_number_densities --> vector with element number densities [cm^-3]
-    element_number_ions --> vector with number of ions to compute
-    element_ion_fractions --> 2D array with ion fractions
+    n_and_ion_fracs --> compact ion data with element densities and ion fractions
+    elements --> element metadata (n_ions, n_mol, etc.)
     dNp --> photon number densities in each group
     G0 --> habing band radiation field (MW units)
     f_dg --> dust to gas mass ratio normalized by MW value
@@ -1440,17 +1434,17 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     xi_h_cr --> cosmic ray ionization rate
     */
 
-    double nH_I = element_number_densities[1] * element_ion_fractions[1][0];
-    double nH_II = element_number_densities[1] * element_ion_fractions[1][1];
-    double nH2 = element_number_densities[1] * element_ion_fractions[1][2] * 0.5;
-    double nHe_I = element_number_densities[2] * element_ion_fractions[2][0];
-    double nHe_II = element_number_densities[2] * element_ion_fractions[2][1];
-    double nHe_III = element_number_densities[2] * element_ion_fractions[2][2];
+    double nH_I = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
+    double nH_II = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
+    double nH2 = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[2] * 0.5;
+    double nHe_I = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[0];
+    double nHe_II = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1];
+    double nHe_III = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[2];
 
     double nH = nH_I + nH_II + (2.0 * nH2);
-    double xHI = element_ion_fractions[1][0];
-    double xHII = element_ion_fractions[1][1];
-    double xH2 = element_ion_fractions[1][2] * 0.5;
+    double xHI = n_and_ion_fracs[1].ion_fracs_new[0];
+    double xHII = n_and_ion_fracs[1].ion_fracs_new[1];
+    double xH2 = n_and_ion_fracs[1].ion_fracs_new[2] * 0.5;
 
     // metal cool smoothing parameters
     double metal_cool_smooth_f1 = 0.5 * (tanh( (5E-3) * ( T - 1.E4 ) ) + 1.0 );
@@ -1478,9 +1472,8 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     // Metal line cooling -- high temperature
     double high_T_metal_cooling = 0.0;
     high_T_metal_cooling = get_high_t_cooling_rates(T, ne, 
-                                                    element_number_densities,
-                                                    element_number_ions,
-                                                    element_ion_fractions,
+                                                    n_and_ion_fracs,
+                                                    elements,
                                                     metal_cool_smooth_f1,
                                                     tabData);
 
@@ -1490,7 +1483,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     double total_fine_structure = 0.0;
     if (T < 1.1E4){
         // CI cooling
-        n_ion_fs = element_number_densities[6] * element_ion_fractions[6][0];
+        n_ion_fs = n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CI = CI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
@@ -1500,7 +1493,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // CII cooling
-        n_ion_fs = element_number_densities[6] * element_ion_fractions[6][1];
+        n_ion_fs = n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CII = CII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
@@ -1511,7 +1504,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // NII cooling
-        n_ion_fs = element_number_densities[7] * element_ion_fractions[7][1];
+        n_ion_fs = n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_NII = NII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
@@ -1521,7 +1514,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // OI cooling
-        n_ion_fs = element_number_densities[8] * element_ion_fractions[8][0];
+        n_ion_fs = n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OI = OI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
@@ -1532,7 +1525,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
 
         // OIII cooling
-        n_ion_fs = element_number_densities[8] * element_ion_fractions[8][2];
+        n_ion_fs = n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[2];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OIII = OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
@@ -1542,7 +1535,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
 
         // NeII cooling
-        n_ion_fs = element_number_densities[10] * element_ion_fractions[10][1];
+        n_ion_fs = n_and_ion_fracs.n_element_new[10] * n_and_ion_fracs[10].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_NeII = NeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
@@ -1552,7 +1545,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // SiI cooling
-        n_ion_fs = element_number_densities[14] * element_ion_fractions[14][0];
+        n_ion_fs = n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiI = SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
@@ -1562,7 +1555,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // SiII cooling
-        n_ion_fs = element_number_densities[14] * element_ion_fractions[14][1];
+        n_ion_fs = n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiII = SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
@@ -1572,7 +1565,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // SI cooling
-        n_ion_fs = element_number_densities[16] * element_ion_fractions[16][0];
+        n_ion_fs = n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SI = SI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                  ne, nH2, nHe_I, nHe_II, 
@@ -1582,7 +1575,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // FeI cooling
-        n_ion_fs = element_number_densities[26] * element_ion_fractions[26][0];
+        n_ion_fs = n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeI = FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                    ne, nH2, nHe_I, nHe_II, 
@@ -1592,7 +1585,7 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
         }
         
         // FeII cooling
-        n_ion_fs = element_number_densities[26] * element_ion_fractions[26][1];
+        n_ion_fs = n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeII = FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
                                                                      ne, nH2, nHe_I, nHe_II, 
@@ -1607,23 +1600,22 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
 
     // Dust cooling
     double dust_cooling = 0.0;
-    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, element_number_densities[1]);
-    dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, element_number_densities[1], f_dg);
+    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, n_and_ion_fracs.n_element_new[1]);
+    dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, n_and_ion_fracs.n_element_new[1], f_dg);
 
     // CO cooling
     double CO_cooling = CO_cooling_koyama_00(nH, nH2, nH_I, nCO, T);
 
     // Photoelectric heating --> note factor of 1.7 is because IUV
-    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, element_number_densities[1]);
+    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, n_and_ion_fracs.n_element_new[1]);
 
     // Cosmic ray heating
     double cosmic_ray_heat = 0.0;
     if (rtz_include_cosmic_ray_ionization) {
 		cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2,
 		                                            ne, xi_h_cr,
-		                                            element_number_densities,
-		                                            element_number_ions,
-		                                            element_ion_fractions,
+		                                            n_and_ion_fracs,
+		                                            elements,
 		                                            tabData
 		                                        );
 	}
@@ -1631,17 +1623,15 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     // Photoheating from the UV background
 	double uvb_photoheat = 0.0;
     if (rtz_include_HM12_UVB) {
-        uvb_photoheat = photoheating_UVB(element_number_densities,
-                                            element_number_ions,
-                                            element_ion_fractions,
+        uvb_photoheat = photoheating_UVB(n_and_ion_fracs,
+                                            elements,
                                             tabData);
 	    uvb_photoheat *= ss_factor; // Account for self-shielding
 	}
 
     // Photoheating from the G0 FUV background
     double uvb_photoheat_G0 = photoheating_UVB_G0(G0,
-                                                  element_number_densities,
-                                                  element_ion_fractions,
+                                                  n_and_ion_fracs,
                                                   tabData);
 
     // Heating from H2 formation and destruction
@@ -1652,15 +1642,14 @@ double all_cooling(double T, double ne, double aexp, std::array<double, MAX_ELEM
     double charge_transfer_heat_cool = 0.0;
     if (rtz_include_charge_exchange) {
 		charge_transfer_heat_cool = CT_heat_cool(T,
-                                                    element_number_densities,
-                                                    element_ion_fractions,
+                                                    n_and_ion_fracs,
                                                     tabData);
 	}
 
     // TODO(code): call local photoheating
     double local_phot_heat = 0.0;
     if (rt_advect) {
-        local_phot_heat += local_photoheating(dNp, element_number_densities, element_number_ions, element_ion_fractions, tabData);
+        local_phot_heat += local_photoheating(dNp, n_and_ion_fracs, elements, tabData);
     }
 
     // Sum all of the cooling rates

@@ -504,11 +504,6 @@ double subcycle_chemistry(
     double Tmu_old = T2; // T/mu
     double Tmu_new = T2; // T/mu
 
-    std::array<double, MAX_ELEMENTS> element_number_densities{};
-    std::array<int, MAX_ELEMENTS> element_number_ions{};
-    CompactArray2D element_ion_fractions{};
-    element_ion_fractions.init_offsets(elements);
-
     // Radiation
     std::array<double, N_GROUPS> N_phot_new{};
     Array2D_RT F_phot_new{};
@@ -653,24 +648,9 @@ double subcycle_chemistry(
             // double *element_number_ions;
             // double **element_ion_fractions;
 
-            // element_number_densities = (double *)malloc(MAX_ELEMENTS * sizeof(double));
-            // element_number_ions = (double *)malloc(MAX_ELEMENTS * sizeof(double));
-            // element_ion_fractions = (double **)malloc(MAX_ELEMENTS * sizeof(double *));
-
-            // Loop over all elements
-            for (int i = 1; i < MAX_ELEMENTS; i++) {
-                // element_ion_fractions[i] = (double *)malloc(MAX_ELEMENTS * sizeof(double));
-                element_number_densities[i] = n_and_ion_fracs[i].n_element_new;
-                element_number_ions[i] = elements[i].n_ions + elements[i].n_mol;
-                for (int j = 0; j < element_number_ions[i]; j++) {
-                    element_ion_fractions[i][j] = n_and_ion_fracs[i].ion_fracs_new[j];
-                }
-            }
-
             cooling_rate = all_cooling(TK, ne, aexp,
-                                    element_number_densities, 
-                                    element_number_ions, 
-                                    element_ion_fractions,
+                                    n_and_ion_fracs, 
+                                    elements,
                                     N_phot_new,
                                     nCO,
                                     UV_background_G0, 
@@ -688,9 +668,8 @@ double subcycle_chemistry(
                                     tabData);
 
             cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-                                            element_number_densities, 
-                                            element_number_ions, 
-                                            element_ion_fractions,
+                                            n_and_ion_fracs, 
+                                            elements,
                                             N_phot_new,
                                             nCO,
                                             UV_background_G0, 
@@ -1368,9 +1347,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     const double metallicity,
     const double aexp,
     const double total_dt,
-    std::array<double, MAX_ELEMENTS> &nelements_loc,
-    double* xions_loc,
-    int n_total_ions,
+    CompactIonData& n_and_ion_fracs_loc,
     double& nCO,
     std::array<double, N_GROUPS> &N_PHOT_loc,
     Array2D_RT &F_PHOT_loc,
@@ -1384,24 +1361,6 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         const Element* elements = elements_d.data();
         double depletion_loc[MAX_ELEMENTS];
         for (int i = 0; i < MAX_ELEMENTS; i++) depletion_loc[i] = elements[i].depletion;
-
-        // solve for ionization balance and cooling rates
-        CompactIonData n_and_ion_fracs_loc{};
-        n_and_ion_fracs_loc.init_offsets(elements);
-
-        int iion = 0;
-        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            // Skip unconfigured elements AND elements with zero abundance
-            if (elements[ii].atomic_number < 1 || nelements_loc[ii] == 0.0) continue;
-
-            n_and_ion_fracs_loc.n_element[ii] = nelements_loc[ii];
-
-            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
-            {
-                n_and_ion_fracs_loc[ii].ion_fracs[jj] = xions_loc[iion];
-                iion++;
-            }
-        }
 
         // Get the dust to gas mass ratio and the depletion factors
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(elements, depletion_loc, metallicity);
@@ -1425,22 +1384,6 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             out_mu = mu_final;
             out_Tmu = Tmu_final;
             TK = Tmu_final;
-        }
-
-        // printf("Final temperature: %e\n", TK);
-
-        // Loop over all elements
-        iion = 0;
-        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            if (elements[ii].atomic_number < 1 || n_and_ion_fracs_loc.n_element[ii] == 0.0) continue;
-
-            nelements_loc[ii] = n_and_ion_fracs_loc.n_element[ii];
-
-            for (int jj = 0; jj < elements[ii].n_ions + elements[ii].n_mol; jj++)
-            {
-                xions_loc[iion] = n_and_ion_fracs_loc[ii].ion_fracs[jj];
-                iion++;
-            }
         }
 }
 

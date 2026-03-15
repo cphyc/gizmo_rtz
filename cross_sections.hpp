@@ -11,6 +11,8 @@
 constexpr int n_int_points = 10000;
 constexpr double group_E_min[N_GROUPS] = { 13.6 };
 constexpr double group_E_max[N_GROUPS] = { 500.0 };
+constexpr int n_photo_elements = 27;
+constexpr int n_photo_pairs = (n_photo_elements * (n_photo_elements - 1)) / 2;
 // -------------------------------------------------------------------------
 // Initialization Routine (Runs on Host)
 // -------------------------------------------------------------------------
@@ -179,14 +181,72 @@ double blackbody_nu(double T, double nu){
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_N_num(double nu, double T, int element, int ion, const TabulatedData& tabData){
-    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion, tabData) * blackbody_nu(T, nu) / (H_PLANCK * nu);
+double simpson_weight(int i) {
+    if (i == 0 || i == n_int_points) {
+        return 1.0;
+    }
+
+    return (i % 2 == 0) ? 2.0 : 4.0;
 }
 
 KOKKOS_INLINE_FUNCTION
+void integration_bounds(double E0, double E1, double &a, double &b, double &h) {
+    a = (E0 * EV_2_ERG) / H_PLANCK;
+    b = (E1 * EV_2_ERG) / H_PLANCK;
+    h = (b - a) / n_int_points;
+}
 
-double sigma_N_den(double nu, double T, int element, int ion){
-    return blackbody_nu(T, nu) / (H_PLANCK * nu);
+KOKKOS_INLINE_FUNCTION
+void compute_blackbody_bin_integrals(double E0, double E1, double T,
+                                     double &number_denominator,
+                                     double &energy_denominator,
+                                     double &group_energy) {
+    double a, b, h;
+    integration_bounds(E0, E1, a, b, h);
+
+    double weighted_number_sum = 0.0;
+    double weighted_energy_sum = 0.0;
+
+    for (int i = 0; i <= n_int_points; ++i) {
+        const double nu = a + (i * h);
+        const double weight = simpson_weight(i);
+        const double B_nu = blackbody_nu(T, nu);
+
+        weighted_number_sum += weight * B_nu / (H_PLANCK * nu);
+        weighted_energy_sum += weight * B_nu;
+    }
+
+    number_denominator = weighted_number_sum * h / 3.0;
+    energy_denominator = weighted_energy_sum * h / 3.0;
+    group_energy = (energy_denominator / number_denominator) / EV_2_ERG;
+}
+
+KOKKOS_INLINE_FUNCTION
+void compute_weighted_cross_sections(double E0, double E1, double T,
+                                     int element, int ion,
+                                     const TabulatedData& tabData,
+                                     double number_denominator,
+                                     double energy_denominator,
+                                     double &sigma_number,
+                                     double &sigma_energy) {
+    double a, b, h;
+    integration_bounds(E0, E1, a, b, h);
+
+    double weighted_number_sum = 0.0;
+    double weighted_energy_sum = 0.0;
+
+    for (int i = 0; i <= n_int_points; ++i) {
+        const double nu = a + (i * h);
+        const double weight = simpson_weight(i);
+        const double B_nu = blackbody_nu(T, nu);
+        const double sigma = getCrosssection_rtz((C_CGS / nu) * 1e8, element, ion, tabData);
+
+        weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
+        weighted_energy_sum += weight * sigma * B_nu;
+    }
+
+    sigma_number = (weighted_number_sum * h / 3.0) / number_denominator;
+    sigma_energy = (weighted_energy_sum * h / 3.0) / energy_denominator;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -195,49 +255,15 @@ double sigma_N(double E0, double E1, double T, int element, int ion, const Tabul
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double a = (E0 * EV_2_ERG) / H_PLANCK;
-    double b = (E1 * EV_2_ERG) / H_PLANCK;
-    double h = (b - a) / n_int_points;
+    double number_denominator, energy_denominator, group_energy;
+    double sigma_number, sigma_energy;
 
-    double sum = 0.0;
+    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
+    compute_weighted_cross_sections(E0, E1, T, element, ion, tabData,
+                                    number_denominator, energy_denominator,
+                                    sigma_number, sigma_energy);
 
-    // Simpson's rule for sigma * B / hnu
-    sum = sigma_N_num(a, T, element, ion, tabData);
-    sum += sigma_N_num(b, T, element, ion, tabData);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * sigma_N_num(x, T, element, ion, tabData);
-        } else {
-            sum += 4 * sigma_N_num(x, T, element, ion, tabData);
-        }
-    }
-    double numerator = sum * h / 3.0;
-
-    // Simpson's rule for B / hnu
-    sum = sigma_N_den(a, T, element, ion);
-    sum += sigma_N_den(b, T, element, ion);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * sigma_N_den(x, T, element, ion);
-        } else {
-            sum += 4 * sigma_N_den(x, T, element, ion);
-        }
-    }
-    double denominator = sum * h / 3.0;
-
-    return numerator / denominator;
-}
-
-KOKKOS_INLINE_FUNCTION
-double sigma_E_num(double nu, double T, int element, int ion, const TabulatedData& tabData){
-    return getCrosssection_rtz((C_CGS / nu)*1e8, element, ion, tabData) * blackbody_nu(T, nu);
-}
-
-KOKKOS_INLINE_FUNCTION
-double sigma_E_den(double nu, double T, int element, int ion){
-    return blackbody_nu(T, nu);
+    return sigma_number;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -246,49 +272,15 @@ double sigma_E(double E0, double E1, double T, int element, int ion, const Tabul
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double a = (E0 * EV_2_ERG) / H_PLANCK;
-    double b = (E1 * EV_2_ERG) / H_PLANCK;
-    double h = (b - a) / n_int_points;
+    double number_denominator, energy_denominator, group_energy;
+    double sigma_number, sigma_energy;
 
-    double sum = 0.0;
+    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
+    compute_weighted_cross_sections(E0, E1, T, element, ion, tabData,
+                                    number_denominator, energy_denominator,
+                                    sigma_number, sigma_energy);
 
-    // Simpson's rule for sigma * B / hnu
-    sum = sigma_E_num(a, T, element, ion, tabData);
-    sum += sigma_E_num(b, T, element, ion, tabData);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * sigma_E_num(x, T, element, ion, tabData);
-        } else {
-            sum += 4 * sigma_E_num(x, T, element, ion, tabData);
-        }
-    }
-    double numerator = sum * h / 3.0;
-
-    // Simpson's rule for B / hnu
-    sum = sigma_E_den(a, T, element, ion);
-    sum += sigma_E_den(b, T, element, ion);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * sigma_E_den(x, T, element, ion);
-        } else {
-            sum += 4 * sigma_E_den(x, T, element, ion);
-        }
-    }
-    double denominator = sum * h / 3.0;
-
-    return numerator / denominator;
-}
-
-KOKKOS_INLINE_FUNCTION
-double e_bar_num(double nu, double T){
-    return blackbody_nu(T, nu);
-}
-
-KOKKOS_INLINE_FUNCTION
-double e_bar_den(double nu, double T){
-    return blackbody_nu(T, nu) / (H_PLANCK * nu);
+    return sigma_energy;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -297,83 +289,79 @@ double e_bar(double E0, double E1, double T){
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double a = (E0 * EV_2_ERG) / H_PLANCK;
-    double b = (E1 * EV_2_ERG) / H_PLANCK;
-    double h = (b - a) / n_int_points;
+    double number_denominator, energy_denominator, group_energy;
+    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
 
-    double sum = 0.0;
-
-    // Simpson's rule for sigma * B / hnu
-    sum = e_bar_num(a, T);
-    sum += e_bar_num(b, T);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * e_bar_num(x, T);
-        } else {
-            sum += 4 * e_bar_num(x, T);
-        }
-    }
-    double numerator = sum * h / 3.0;
-
-    // Simpson's rule for B / hnu
-    sum = e_bar_den(a, T);
-    sum += e_bar_den(b, T);
-    for (int i = 1; i < n_int_points; i++) {
-        double x = a + i * h;
-        if (i % 2 == 0) {
-            sum += 2 * e_bar_den(x, T);
-        } else {
-            sum += 4 * e_bar_den(x, T);
-        }
-    }
-    double denominator = sum * h / 3.0;
-
-    return (numerator / denominator) / EV_2_ERG;
+    return group_energy;
 }
 
 // TODO(code): Declate the 4D array and then copy to the tabdata
 void update_cross_sections(double T, TabulatedData &tabData) {
     // Updates the cross sections for each element and group
     // TODO(code): update C_CGS with the reduced speed of light if needed
-    printf("Updating cross sections to a %e K blackbody\n",T);
 
     auto &cs_ph = tabData.cs_ph;
     const auto &verner_cross_sections = tabData.photoionization_cross_sections_tot;
     const auto &group_E_min = tabData.group_E_min;
     const auto &group_E_max = tabData.group_E_max;
-    
-    auto grp_element_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, 27});
-    Kokkos::parallel_for("update_cross_sections", grp_element_policy, KOKKOS_LAMBDA(const int i, const int j) {
-        // First get the group energy in eV
-        double group_energy = e_bar(group_E_min(i), group_E_max(i), T);
+    Kokkos::View<double[N_GROUPS][3]> group_bin_data {"group_bin_data"};
 
-        // Initialize everything to 0 first
-        for (int k = 0; k < 27; k++){
-            cs_ph(j, k, i, 0) = 0.0;
-            cs_ph(j, k, i, 1) = 0.0;
-            cs_ph(j, k, i, 2) = 0.0;
-        }
+    Kokkos::deep_copy(cs_ph, 0.0);
 
-        // Now calculate cross sections
-        for (int k = 0; k < j; k++){ // Loop over ions
-            // Update number-weighted cross section
-            cs_ph(j, k, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, j, k+1, tabData) * C_CGS; // cm^3 / s
+    Kokkos::parallel_for("prepare_cross_section_groups", N_GROUPS, KOKKOS_LAMBDA(const int i) {
+        double number_denominator = 0.0;
+        double energy_denominator = 0.0;
+        double group_energy = 0.0;
 
-            // Update energy-weighted cross section
-            cs_ph(j, k, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, j, k+1, tabData) * C_CGS; // cm^3 / s
+        compute_blackbody_bin_integrals(group_E_min(i), group_E_max(i), T,
+                                        number_denominator, energy_denominator, group_energy);
 
-            // Update photoheating rates
-            cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
-            cs_ph(j, k, i, 2) = fmax(cs_ph(j, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
-        } // End loop over elements
+        group_bin_data(i, 0) = number_denominator;
+        group_bin_data(i, 1) = energy_denominator;
+        group_bin_data(i, 2) = group_energy;
+    });
 
-        if (i == 0) {
-            // Deal with H2 separately
-            cs_ph(1, 2, i, 0) = sigma_N(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData) * C_CGS; // cm^3 / s
-            cs_ph(1, 2, i, 1) = sigma_E(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData) * C_CGS; // cm^3 / s
-            cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
-            cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
-        }
+    auto grp_pair_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});
+    Kokkos::parallel_for("update_cross_sections", grp_pair_policy, KOKKOS_LAMBDA(const int i, const int pair_index) {
+        const double number_denominator = group_bin_data(i, 0);
+        const double energy_denominator = group_bin_data(i, 1);
+        const double group_energy = group_bin_data(i, 2);
+        const int j = (int)((1.0 + sqrt(1.0 + 8.0 * pair_index)) / 2.0);
+        const int k = pair_index - j * (j - 1) / 2;
+
+        double sigma_number = 0.0;
+        double sigma_energy = 0.0;
+
+        compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, j, k+1, tabData,
+                                        number_denominator, energy_denominator,
+                                        sigma_number, sigma_energy);
+
+        // Update number-weighted cross section
+        cs_ph(j, k, i, 0) = sigma_number * C_CGS; // cm^3 / s
+
+        // Update energy-weighted cross section
+        cs_ph(j, k, i, 1) = sigma_energy * C_CGS; // cm^3 / s
+
+        // Update photoheating rates
+        cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
+        cs_ph(j, k, i, 2) = fmax(cs_ph(j, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+    });
+
+    Kokkos::parallel_for("update_cross_sections_h2", N_GROUPS, KOKKOS_LAMBDA(const int i) {
+        const double number_denominator = group_bin_data(i, 0);
+        const double energy_denominator = group_bin_data(i, 1);
+        const double group_energy = group_bin_data(i, 2);
+
+        double sigma_number = 0.0;
+        double sigma_energy = 0.0;
+
+        compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData,
+                                        number_denominator, energy_denominator,
+                                        sigma_number, sigma_energy);
+
+        cs_ph(1, 2, i, 0) = sigma_number * C_CGS; // cm^3 / s
+        cs_ph(1, 2, i, 1) = sigma_energy * C_CGS; // cm^3 / s
+        cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
+        cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 }

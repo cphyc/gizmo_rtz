@@ -149,7 +149,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     // Above E_max, use the n,l resolved cross sections
     if (E > E_max) {
         cross_sec = 0.0;
-        for (int i = 1; i <= 7; ++i) {
+        for (int i = 1; i < 8; ++i) {
             double l = tabData.photoionization_cross_sections_nl(element, ion, i).l;
             if (l >= 0.0) {
                 double E_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).E_0;

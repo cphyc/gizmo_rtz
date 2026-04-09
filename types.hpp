@@ -5,7 +5,7 @@
 // Maximum total ion+molecule states across all elements:
 // H(3) + He(3) + C(7) + N(8) + O(9) + Ne(11) + Mg(13) + Si(15) + S(17) + Fe(27) = 113
 #define MAX_TOTAL_IONS 113
-#define N_GROUPS 1
+#define N_GROUPS 2
 #define N_DIM 3
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
 using Array2D_RT = std::array<std::array<double, N_DIM>, N_GROUPS>;

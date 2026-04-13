@@ -1168,19 +1168,21 @@ double subcycle_chemistry(
             if constexpr (rt_advect) {
                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
                     // Update the photon properties
-                    N_PHOT[k] = fmax(N_phot_new[k],1E-20);
-                    // TODO(code): update for NDIM
-                    F_PHOT[k][0] = F_phot_new[k][0];
-                    F_PHOT[k][1] = F_phot_new[k][1];
-                    F_PHOT[k][2] = F_phot_new[k][2];
+                    N_PHOT[k] = fmax(N_phot_new[k], 1E-20);
+                    
+                    // Update flux for all dimensions
+                    double fred = 0.0;
+                    for (int dim = 0; dim < N_DIM; dim++) {
+                        F_PHOT[k][dim] = F_phot_new[k][dim];
+                        fred += pow(F_PHOT[k][dim], 2.0);
+                    }
+                    fred = sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
+                    
                     // Reduce the flux if needed
-                    // TODO(code): update for NDIM
-                    double fred = sqrt(pow(F_PHOT[k][0],2.0) + pow(F_PHOT[k][1],2.0) + pow(F_PHOT[k][2],2.0)) / (C_CGS * N_PHOT[k]);
                     if (fred > 1.0) {
-                        // TODO(code): update for NDIM
-                        F_PHOT[k][0] /= fred;
-                        F_PHOT[k][1] /= fred;
-                        F_PHOT[k][2] /= fred;
+                        for (int dim = 0; dim < N_DIM; dim++) {
+                            F_PHOT[k][dim] /= fred;
+                        }
                     }
                 } // End loop over photon groups
             }
@@ -1338,6 +1340,13 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     }
     Kokkos::deep_copy(tabData.group_E_min, E_min_h);
     Kokkos::deep_copy(tabData.group_E_max, E_max_h);
+}
+
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_reduced_speed_of_light_factor(double factor) {
+    auto c_frac_h = Kokkos::create_mirror_view(tabData.c_frac);
+    c_frac_h() = factor;
+    Kokkos::deep_copy(tabData.c_frac, c_frac_h);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

@@ -298,12 +298,12 @@ double e_bar(double E0, double E1, double T){
 // TODO(code): Declate the 4D array and then copy to the tabdata
 void update_cross_sections(double T, TabulatedData &tabData) {
     // Updates the cross sections for each element and group
-    // TODO(code): update C_CGS with the reduced speed of light if needed
 
     auto &cs_ph = tabData.cs_ph;
     const auto &verner_cross_sections = tabData.photoionization_cross_sections_tot;
     const auto &group_E_min = tabData.group_E_min;
     const auto &group_E_max = tabData.group_E_max;
+    const auto &c_frac = tabData.c_frac;
     Kokkos::View<double[N_GROUPS][3]> group_bin_data {"group_bin_data"};
 
     Kokkos::deep_copy(cs_ph, 0.0);
@@ -337,10 +337,10 @@ void update_cross_sections(double T, TabulatedData &tabData) {
                                         sigma_number, sigma_energy);
 
         // Update number-weighted cross section
-        cs_ph(j, k, i, 0) = sigma_number * C_CGS; // cm^3 / s
+        cs_ph(j, k, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
 
         // Update energy-weighted cross section
-        cs_ph(j, k, i, 1) = sigma_energy * C_CGS; // cm^3 / s
+        cs_ph(j, k, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
 
         // Update photoheating rates
         cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
@@ -359,8 +359,8 @@ void update_cross_sections(double T, TabulatedData &tabData) {
                                         number_denominator, energy_denominator,
                                         sigma_number, sigma_energy);
 
-        cs_ph(1, 2, i, 0) = sigma_number * C_CGS; // cm^3 / s
-        cs_ph(1, 2, i, 1) = sigma_energy * C_CGS; // cm^3 / s
+        cs_ph(1, 2, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(1, 2, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
         cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
         cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });

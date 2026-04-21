@@ -267,4 +267,7 @@ typedef struct
     Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
     Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
 
+    // Reduced speed of light factor
+    Kokkos::View<double> c_frac {"c_frac"};
+
 } TabulatedData;

@@ -514,7 +514,7 @@ double subcycle_chemistry(
     // Self-shielding
     double ss_factor = 1.0;
     if (include_self_shielding) {
-        ss_factor = exp(-1.0 * n_and_ion_fracs[0].n_element/1E-2);
+        ss_factor = exp(-1.0 * n_and_ion_fracs[1].n_element/1E-2);
     }
 
     // Cooling
@@ -844,9 +844,9 @@ double subcycle_chemistry(
                     double tot_O = n_and_ion_fracs[8].n_element_new - delta_CO;
                     for (int i=0; i<elements[8].n_ions; i++) {
                         if (i != 0) {
-                            n_and_ion_fracs[8].ion_fracs[i] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[i] / tot_O;
+                            n_and_ion_fracs[8].ion_fracs_new[i] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[i] / tot_O;
                         } else {
-                            n_and_ion_fracs[8].ion_fracs[i] = nOI_new / tot_O;
+                            n_and_ion_fracs[8].ion_fracs_new[i] = nOI_new / tot_O;
                         }
                     }
 

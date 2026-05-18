@@ -205,7 +205,7 @@ static int run_cie_test()
     double redshift = 0.0;
     double aexp = 1.0 / (1.0 + redshift);
     double metallicity = 1E0;
-    int NT = 296;
+    int NT = 101;
 
     RTZ<true, true, false, false, false> rtz_solver("./data");
     rtz_solver.need_to_update_UVB(redshift);
@@ -252,19 +252,65 @@ static int run_cie_test()
     Kokkos::deep_copy(d_xions, h_xions);
     Kokkos::deep_copy(d_nCO, h_nCO);
 
+    auto element_name = [](int Z) -> const char* {
+        switch (Z) {
+            case 1:  return "H";
+            case 2:  return "He";
+            case 6:  return "C";
+            case 7:  return "N";
+            case 8:  return "O";
+            case 10: return "Ne";
+            case 12: return "Mg";
+            case 14: return "Si";
+            case 16: return "S";
+            case 26: return "Fe";
+            default: return "X";
+        }
+    };
+
+    // One file per active element; columns are ionization states (+ H2 for H).
+    FILE* ion_files[MAX_ELEMENTS] = {};
+    for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+        if (elements[ii].atomic_number < 1) continue;
+        const char* name = element_name(elements[ii].atomic_number);
+        char fname[256];
+        snprintf(fname, sizeof(fname), "cie_%s.dat", name);
+        ion_files[ii] = fopen(fname, "w");
+        fprintf(ion_files[ii], "# T_K");
+        for (int j = 0; j < elements[ii].n_ions; j++)
+            fprintf(ion_files[ii], " %s%d", name, j);
+        if (ii == 1 && elements[1].n_mol > 0)
+            fprintf(ion_files[ii], " H2");
+        fprintf(ion_files[ii], "\n");
+    }
+
     for (int i = 0; i < NT; i++) {
-        h_TK(0) = pow(10.0, ((double)i / 499.0) * (8.0 - 3.0) + 3.0);
+        // go from 1e3 to 1e9 K
+        h_TK(0) = pow(10.0, (((double)i / (double)(NT - 1)) * (9.0 - 3.0)) + 3.0);
         Kokkos::deep_copy(d_TK, h_TK);
 
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
                        metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
 
         Kokkos::deep_copy(h_result, d_result);
-        auto &r = h_result(0);
-        fprintf(stderr, "step %d/%d TK=%e\n", i+1, NT, r.T_actual);
-        printf("%e %e %e %e %e %e\n",
-               r.nH, r.T_actual, r.Tmu, r.mu,
-               r.xHI, r.xHII, r.xH2);
+        Kokkos::deep_copy(h_xions, d_xions);
+
+        fprintf(stderr, "step %d/%d Tmu=%e\n", i+1, NT, h_TK(0));
+
+        int counter = 0;
+        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+            if (elements[ii].atomic_number < 1) continue;
+            fprintf(ion_files[ii], "%.15e", h_TK(0));
+            for (int j = 0; j < elements[ii].n_ions + elements[ii].n_mol; j++) {
+                fprintf(ion_files[ii], " %.15e", h_xions(counter));
+                counter++;
+            }
+            fprintf(ion_files[ii], "\n");
+        }
+    }
+
+    for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+        if (ion_files[ii]) fclose(ion_files[ii]);
     }
     return 0;
 }

@@ -1285,8 +1285,9 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
         initialize_cross_sections(path_to_data, tabData);
 
         // Hardcode some stuff for now
-        UV_background_G0 = 1e-40;
-        generic_cosmic_ray_ionization_rate = 1E-40;
+        UV_background_G0 = 0.0070977; // <-- G0 used in PRISM paper
+        generic_cosmic_ray_ionization_rate = 1E-16;
+        printf("Using a G0 UV background of %f\nUsing a CR ionization rate of %f\n", UV_background_G0, generic_cosmic_ray_ionization_rate);
 
         // HM-related data
         copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);

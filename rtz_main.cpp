@@ -72,7 +72,7 @@ void solve_one_step(const SolverType &rtz_solver,
         for (int i = 1; i < MAX_ELEMENTS; i++) {
             if (elements[i].atomic_number < 1) continue;
             double nel = d_nel(i);
-            if (nel == 0.0) continue;
+            // if (nel == 0.0) continue;
             n_and_ion_fracs.n_element[i] = nel;
             for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
                 n_and_ion_fracs[i].ion_fracs[j] = d_xions(iion);
@@ -107,7 +107,7 @@ void solve_one_step(const SolverType &rtz_solver,
         }
 
         d_result(0).nH = n_and_ion_fracs.n_element[1];
-        d_result(0).T_actual = TK * out_mu;
+        d_result(0).T_actual = out_Tmu * out_mu;
         d_result(0).Tmu = out_Tmu;
         d_result(0).mu = out_mu;
         d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
@@ -123,10 +123,9 @@ static int run_ism_test()
 {
     double redshift = 0.0;
     double aexp = 1.0 / (1.0 + redshift);
-    double metallicity = 1E0;
-    int NT = 300;
+    const bool include_H2 = false;
 
-    RTZ<false, true, true, true, false> rtz_solver("./data");
+    RTZ<false, include_H2, false, false, false> rtz_solver("../data");
     rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
@@ -137,7 +136,7 @@ static int run_ism_test()
     double xions_loc[MAX_TOTAL_IONS] = {};
 
     double rho_old = pow(10.0, -2.0);
-    setup_elements(elements, nelements_loc, xions_loc, rho_old, metallicity);
+    setup_elements(elements, nelements_loc, xions_loc, rho_old, metallicity, include_H2);
 
     // Compute total ion count
     int n_total_ions = 0;
@@ -225,7 +224,7 @@ static int run_cie_test()
     double xions_loc[MAX_TOTAL_IONS] = {};
 
     double rho = 1e-2;
-    setup_elements(elements, nelements_loc, xions_loc, rho, metallicity);
+    setup_elements(elements, nelements_loc, xions_loc, rho, metallicity, false);
 
     // Compute total ion count
     int n_total_ions = 0;

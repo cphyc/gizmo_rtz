@@ -9,9 +9,11 @@
 static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
                            std::array<double, MAX_ELEMENTS> &nelements_loc,
                            double* xions_loc,
-                           double rho, double metallicity)
+                           double rho,
+                           double metallicity,
+                           bool include_H2)
 {
-    initialize_elements(elements, false);
+    initialize_elements(elements, include_H2);
 
     // Update depletion factors based on dust-to-gas ratio BEFORE computing n_element
     {
@@ -110,7 +112,7 @@ void solve_one_step(const SolverType &rtz_solver,
         d_result(0).mu = out_mu;
         d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
         d_result(0).xHII = n_and_ion_fracs[1].ion_fracs[1];
-        d_result(0).xH2 = n_and_ion_fracs[1].ion_fracs[2];
+        d_result(0).xH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs[2] : 0.0;
         d_result(0).n_C = n_and_ion_fracs.n_element[6];
         d_result(0).nCO = nCO;
     });

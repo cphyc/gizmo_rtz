@@ -1436,7 +1436,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     double nH_I = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
     double nH_II = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
-    double nH2 = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[2] * 0.5;
+    double nH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
     double nHe_I = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[0];
     double nHe_II = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1];
     double nHe_III = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[2];
@@ -1444,7 +1444,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
     double nH = nH_I + nH_II + (2.0 * nH2);
     double xHI = n_and_ion_fracs[1].ion_fracs_new[0];
     double xHII = n_and_ion_fracs[1].ion_fracs_new[1];
-    double xH2 = n_and_ion_fracs[1].ion_fracs_new[2] * 0.5;
+    double xH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
 
     // metal cool smoothing parameters
     double metal_cool_smooth_f1 = 0.5 * (tanh( (5E-3) * ( T - 1.E4 ) ) + 1.0 );
@@ -1636,7 +1636,10 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Heating from H2 formation and destruction
     // double h2_heat = H2_heating(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
-    double h2_heat = H2_heating_bialy(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
+    double h2_heat = 0.0;
+    if (elements[1].n_mol > 0) {
+        h2_heat = H2_heating_bialy(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
+    }
 
     // Heating and cooling from charge transfer reactions
     double charge_transfer_heat_cool = 0.0;

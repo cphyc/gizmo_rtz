@@ -1390,7 +1390,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 
         {
             double ne_final = get_ne(elements, n_and_ion_fracs_loc, false);
-            double mu_final = get_mu(ne_final, elements, n_and_ion_fracs_loc, false, true);
+            double mu_final = get_mu(ne_final, elements, n_and_ion_fracs_loc, false, include_H2);
             out_mu = mu_final;
             out_Tmu = Tmu_final;
             TK = Tmu_final;

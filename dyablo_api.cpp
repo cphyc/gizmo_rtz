@@ -228,29 +228,22 @@ KOKKOS_FUNCTION
 void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype)
 {
     // Loop over all elements
-    for (int i = 1; i < MAX_ELEMENTS; i++)
-    {
-        if (elements[i].atomic_number < 1)
-            continue;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
 
         // Only scale metals by metallicity
-        if (i < 3)
-        {
+        if (i < 3) {
             n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * elements[i].depletion;
-        }
-        else
-        {
+        } else {
             n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * metallicity * elements[i].depletion;
         }
         // n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
         // n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
 
-        switch (itype)
-        {
+        switch (itype) {
         case 1:
             // fully ionized
-            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
-            {
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
                 n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
@@ -259,8 +252,7 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
             break;
         case 2:
             // fully neutral
-            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
-            {
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
                 n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
@@ -269,18 +261,14 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
             break;
         case 3:
             // fully molecular or neutral
-            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
-            {
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++) {
                 n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
-            if (elements[i].n_mol > 0)
-            {
+            if (elements[i].n_mol > 0) {
                 n_and_ion_fracs[i].ion_fracs[elements[i].n_ions + elements[i].n_mol - 1] = 1.0;
                 n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions + elements[i].n_mol - 1] = 1.0;
-            }
-            else
-            {
+            } else {
                 n_and_ion_fracs[i].ion_fracs[0] = 1.0;
                 n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
             }
@@ -302,8 +290,7 @@ double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, co
     double ne = 0E0;
 
     // Loop over all elements
-    for (int i = 1; i < MAX_ELEMENTS; i++)
-    {
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
         if (n_and_ion_fracs.n_element[i] == 0.0)
             continue;
 
@@ -312,16 +299,10 @@ double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, co
 
         // Loop over all ions
         // Start loop at 1, no electrons in the ground state
-        for (int j = 1; j < n_ions; j++)
-        {
-            if (use_new)
-            {
+        for (int j = 1; j < n_ions; j++) {
+            if (use_new) {
                 ne += n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * j;
-            }
-            else
-            {
-                double a = n_and_ion_fracs[i].n_element;
-                double b = n_and_ion_fracs[i].ion_fracs[j];
+            } else {
                 ne += n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j] * j;
             }
         } // End loop ion fracs
@@ -333,12 +314,11 @@ double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, co
 KOKKOS_FUNCTION
 double get_rho(const Element* elements,
                const double* depletion,
-               const CompactIonData& n_and_ion_fracs)
-{
+               const CompactIonData& n_and_ion_fracs) {
     double rho = 0.0;
     for (int i = 1; i < MAX_ELEMENTS; i++) {
         if (n_and_ion_fracs.n_element[i] == 0.0) continue;
-        rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass / depletion[i];
+        rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass / depletion[i]; // amu/cm^3
     }
     return rho;
 }
@@ -400,13 +380,11 @@ void reduce_xion(std::array<double, MAX_ELEMENTS>& ion_fracs, const int size)
     double total_ion_frac = 0.0;
 
     // Loop over all ions and get the total
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         total_ion_frac += ion_fracs[i];
     }
     // Loop again to normalize
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         ion_fracs[i] *= (1.0 / total_ion_frac);
     }
 }
@@ -424,12 +402,10 @@ void reduce_xion_max(std::array<double, MAX_ELEMENTS>& ion_fracs, int size)
     double max_frac = 0.0;
 
     // Loop over all ions and get the total
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         ion_fracs[i] = fmax(ion_fracs[i], MIN_XION);
         total_ion_frac += ion_fracs[i];
-        if (ion_fracs[i] > max_frac)
-        {
+        if (ion_fracs[i] > max_frac) {
             max_frac = ion_fracs[i];
             max_idx = i;
         }

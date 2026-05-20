@@ -602,14 +602,14 @@ double subcycle_chemistry(
                     n_ions = elements[i].n_ions;
 
                     for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
-                        phAbs += (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0));
+                        phAbs += (n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0));
                     } // End loop over ions
                 } // End loop over elements
 
                 // Deal with molecular hydrogen separately if needed
                 if constexpr (include_H2) {
                     // TODO(code): for better accuracy need to include self-shielding here
-                    phAbs += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs_new[1] * tabData.cs_ph(1,2,k,0));
+                    phAbs += (0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] * tabData.cs_ph(1,2,k,0));
                 }
 
                 // Next deplete the photons from the group

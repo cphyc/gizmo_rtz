@@ -668,7 +668,7 @@ double subcycle_chemistry(
             double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
 
             cooling_rate *= X_nHkb;
-            cooling_rate_prime *= (-X_nHkb) * mu;
+            cooling_rate_prime *= X_nHkb * mu;
 
             double dUU = fabs(fmax(T_MIN, Tmu_old + cooling_rate * ddt) - Tmu_old);
             Tmu_new = fmax(T_MIN,Tmu_old + cooling_rate * ddt/(1.0 - cooling_rate_prime * ddt));

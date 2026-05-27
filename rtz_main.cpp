@@ -208,7 +208,7 @@ static int run_cie_test()
     double metallicity = 1E0;
     int NT = 101;
 
-    RTZ<true, true, false, false, false> rtz_solver("./data");
+    RTZ<true, false, false, false, false> rtz_solver("../data");
     rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;

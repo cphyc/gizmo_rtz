@@ -351,7 +351,7 @@ void update_UVB(double redshift){
         }
     } else {
         // Loop through the array to find the interval in which x_interp lies
-        for (int i = 0; i < N_UVB_POINTS; i++) {
+        for (int i = 0; i < N_UVB_POINTS - 1; i++) {
             if (redshift >= HM12_UVB_redshifts[i] && redshift < HM12_UVB_redshifts[i+1]) {
                 
                 // Perform linear interpolation

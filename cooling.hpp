@@ -1276,7 +1276,7 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
     // heating from H2 formation --> primordial channel
     double E_form1_prim = 0.6 * EV_2_ERG;
     double E_form2_prim = 3.13 * EV_2_ERG * ncrit_factor;
-    double H2_formation_rate_prim = alpha_H2_prim(T, xe, xi_h2_cr, G0, xHI, xHII);
+    double H2_formation_rate_prim = alpha_H2_prim(T, xe, xi_h2_cr, G0, xHI, xHII, nH);
 
     Hrate_H2_form += H2_formation_rate_prim * (E_form1_prim + E_form2_prim) * nH * nH * xHI; // erg/s/cm^3
     

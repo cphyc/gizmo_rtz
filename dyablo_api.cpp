@@ -327,7 +327,7 @@ KOKKOS_FUNCTION
 double get_mu(double ne,
               const Element* elements,
               const CompactIonData& n_and_ion_fracs,
-              bool use_new, bool include_H2) {
+              bool use_new, bool include_H2, double nCO) {
     /*
     Calculated the mean molecular weight
     */
@@ -366,6 +366,10 @@ double get_mu(double ne,
             n_hat += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs[2]);  
         }
     }
+
+    // Include contribution from CO
+    m_bar += nCO * (elements[6].atomic_mass + elements[8].atomic_mass);
+    n_hat += nCO;
 
     double mu = m_bar / n_hat;
     return mu;
@@ -529,7 +533,7 @@ double subcycle_chemistry(
         // Update the electron fraction
         xe = ne / n_and_ion_fracs[1].n_element_new;
         // Measure mu
-        mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2);
+        mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2, nCO);
         // Get TK
         double TK = Tmu_old * mu;
         if (constant_temperature) TK = Tmu_old;
@@ -766,7 +770,7 @@ double subcycle_chemistry(
                     compute_atoms = false;
                 } else {
                     //  Update mu and T
-                    mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2);
+                    mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2, nCO);
                     TK = Tmu_new * mu;
                     if (constant_temperature) TK = Tmu_old;
                 }
@@ -1035,7 +1039,7 @@ double subcycle_chemistry(
                     // Update mu and T --> only H and He (others don't matter)
                     if (i < 3) {
                         //  Update mu and T
-                        mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2);
+                        mu = get_mu(ne, elements, n_and_ion_fracs, true, include_H2, nCO_new);
                         TK = Tmu_new * mu;
                         if (constant_temperature) TK = Tmu_old;
                     }
@@ -1366,7 +1370,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 
         {
             double ne_final = get_ne(elements, n_and_ion_fracs_loc, false);
-            double mu_final = get_mu(ne_final, elements, n_and_ion_fracs_loc, false, include_H2);
+            double mu_final = get_mu(ne_final, elements, n_and_ion_fracs_loc, false, include_H2, nCO);
             out_mu = mu_final;
             out_Tmu = Tmu_final;
             TK = Tmu_final;

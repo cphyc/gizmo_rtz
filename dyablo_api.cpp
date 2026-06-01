@@ -712,7 +712,7 @@ double subcycle_chemistry(
 
         double cr_CO = 0.E0;
         double de_CO = 0.E0;
-        double nCO_new = 0.E0;
+        double nCO_new = 0.E0; // nCO_new = nCO instead? check
         if (compute_molecules) {
 
             // Molecular Hydrogen

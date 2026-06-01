@@ -489,7 +489,7 @@ double subcycle_chemistry(
     Array2D_RT F_phot_new{};
 
     int n_ions; //Number of ions --> reset per element
-    int atomic_number;
+    //int atomic_number;
 
     // Self-shielding
     double ss_factor = 1.0;
@@ -564,7 +564,7 @@ double subcycle_chemistry(
         /////////////////////////
         //      Radiation      //
         /////////////////////////
-        double f_shd_H2 = 1.0;
+        // double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
 
         if constexpr (rt_advect) {
@@ -864,7 +864,7 @@ double subcycle_chemistry(
             // Loop over all elements
             for (int i = 1; i < MAX_ELEMENTS; i++) {
                 if (n_and_ion_fracs.n_element[i] == 0.0) continue;
-                atomic_number = elements[i].atomic_number;
+                // atomic_number = elements[i].atomic_number;
 
                 // Get the number of ions
                 n_ions = elements[i].n_ions;

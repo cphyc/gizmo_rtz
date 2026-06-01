@@ -93,7 +93,6 @@ void solve_one_step(const SolverType &rtz_solver,
                                                conv_its, max_its, flags);
 
         // Write results back to views
-        d_TK(0) = TK;
         d_nCO(0) = nCO;
         iion = 0;
         for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -123,6 +122,9 @@ static int run_ism_test()
 {
     double redshift = 0.0;
     double aexp = 1.0 / (1.0 + redshift);
+    double metallicity = 1E-1;
+    int NT = 101;
+
     const bool include_H2 = false;
 
     RTZ<false, include_H2, false, false, false> rtz_solver("../data");
@@ -135,7 +137,7 @@ static int run_ism_test()
     std::array<double, MAX_ELEMENTS> nelements_loc{};
     double xions_loc[MAX_TOTAL_IONS] = {};
 
-    double rho_old = pow(10.0, -2.0);
+    double rho_old = pow(10.0, -3.0);
     setup_elements(elements, nelements_loc, xions_loc, rho_old, metallicity, include_H2);
 
     // Compute total ion count
@@ -169,7 +171,7 @@ static int run_ism_test()
     Kokkos::deep_copy(d_nCO, h_nCO);
 
     for (int i = 0; i < NT; i++) {
-        double rho = pow(10.0, -2.0 + (double)i * 7.0 / (NT - 1));
+        double rho = pow(10.0, -3.0 + (double)i * 7.0 / (NT - 1));
 
         // Recompute element densities from scratch at each density step
         Kokkos::deep_copy(h_nel, d_nel);
@@ -193,7 +195,7 @@ static int run_ism_test()
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
-        fprintf(stderr, "step %d/%d rho=%e TK=%e\n", i+1, NT, rho, r.T_actual);
+        //fprintf(stderr, "step %d/%d rho=%e TK=%e\n", i+1, NT, rho, r.T_actual);
         printf("%.15e %.15e %.15e %.15e %.15e %.15e\n",
                r.nH, r.T_actual, r.Tmu, r.mu,
                r.n_C, r.nCO);

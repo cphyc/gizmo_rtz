@@ -1386,6 +1386,7 @@ template class RTZ<false,false,false,false,false>;
 template class RTZ<false,true,true,true,false>;
 template class RTZ<false, true, false, true, false>;
 template class RTZ<false, false, false, false, true>;
+template class RTZ<false, true, true, false, false>;
 
 template class RTZ<true,true,false,false,false>;
 template class RTZ<true,false,false,false,false>;

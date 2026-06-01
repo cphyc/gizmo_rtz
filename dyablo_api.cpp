@@ -681,6 +681,7 @@ double subcycle_chemistry(
             TK = Tmu_new * mu;
 
             residual = fmax(dUU, fabs(Tmu_new-Tmu_old)) / (Tmu_old+T_MIN);
+            residual = fmax(residual, fabs(cooling_rate * ddt));
             
             // Convergence
             // X% rule
@@ -930,7 +931,7 @@ double subcycle_chemistry(
 
                     // Account for molecular hydrogen
                     if ((i == 1) & (j == 0) & include_H2) { // select only HI
-                        de += alpha_H2_loc;
+                        de += 2.0 * alpha_H2_loc / (n_and_ion_fracs[1].ion_fracs_new[0] + 1e-40);
                     }
 
                     // Collisional ionization 
@@ -1028,7 +1029,7 @@ double subcycle_chemistry(
                     n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
 
                     // Get the new electron fraction
-                    ne += n_and_ion_fracs[i].n_element_new * (n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) * (double)j;
+                    ne += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j]) - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (double)j;
                     xe = ne / n_and_ion_fracs[1].n_element_new;
 
                     if (flags.include_cosmic_ray_ionization) {
@@ -1171,7 +1172,7 @@ double subcycle_chemistry(
             total_time += ddt;
 
             // Update the electron fraction
-            ne_initial = ne;
+            ne_initial = get_ne(elements, n_and_ion_fracs, false);
 
             // Update the success counter
             success_counter += 1;
@@ -1188,7 +1189,8 @@ double subcycle_chemistry(
             ddt = fmin(0.9 * ddt / pow(0.07+max_residual_all,0.3),2.0 * ddt);
         }
         // TODO(code): Make this a parameter for the timestep limiter
-        double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
+        // double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
+        double tlimit = 14.0;
         ddt = fmin(ddt,pow(10.0,tlimit));
 
         // Check if we are converged

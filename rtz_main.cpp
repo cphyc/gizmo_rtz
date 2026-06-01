@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <chrono>
 
 #include "dyablo_api.hpp"
 #include <Kokkos_Core.hpp>
@@ -277,11 +278,11 @@ static int run_cie_test()
         if (elements[ii].atomic_number < 1) continue;
         const char* name = element_name(elements[ii].atomic_number);
         char fname[256];
-        snprintf(fname, sizeof(fname), "cie_%s.dat", name);
+        snprintf(fname, sizeof(fname), "../data/CIE_init/cie_%s.dat", name);
         ion_files[ii] = fopen(fname, "w");
         fprintf(ion_files[ii], "# T_K");
         for (int j = 0; j < elements[ii].n_ions; j++)
-            fprintf(ion_files[ii], " %s%d", name, j);
+            fprintf(ion_files[ii], " %s%d", name, j + 1);
         if (ii == 1 && elements[1].n_mol > 0)
             fprintf(ion_files[ii], " H2");
         fprintf(ion_files[ii], "\n");
@@ -292,13 +293,16 @@ static int run_cie_test()
         h_TK(0) = pow(10.0, (((double)i / (double)(NT - 1)) * (9.0 - 3.0)) + 3.0);
         Kokkos::deep_copy(d_TK, h_TK);
 
+        auto t_start = std::chrono::high_resolution_clock::now();
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
                        metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
+        auto t_end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
 
         Kokkos::deep_copy(h_result, d_result);
         Kokkos::deep_copy(h_xions, d_xions);
 
-        fprintf(stderr, "step %d/%d Tmu=%e\n", i+1, NT, h_TK(0));
+        fprintf(stderr, "step %d/%d Tmu=%e solver_time=%ld ms\n", i+1, NT, h_TK(0), elapsed);
 
         int counter = 0;
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {

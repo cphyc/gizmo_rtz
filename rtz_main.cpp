@@ -60,7 +60,7 @@ void solve_one_step(const SolverType &rtz_solver,
                     Kokkos::View<double[1]> &d_nCO,
                     double metallicity, double aexp, PhysicsFlags flags,
                     int conv_its, int max_its,
-                    int n_total_ions,
+                    // int n_total_ions,
                     Kokkos::View<StepResult[1]> &d_result)
 {
     Kokkos::parallel_for("solve_step", 1, KOKKOS_LAMBDA(int) {
@@ -192,7 +192,7 @@ static int run_ism_test()
         Kokkos::deep_copy(d_nCO, h_nCO);
 
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
+                       metallicity, aexp, flags, 20000, 40000, d_result);
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
@@ -295,7 +295,7 @@ static int run_cie_test()
 
         auto t_start = std::chrono::high_resolution_clock::now();
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, n_total_ions, d_result);
+                       metallicity, aexp, flags, 20000, 40000, d_result);
         auto t_end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
 

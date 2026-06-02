@@ -26,7 +26,7 @@ const double CONV_ABS_H2_metal = 1E-4; // Value required for convergence
 const double X_PCT_RULE = 1E-1;        // Value required for convergence (matches reference)
 const double X_PCT_RULE_TEMP = 1E-1;   // Value required for convergence (matches reference)
 const double X_PCT_RULE_metal = 1E-1;  // Value required for convergence (matches reference)
-const double X_FM = 1E-7;              // Damping value for X_PCT_RULE
+const double X_FM = 1E-6;              // Damping value for X_PCT_RULE
 const double T_MIN = 2.725;
 const double T_MAX = 1E9;
 
@@ -749,7 +749,15 @@ double subcycle_chemistry(
                 de_H2 += H2_cosmic_ray_ionization_rate;
 
                 // Update xH2
-                xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
+                // xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
+
+                // Update xH2 (exponential integrator)
+                if (de_H2 * ddt < 1e-6) {
+                    xH2 = (xH2 + cr_H2 * ddt) / (1.0 + de_H2 * ddt);
+                } else {
+                    double xH2_eq = cr_H2 / (de_H2 + 1E-100);
+                    xH2 = xH2_eq + (xH2 - xH2_eq) * exp(-de_H2 * ddt);
+                }
 
                 // Store in the struct
                 n_and_ion_fracs[1].ion_fracs_new[2] = 2.0 * fmin(fmax(xH2,MIN_XION),0.5);
@@ -761,7 +769,7 @@ double subcycle_chemistry(
                 // Max residual over all elements
                 max_residual_all = fmax(max_residual_all,residual);
 
-                if (residual > X_PCT_RULE){
+                if (residual > X_PCT_RULE && n_and_ion_fracs[1].ion_fracs[2] > 1E-10){
                     // printf("Broken molecules %e %e %e %e\n",n_and_ion_fracs[1].ion_fracs_new[2],n_and_ion_fracs[1].ion_fracs[2],residual,ddt);
                     // Reset the success counter
                     success_counter = 0;
@@ -794,7 +802,15 @@ double subcycle_chemistry(
                     de_CO = beta_CO(UV_background_G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
 
                     // Compute the initial guess of new nCO
-                    nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
+                    // nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
+
+                    // Compute the initial guess of new nCO (exponential integrator)
+                    if (de_CO * ddt < 1e-6) {
+                        nCO_new = (nCO_new + cr_CO * ddt) / (1.0 + de_CO * ddt);
+                    } else {
+                        double nCO_eq = cr_CO / (de_CO + 1E-100);
+                        nCO_new = nCO_eq + (nCO_new - nCO_eq) * exp(-de_CO * ddt);
+                    }
 
                     // Tentative update
                     double delta_CO = nCO_new - nCO;
@@ -837,7 +853,7 @@ double subcycle_chemistry(
                     // Max residual over all elements
                     max_residual_all = fmax(max_residual_all,residual);
 
-                    if (residual > X_PCT_RULE){
+                    if (residual > X_PCT_RULE && nCO > 1E-10){
                         // Reset the success counter
                         success_counter = 0;
                         // Declare the x-percent rule was violated
@@ -1025,7 +1041,16 @@ double subcycle_chemistry(
                     //       Update        //
                     /////////////////////////
                     // The update
-                    n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
+                    // n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
+                    // n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
+
+                    // The update (exponential integrator: exact solution for dx/dt = cr - de*x)
+                    if (de * ddt < 1e-6) {
+                        n_and_ion_fracs[i].ion_fracs_new[j] = (n_and_ion_fracs[i].ion_fracs_new[j] + cr * ddt) / (1.0 + de * ddt);
+                    } else {
+                        double x_eq = cr / (de + 1E-100);
+                        n_and_ion_fracs[i].ion_fracs_new[j] = x_eq + (n_and_ion_fracs[i].ion_fracs_new[j] - x_eq) * exp(-de * ddt);
+                    }
                     n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
 
                     // Get the new electron fraction
@@ -1059,14 +1084,16 @@ double subcycle_chemistry(
                     max_residual_all = fmax(max_residual_all,residual);
 
                     // Check if X percent rule is broken
-                    if (residual > X_PCT_RULE){
-                        // printf("Broken element %d %d, %e %e %e %e\n",i,j,n_and_ion_fracs[i].ion_fracs_new[j],n_and_ion_fracs[i].ion_fracs[j],residual,ddt);
-                        // Reset the success counter
-                        success_counter = 0;
-                        // Declare the x-percent rule was violated
-                        x_percent_rule = false;
-                        // Break the loop over ions
-                        break;
+                    if (n_and_ion_fracs[i].ion_fracs[j] > 1E-10){
+                        if (residual > X_PCT_RULE){
+                            // printf("Broken element %d %d, %e %e %e %e\n",i,j,n_and_ion_fracs[i].ion_fracs_new[j],n_and_ion_fracs[i].ion_fracs[j],residual,ddt);
+                            // Reset the success counter
+                            success_counter = 0;
+                            // Declare the x-percent rule was violated
+                            x_percent_rule = false;
+                            // Break the loop over ions
+                            break;
+                        }
                     }
                 } // End ion loop
 
@@ -1190,7 +1217,7 @@ double subcycle_chemistry(
         }
         // TODO(code): Make this a parameter for the timestep limiter
         // double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
-        double tlimit = 14.0;
+        double tlimit = 20.0;
         ddt = fmin(ddt,pow(10.0,tlimit));
 
         // Check if we are converged

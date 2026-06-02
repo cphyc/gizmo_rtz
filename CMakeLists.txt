@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR
+   AND NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    message(STATUS "gizmo_rtz: CMAKE_BUILD_TYPE not set; defaulting to Release (-O3 -DNDEBUG)")
+endif()
 
 # Detect standalone vs embedded (add_subdirectory) build
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -8,6 +13,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     add_subdirectory(extern/kokkos)
 else()
     set(GIZMO_RTZ_STANDALONE OFF)
+endif()
+option(GIZMO_RTZ_FAST_MATH "Enable -ffast-math -march=native for the standalone solver" ON)
+set(GIZMO_RTZ_PERF_FLAGS "")
+if(GIZMO_RTZ_STANDALONE AND GIZMO_RTZ_FAST_MATH AND NOT Kokkos_ENABLE_CUDA)
+    set(GIZMO_RTZ_PERF_FLAGS -ffast-math -march=native)
 endif()
 
 ###################################################################
@@ -24,7 +34,7 @@ if(GIZMO_RTZ_STANDALONE)
         target_compile_definitions(gizmo_rtz PRIVATE DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION)
         target_link_options(gizmo_rtz PRIVATE -rdc=true)
     endif()
-    target_compile_options(gizmo_rtz PRIVATE -Wall -Wextra)
+    target_compile_options(gizmo_rtz PRIVATE -Wall -Wextra ${GIZMO_RTZ_PERF_FLAGS})
 else()
     # When embedded, provide only headers. The source is compiled as part of
     # PRISM (included from CoolingUpdate_PRISM.cpp) so that CUDA device
@@ -58,7 +68,7 @@ if(GIZMO_RTZ_STANDALONE)
         target_link_options(gizmo PRIVATE -rdc=true)
     endif()
 
-    target_compile_options(gizmo PRIVATE -Wall -Wextra)
+    target_compile_options(gizmo PRIVATE -Wall -Wextra ${GIZMO_RTZ_PERF_FLAGS})
 
     # --- Testing ---
     enable_testing()

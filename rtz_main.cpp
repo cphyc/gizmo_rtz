@@ -210,6 +210,7 @@ static int run_cie_test()
     double aexp = 1.0 / (1.0 + redshift);
     double metallicity = 1E0;
     int NT = 101;
+    bool write_output = false;
 
     RTZ<true, false, false, false, false> rtz_solver("../data");
     rtz_solver.need_to_update_UVB(redshift);
@@ -274,18 +275,20 @@ static int run_cie_test()
 
     // One file per active element; columns are ionization states (+ H2 for H).
     FILE* ion_files[MAX_ELEMENTS] = {};
-    for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-        if (elements[ii].atomic_number < 1) continue;
-        const char* name = element_name(elements[ii].atomic_number);
-        char fname[256];
-        snprintf(fname, sizeof(fname), "../data/CIE_init/cie_%s.dat", name);
-        ion_files[ii] = fopen(fname, "w");
-        fprintf(ion_files[ii], "# T_K");
-        for (int j = 0; j < elements[ii].n_ions; j++)
-            fprintf(ion_files[ii], " %s%d", name, j + 1);
-        if (ii == 1 && elements[1].n_mol > 0)
-            fprintf(ion_files[ii], " H2");
-        fprintf(ion_files[ii], "\n");
+    if (write_output) {
+        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+            if (elements[ii].atomic_number < 1) continue;
+            const char* name = element_name(elements[ii].atomic_number);
+            char fname[256];
+            snprintf(fname, sizeof(fname), "../data/CIE_init/cie_%s.dat", name);
+            ion_files[ii] = fopen(fname, "w");
+            fprintf(ion_files[ii], "# T_K");
+            for (int j = 0; j < elements[ii].n_ions; j++)
+                fprintf(ion_files[ii], " %s%d", name, j + 1);
+            if (ii == 1 && elements[1].n_mol > 0)
+                fprintf(ion_files[ii], " H2");
+            fprintf(ion_files[ii], "\n");
+        }
     }
 
     for (int i = 0; i < NT; i++) {
@@ -303,21 +306,25 @@ static int run_cie_test()
         Kokkos::deep_copy(h_xions, d_xions);
 
         fprintf(stderr, "step %d/%d Tmu=%e solver_time=%ld ms\n", i+1, NT, h_TK(0), elapsed);
-
-        int counter = 0;
-        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-            if (elements[ii].atomic_number < 1) continue;
-            fprintf(ion_files[ii], "%.15e", h_TK(0));
-            for (int j = 0; j < elements[ii].n_ions + elements[ii].n_mol; j++) {
-                fprintf(ion_files[ii], " %.15e", h_xions(counter));
-                counter++;
+        
+        if (write_output) {
+            int counter = 0;
+            for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+                if (elements[ii].atomic_number < 1) continue;
+                fprintf(ion_files[ii], "%.15e", h_TK(0));
+                for (int j = 0; j < elements[ii].n_ions + elements[ii].n_mol; j++) {
+                    fprintf(ion_files[ii], " %.15e", h_xions(counter));
+                    counter++;
+                }
+                fprintf(ion_files[ii], "\n");
             }
-            fprintf(ion_files[ii], "\n");
         }
     }
 
-    for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
-        if (ion_files[ii]) fclose(ion_files[ii]);
+    if (write_output) {
+        for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
+            if (ion_files[ii]) fclose(ion_files[ii]);
+        }
     }
     return 0;
 }

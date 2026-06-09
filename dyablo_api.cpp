@@ -681,7 +681,7 @@ double subcycle_chemistry(
             TK = Tmu_new * mu;
 
             residual = fmax(dUU, fabs(Tmu_new-Tmu_old)) / (Tmu_old+T_MIN);
-            residual = fmax(residual, fabs(cooling_rate * ddt));
+            residual = fmax(residual, fabs(cooling_rate_prime * ddt));
             
             // Convergence
             // X% rule

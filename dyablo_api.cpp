@@ -443,7 +443,7 @@ double subcycle_chemistry(
                       double aexp, double total_dt, double UV_background_G0,
                       double primary_cosmic_ray_ionization_rate,
                       double dust_to_gas_mass_ratio_over_mw,
-                      int conv_its, int max_its,
+                      int conv_its, int max_its, int& total_iter_reached,
                       const TabulatedData& tabData,
                       const PhysicsFlags& flags,
                       std::array<double, N_GROUPS> &N_PHOT,
@@ -1240,6 +1240,10 @@ double subcycle_chemistry(
 
     } // End infinite loop
 
+    total_iter_reached = total_iterations;
+
+    // printf("%e %e %e %d\n",n_and_ion_fracs[1].n_element,n_and_ion_fracs[1].ion_fracs_new[0],Tmu_old,total_iterations);
+
     //printf("%e %e %e %e %d %e %e %e %e %e\n",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt,total_time);
     // printf("%e %e %e %e %d %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[6].n_element,nCO,ddt);
 
@@ -1374,6 +1378,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     double& out_mu,
     int conv_its,
     int max_its,
+    int& total_iter_reached,
     PhysicsFlags flags) const
 {
 
@@ -1391,7 +1396,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate,
             dust_to_gas_mass_ratio_over_mw,
-            conv_its, max_its,
+            conv_its, max_its, total_iter_reached,
             tabData,
             flags,
             N_PHOT_loc, F_PHOT_loc

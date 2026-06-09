@@ -61,6 +61,7 @@ public:
         double& out_mu,
         int conv_its,
         int max_its,
+        int& total_iter_reached,
         PhysicsFlags flags
     ) const;
 

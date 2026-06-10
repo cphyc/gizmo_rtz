@@ -1375,8 +1375,7 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
         
         for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
 
-            // look at N_GROUPS - 1 here
-            for (int k = 0; k < N_GROUPS - 1; k++) { // Loop over photon groups
+            for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
                 heating_rate += (dNp[k] * n_and_ion_fracs.n_element_new[i] * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i, j, k, 2));
             } // End loop over photon groups
         } // End loop over ions

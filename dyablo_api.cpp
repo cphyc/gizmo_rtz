@@ -744,15 +744,15 @@ double subcycle_chemistry(
                 de_H2 += H2_cosmic_ray_ionization_rate;
 
                 // Update xH2
-                // xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
+                xH2 = (cr_H2*ddt + xH2)/(1.+de_H2*ddt);
 
                 // Update xH2 (exponential integrator)
-                if (de_H2 * ddt < 1e-6) {
-                    xH2 = (xH2 + cr_H2 * ddt) / (1.0 + de_H2 * ddt);
-                } else {
-                    double xH2_eq = cr_H2 / (de_H2 + 1E-100);
-                    xH2 = xH2_eq + (xH2 - xH2_eq) * exp(-de_H2 * ddt);
-                }
+                // if (de_H2 * ddt < 1e-6) {
+                //     xH2 = (xH2 + cr_H2 * ddt) / (1.0 + de_H2 * ddt);
+                // } else {
+                //     double xH2_eq = cr_H2 / (de_H2 + 1E-100);
+                //     xH2 = xH2_eq + (xH2 - xH2_eq) * exp(-de_H2 * ddt);
+                // }
 
                 // Store in the struct
                 n_and_ion_fracs[1].ion_fracs_new[2] = 2.0 * fmin(fmax(xH2,MIN_XION),0.5);
@@ -797,15 +797,15 @@ double subcycle_chemistry(
                     de_CO = beta_CO(UV_background_G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
 
                     // Compute the initial guess of new nCO
-                    // nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
+                    nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
 
                     // Compute the initial guess of new nCO (exponential integrator)
-                    if (de_CO * ddt < 1e-6) {
-                        nCO_new = (nCO_new + cr_CO * ddt) / (1.0 + de_CO * ddt);
-                    } else {
-                        double nCO_eq = cr_CO / (de_CO + 1E-100);
-                        nCO_new = nCO_eq + (nCO_new - nCO_eq) * exp(-de_CO * ddt);
-                    }
+                    // if (de_CO * ddt < 1e-6) {
+                    //     nCO_new = (nCO_new + cr_CO * ddt) / (1.0 + de_CO * ddt);
+                    // } else {
+                    //     double nCO_eq = cr_CO / (de_CO + 1E-100);
+                    //     nCO_new = nCO_eq + (nCO_new - nCO_eq) * exp(-de_CO * ddt);
+                    // }
 
                     // Tentative update
                     double delta_CO = nCO_new - nCO;
@@ -1036,17 +1036,17 @@ double subcycle_chemistry(
                     //       Update        //
                     /////////////////////////
                     // The update
-                    // n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
-                    // n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
+                    n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
+                    n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
 
                     // The update (exponential integrator: exact solution for dx/dt = cr - de*x)
-                    if (de * ddt < 1e-6) {
-                        n_and_ion_fracs[i].ion_fracs_new[j] = (n_and_ion_fracs[i].ion_fracs_new[j] + cr * ddt) / (1.0 + de * ddt);
-                    } else {
-                        double x_eq = cr / (de + 1E-100);
-                        n_and_ion_fracs[i].ion_fracs_new[j] = x_eq + (n_and_ion_fracs[i].ion_fracs_new[j] - x_eq) * exp(-de * ddt);
-                    }
-                    n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
+                    // if (de * ddt < 1e-6) {
+                    //     n_and_ion_fracs[i].ion_fracs_new[j] = (n_and_ion_fracs[i].ion_fracs_new[j] + cr * ddt) / (1.0 + de * ddt);
+                    // } else {
+                    //     double x_eq = cr / (de + 1E-100);
+                    //     n_and_ion_fracs[i].ion_fracs_new[j] = x_eq + (n_and_ion_fracs[i].ion_fracs_new[j] - x_eq) * exp(-de * ddt);
+                    // }
+                    // n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
 
                     // Get the new electron fraction
                     ne += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j]) - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (double)j;

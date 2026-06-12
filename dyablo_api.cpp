@@ -20,12 +20,7 @@
 
 // MAX_ELEMENTS is already defined in types.hpp (included via dyablo_api.hpp)
 const double MIN_XION = 1E-20;         // Minimum ion fraction
-const double MIN_XION_FLOOR = 1E-10;   // Minimum ion fraction
-const double CONV_ABS = 1E-4;          // Value required for convergence
-const double CONV_ABS_H2_metal = 1E-4; // Value required for convergence
-const double X_PCT_RULE = 1E-1;        // Value required for convergence (matches reference)
-const double X_PCT_RULE_TEMP = 1E-1;   // Value required for convergence (matches reference)
-const double X_PCT_RULE_metal = 1E-1;  // Value required for convergence (matches reference)
+const double X_PCT_RULE = 1E-1;        // Value required for convergence
 const double X_FM = 1E-6;              // Damping value for X_PCT_RULE
 const double T_MIN = 2.725;
 const double T_MAX = 1E9;

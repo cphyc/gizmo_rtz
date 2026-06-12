@@ -50,6 +50,7 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
 struct StepResult {
     double nH, T_actual, Tmu, mu;
     double xHI, xHII, xH2;
+    double xHeI;
     double n_C, nCO;
     double total_iter;
 };
@@ -117,6 +118,7 @@ void solve_one_step(const SolverType &rtz_solver,
         d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
         d_result(0).xHII = n_and_ion_fracs[1].ion_fracs[1];
         d_result(0).xH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs[2] : 0.0;
+        d_result(0).xHeI = n_and_ion_fracs[2].ion_fracs[0];
         d_result(0).n_C = n_and_ion_fracs.n_element[6];
         d_result(0).nCO = nCO;
         d_result(0).total_iter = (double)total_iter_reached;
@@ -185,6 +187,7 @@ void solve_photoheat_step(const SolverType &rtz_solver,
         d_result(0).mu = out_mu;
         d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
         d_result(0).xHII = n_and_ion_fracs[1].ion_fracs[1];
+        d_result(0).xHeI = n_and_ion_fracs[2].ion_fracs[0];
         d_result(0).nCO = nCO;
         d_result(0).total_iter = (double)total_iter_reached;  // report solver iterations
     });
@@ -226,15 +229,15 @@ static int run_photoheating_test()
     flags.include_charge_exchange        = false;
 
     // ---------------- test-cell parameters (tweak these) ----------------
-    const double rho          = 1.0e3;     // n_H ~ 100 cm^-3 (dense, like the hot cell)
+    const double rho          = 1.0e-2;     // n_H ~ 100 cm^-3 (dense, like the hot cell)
     const double T_init       = 5e3;     // K, cold neutral gas
-    const double dt_step_s    = 3e11;     // s per step
-    const int    NT           = 100;
+    const double dt_step_s    = 3e15;     // s per step
+    const int    NT           = 1000;
     // Incident photon number density [cm^-3]. Default: all in the softest group.
     std::array<double, N_GROUPS> Nphot0{};
-    Nphot0[0] = 1e1;                        // ionization parameter U = Nphot/n_H ~ 1e-2
-    Nphot0[1] = 4e0;
-    Nphot0[2] = 2e0;
+    Nphot0[0] = 1e3;                        // ionization parameter U = Nphot/n_H ~ 1e-2
+    Nphot0[1] = 0;
+    Nphot0[2] = 0;
     // --------------------------------------------------------------------
 
     std::array<Element, MAX_ELEMENTS> elements;
@@ -282,17 +285,17 @@ static int run_photoheating_test()
            rho, T_init, Nphot0[0] / rho);
     printf("# bands [eV]:");
     for (int g = 0; g < N_GROUPS; g++) printf(" [%.1f-%.1f]", E_min[g], E_max[g]);
-    printf("\n# step  time_yr  T_K  xHI  xHII  n_iter\n");
+    printf("\n# step  time_yr  nH  T_K  xHI  xHII  n_iter\n");
 
     double t = 0.0;
     for (int i = 0; i < NT; i++) {
         solve_photoheat_step(rtz_solver, d_nel, d_xions, d_TK, d_Nphot,
                              metallicity, aexp, dt_step_s,
-                             flags, 20000, 40000, d_result);
+                             flags, 200000, 4000000, d_result);
         t += dt_step_s * 3.17e-8;  // convert to yr
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
-        printf("%d %.0f %.1e %.6e %.6e %.6e %.0f\n", i, t, r.nH, r.T_actual, r.xHI, r.xHII, r.total_iter);
+        printf("%d %.0f %.1e %.6e %.6e %.6e %.0f\n", i, t, r.nH, r.T_actual, r.xHI, r.xHeI, r.total_iter);
     }
     return 0;
 }

@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 #include <chrono>
+#include <array>
 
 #include "dyablo_api.hpp"
 #include <Kokkos_Core.hpp>
@@ -50,6 +51,7 @@ struct StepResult {
     double nH, T_actual, Tmu, mu;
     double xHI, xHII, xH2;
     double n_C, nCO;
+    double total_iter;
 };
 
 template <typename SolverType>
@@ -87,11 +89,13 @@ void solve_one_step(const SolverType &rtz_solver,
         std::array<double, N_GROUPS> N_PHOT{};
         Array2D_RT F_PHOT{};
 
+        int total_iter_reached = 0;
+
         rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, -1.0,
                                                n_and_ion_fracs, nCO,
                                                N_PHOT, F_PHOT,
                                                out_Tmu, out_mu,
-                                               conv_its, max_its, flags);
+                                               conv_its, max_its, total_iter_reached, flags);
 
         // Write results back to views
         d_nCO(0) = nCO;
@@ -115,8 +119,182 @@ void solve_one_step(const SolverType &rtz_solver,
         d_result(0).xH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs[2] : 0.0;
         d_result(0).n_C = n_and_ion_fracs.n_element[6];
         d_result(0).nCO = nCO;
+        d_result(0).total_iter = (double)total_iter_reached;
     });
-    Kokkos::fence();
+}
+
+// One coupled photoionization+photoheating sub-step with a FIXED incident photon
+// field (constant illumination). Advances T and the ion fractions over total_dt_s.
+// The incident photon density d_Nphot is left unchanged (the cell is continuously
+// re-supplied by the source), so we test the steady photoheating, not a one-shot
+// reservoir. d_result(0).total_iter is repurposed to report the solver iteration count.
+template <typename SolverType>
+void solve_photoheat_step(const SolverType &rtz_solver,
+                          Kokkos::View<double[MAX_ELEMENTS]> &d_nel,
+                          Kokkos::View<double[MAX_TOTAL_IONS]> &d_xions,
+                          Kokkos::View<double[1]> &d_TK,
+                          Kokkos::View<double[N_GROUPS]> &d_Nphot,
+                          double metallicity, double aexp, double total_dt_s,
+                          PhysicsFlags flags,
+                          int conv_its, int max_its,
+                          Kokkos::View<StepResult[1]> &d_result)
+{
+    Kokkos::parallel_for("photoheat_step", 1, KOKKOS_LAMBDA(int) {
+        const Element* elements = rtz_solver.elements_d.data();
+        CompactIonData n_and_ion_fracs{};
+        n_and_ion_fracs.init_offsets(elements);
+
+        int iion = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            n_and_ion_fracs.n_element[i] = d_nel(i);
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
+                n_and_ion_fracs[i].ion_fracs[j] = d_xions(iion++);
+        }
+
+        double TK = d_TK(0);
+        double nCO = 0.0;
+        double out_Tmu, out_mu;
+        std::array<double, N_GROUPS> N_PHOT;
+        for (int g = 0; g < N_GROUPS; g++) N_PHOT[g] = d_Nphot(g);  // fixed incident field
+        Array2D_RT F_PHOT{};
+        int total_iter_reached = 0;
+
+        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, total_dt_s,
+                                               n_and_ion_fracs, nCO,
+                                               N_PHOT, F_PHOT,
+                                               out_Tmu, out_mu,
+                                               conv_its, max_its, total_iter_reached, flags);
+
+        // Advance the state. NOTE: the solver's temperature I/O is T/mu (Tmu), NOT T,
+        // so we must carry Tmu across steps (feed back out_Tmu, not out_Tmu*out_mu).
+        // Feeding back the physical T would re-multiply by mu every step -> spurious
+        // ~mu^n "heating" independent of rt_advect.
+        d_TK(0) = out_Tmu;
+        iion = 0;
+        for (int i = 1; i < MAX_ELEMENTS; i++) {
+            if (elements[i].atomic_number < 1) continue;
+            d_nel(i) = n_and_ion_fracs.n_element[i];
+            for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
+                d_xions(iion++) = n_and_ion_fracs[i].ion_fracs[j];
+        }
+
+        d_result(0).nH = n_and_ion_fracs.n_element[1];
+        d_result(0).T_actual = out_Tmu * out_mu;
+        d_result(0).Tmu = out_Tmu;
+        d_result(0).mu = out_mu;
+        d_result(0).xHI = n_and_ion_fracs[1].ion_fracs[0];
+        d_result(0).xHII = n_and_ion_fracs[1].ion_fracs[1];
+        d_result(0).nCO = nCO;
+        d_result(0).total_iter = (double)total_iter_reached;  // report solver iterations
+    });
+}
+
+// Photoheating test: a single neutral H+He cell at T=100 K is held under a fixed
+// incident ionizing photon field and integrated forward in time. We watch T(t) to
+// see whether it settles near photoionization equilibrium (~1-2e4 K) or runs away.
+static int run_photoheating_test()
+{
+    const double redshift = 0.0;
+    const double aexp = 1.0;
+    const double metallicity = 0.0;        // pure H+He (Stromgren-like)
+    const bool   include_H2 = false;
+
+    // constant_temperature=false, include_H2=false, include_CO=false,
+    // rt_advect=true, include_self_shielding=true  (matches the PRISM config)
+    RTZ<false, false, false, true, false> rtz_solver("../data");
+    rtz_solver.need_to_update_UVB(redshift);
+    rtz_solver.set_reduced_speed_of_light_factor(1.0);   // full speed of light
+
+    // Photon groups: 13.6-15.2 eV, 15.2-24.5 eV, 24.5-54.4 eV, 54.4-500 eV
+    std::array<double, N_GROUPS> E_min, E_max;
+    std::array<double, 5> lower = {13.6, 15.2, 24.5, 54.4, 500.0};
+    for (int g = 0; g < N_GROUPS; g++) {
+        E_min[g] = lower[g];
+        E_max[g] = lower[g + 1];
+    }
+    rtz_solver.set_photon_groups(E_min, E_max);
+    const double T_blackbody = 1.0e5;
+    rtz_solver.need_to_update_cross_sections(T_blackbody);
+
+    PhysicsFlags flags;
+    flags.include_collisional_ionization = true;
+    flags.include_photoionization        = true;
+    flags.include_cosmic_ray_ionization  = false;
+    flags.include_HM12_UVB               = false;
+    flags.include_dust_recombination     = false;
+    flags.include_charge_exchange        = false;
+
+    // ---------------- test-cell parameters (tweak these) ----------------
+    const double rho          = 1.0e3;     // n_H ~ 100 cm^-3 (dense, like the hot cell)
+    const double T_init       = 5e3;     // K, cold neutral gas
+    const double dt_step_s    = 3e11;     // s per step
+    const int    NT           = 100;
+    // Incident photon number density [cm^-3]. Default: all in the softest group.
+    std::array<double, N_GROUPS> Nphot0{};
+    Nphot0[0] = 1e1;                        // ionization parameter U = Nphot/n_H ~ 1e-2
+    Nphot0[1] = 4e0;
+    Nphot0[2] = 2e0;
+    // --------------------------------------------------------------------
+
+    std::array<Element, MAX_ELEMENTS> elements;
+    std::array<double, MAX_ELEMENTS> nelements_loc{};
+    double xions_loc[MAX_TOTAL_IONS] = {};
+    setup_elements(elements, nelements_loc, xions_loc, rho, metallicity, include_H2);
+
+    // Force a fully neutral initial state (ground state of every element).
+    int n_total_ions = 0, iion = 0;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
+        for (int j = 0; j < elements[i].n_ions + elements[i].n_mol; j++)
+            // Nearly neutral, but with a tiny ionization seed so n_e > 0.
+            // A *fully* neutral start (n_e = 0) leaves the solver unable to
+            // bootstrap, and it maxes out the iteration count without converging.
+            xions_loc[iion++] = (j == 0) ? (1.0 - 1e-8) : (j == 1 ? 1e-8 : 0.0);
+        n_total_ions += elements[i].n_ions + elements[i].n_mol;
+    }
+
+    Kokkos::View<double[MAX_ELEMENTS]> d_nel("nel");
+    Kokkos::View<double[MAX_TOTAL_IONS]> d_xions("xions");
+    Kokkos::View<double[1]> d_TK("TK");
+    Kokkos::View<double[N_GROUPS]> d_Nphot("Nphot");
+    Kokkos::View<StepResult[1]> d_result("result");
+
+    auto h_nel = Kokkos::create_mirror_view(d_nel);
+    auto h_xions = Kokkos::create_mirror_view(d_xions);
+    auto h_TK = Kokkos::create_mirror_view(d_TK);
+    auto h_Nphot = Kokkos::create_mirror_view(d_Nphot);
+    auto h_result = Kokkos::create_mirror_view(d_result);
+
+    for (int i = 0; i < MAX_ELEMENTS; i++) h_nel(i) = nelements_loc[i];
+    for (int i = 0; i < n_total_ions; i++) h_xions(i) = xions_loc[i];
+    // d_TK carries T/mu (Tmu), matching the solver's convention. Convert the desired
+    // physical T_init using the neutral H+He mean molecular weight (mu ~ 1.24).
+    const double mu_neutral = 1.24;
+    h_TK(0) = T_init / mu_neutral;
+    for (int g = 0; g < N_GROUPS; g++) h_Nphot(g) = Nphot0[g];
+    Kokkos::deep_copy(d_nel, h_nel);
+    Kokkos::deep_copy(d_xions, h_xions);
+    Kokkos::deep_copy(d_TK, h_TK);
+    Kokkos::deep_copy(d_Nphot, h_Nphot);
+
+    printf("# photoheating test: nH=%.3e cm^-3  T_init=%.1f K  U=Nphot/nH=%.3e\n",
+           rho, T_init, Nphot0[0] / rho);
+    printf("# bands [eV]:");
+    for (int g = 0; g < N_GROUPS; g++) printf(" [%.1f-%.1f]", E_min[g], E_max[g]);
+    printf("\n# step  time_yr  T_K  xHI  xHII  n_iter\n");
+
+    double t = 0.0;
+    for (int i = 0; i < NT; i++) {
+        solve_photoheat_step(rtz_solver, d_nel, d_xions, d_TK, d_Nphot,
+                             metallicity, aexp, dt_step_s,
+                             flags, 20000, 40000, d_result);
+        t += dt_step_s * 3.17e-8;  // convert to yr
+        Kokkos::deep_copy(h_result, d_result);
+        auto &r = h_result(0);
+        printf("%d %.0f %.1e %.6e %.6e %.6e %.0f\n", i, t, r.nH, r.T_actual, r.xHI, r.xHII, r.total_iter);
+    }
+    return 0;
 }
 
 static int run_ism_test()
@@ -332,7 +510,7 @@ static int run_cie_test()
 static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s <test_name>\n", prog);
-    fprintf(stderr, "  test_name: ISM or CIE\n");
+    fprintf(stderr, "  test_name: ISM, CIE, or PHOTOHEAT\n");
 }
 
 int main(int argc, char *argv[])
@@ -351,6 +529,8 @@ int main(int argc, char *argv[])
             rc = run_ism_test();
         } else if (strcmp(test_name, "CIE") == 0) {
             rc = run_cie_test();
+        } else if (strcmp(test_name, "PHOTOHEAT") == 0) {
+            rc = run_photoheating_test();
         } else {
             fprintf(stderr, "Unknown test: %s\n", test_name);
             print_usage(argv[0]);

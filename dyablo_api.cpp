@@ -301,7 +301,7 @@ double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, co
         // Start loop at 1, no electrons in the ground state
         for (int j = 1; j < n_ions; j++) {
             if (use_new) {
-                ne += n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs_new[j] * j;
+                ne += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * j;
             } else {
                 ne += n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j] * j;
             }
@@ -712,7 +712,7 @@ double subcycle_chemistry(
 
         double cr_CO = 0.E0;
         double de_CO = 0.E0;
-        double nCO_new = 0.E0; // nCO_new = nCO instead? check
+        double nCO_new = nCO;
         if (compute_molecules) {
 
             // Molecular Hydrogen
@@ -1419,6 +1419,8 @@ template class RTZ<false,true,true,true,false>;
 template class RTZ<false, true, false, true, false>;
 template class RTZ<false, false, false, false, true>;
 template class RTZ<false, true, true, false, false>;
+template class RTZ<false, false, false, true, true>;
+template class RTZ<false, false, false, true, false>;
 
 template class RTZ<true,true,false,false,false>;
 template class RTZ<true,false,false,false,false>;

@@ -343,7 +343,7 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         cs_ph(j, k, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
 
         // Update photoheating rates
-        cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k).E_th);
+        cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k + 1).E_th);
         cs_ph(j, k, i, 2) = fmax(cs_ph(j, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 
@@ -361,7 +361,7 @@ void update_cross_sections(double T, TabulatedData &tabData) {
 
         cs_ph(1, 2, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
         cs_ph(1, 2, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
-        cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2).E_th);
+        cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2 + 1).E_th);
         cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 }

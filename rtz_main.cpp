@@ -209,6 +209,11 @@ static int run_photoheating_test()
     rtz_solver.need_to_update_UVB(redshift);
     rtz_solver.set_reduced_speed_of_light_factor(1.0);   // full speed of light
 
+    if (N_GROUPS != 3) {
+        printf("Error: N_GROUPS must be 3 for the photoheating test. Current N_GROUPS=%d\n", N_GROUPS);
+        return -1;
+    }
+
     // Photon groups: 13.6-15.2 eV, 15.2-24.5 eV, 24.5-54.4 eV, 54.4-500 eV
     std::array<double, N_GROUPS> E_min, E_max;
     std::array<double, 5> lower = {13.6, 15.2, 24.5, 54.4, 500.0};

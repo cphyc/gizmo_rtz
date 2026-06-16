@@ -398,7 +398,11 @@ static int run_cie_test()
     int NT = 101;
     bool write_output = false;
 
-    RTZ<true, false, false, false, false> rtz_solver("../data");
+    if (write_output) {
+        printf("Overwriting CIE curves...\n");
+    }
+
+    RTZ<true, true, false, false, false> rtz_solver("../data");
     rtz_solver.need_to_update_UVB(redshift);
 
     PhysicsFlags flags;
@@ -414,7 +418,7 @@ static int run_cie_test()
     double xions_loc[MAX_TOTAL_IONS] = {};
 
     double rho = 1e-2;
-    setup_elements(elements, nelements_loc, xions_loc, rho, metallicity, false);
+    setup_elements(elements, nelements_loc, xions_loc, rho, metallicity, true);
 
     // Compute total ion count
     int n_total_ions = 0;
@@ -470,7 +474,7 @@ static int run_cie_test()
             ion_files[ii] = fopen(fname, "w");
             fprintf(ion_files[ii], "# T_K");
             for (int j = 0; j < elements[ii].n_ions; j++)
-                fprintf(ion_files[ii], " %s%d", name, j + 1);
+                fprintf(ion_files[ii], " %s_%d", name, j + 1);
             if (ii == 1 && elements[1].n_mol > 0)
                 fprintf(ion_files[ii], " H2");
             fprintf(ion_files[ii], "\n");
@@ -497,9 +501,9 @@ static int run_cie_test()
             int counter = 0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
                 if (elements[ii].atomic_number < 1) continue;
-                fprintf(ion_files[ii], "%.15e", h_TK(0));
+                fprintf(ion_files[ii], "%.7e", h_TK(0));
                 for (int j = 0; j < elements[ii].n_ions + elements[ii].n_mol; j++) {
-                    fprintf(ion_files[ii], " %.15e", h_xions(counter));
+                    fprintf(ion_files[ii], " %.7e", h_xions(counter));
                     counter++;
                 }
                 fprintf(ion_files[ii], "\n");

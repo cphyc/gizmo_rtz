@@ -434,7 +434,7 @@ double subcycle_chemistry(
                       const Element* elements,
                       const double* depletion,
                       CompactIonData &n_and_ion_fracs,
-                      double nCO, double T2, 
+                      double &nCO, double T2, 
                       double aexp, double total_dt, double UV_background_G0,
                       double primary_cosmic_ray_ionization_rate,
                       double dust_to_gas_mass_ratio_over_mw,

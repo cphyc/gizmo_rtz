@@ -785,13 +785,14 @@ double subcycle_chemistry(
                 // Check if there is enough C, O, and CO to warrant computing the chemistru
                 if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > 1e-10) {
 
+                    double nH = n_and_ion_fracs[1].n_element_new;
                     double n_CII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
                     double n_OI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
                     double n_H2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / 2.0;
-                    double x_OI  = n_OI / n_and_ion_fracs[1].n_element_new;
+                    double x_OI  = n_OI / nH;
 
                     //!! Creation !!
-                    cr_CO = alpha_CO(UV_background_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI);
+                    cr_CO = alpha_CO(UV_background_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI, nH);
 
                     //!! Destruction !!
                     de_CO = beta_CO(UV_background_G0*f_shd_CO, H2_cosmic_ray_ionization_rate);

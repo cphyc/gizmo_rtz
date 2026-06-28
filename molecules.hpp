@@ -145,7 +145,7 @@ double comp_SH2(double nH2, double dx_SS) {
 }
 
 KOKKOS_INLINE_FUNCTION
-double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO){
+double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO, double nH){
 
     //! see glover 2012
     double k0 = 5.E-16; //! cm^3 s^-1
@@ -155,7 +155,7 @@ double alpha_CO(double G0, double xi_cr_H2, double nCII, double nH2, double xO){
     double gammaCHx_cr = 8.88E-15 * (xi_cr_H2 / 1E-16); //! Cosmic rays
     double gammaCHx = (1.41E-10 * G0) + gammaCHx_cr;
 
-    double beta = k1 * xO/(k1*xO + gammaCHx/(nH2+1e-40));
+    double beta = k1 * xO/(k1*xO + gammaCHx/nH);
     double formation_rate = k0 * nCII * nH2 * beta;
 
     return fmax(formation_rate,1e-100);

@@ -1112,7 +1112,7 @@ double dust_gas_collisional_cooling(double T, double G0, double xH2, double aexp
     dust_hc_const += (3.8E-33 - 1.0E-33) * fmax(fmin(xH2,1.0),0.0);
 
     double T_dust = 16.4 * pow(1.7 * G0,1.0/6.0);
-    T_dust = fmax( T_dust, 2.725 * ( (1.0/aexp) - 1.0 ) ); // ! Limit dust temp minimum to CMB temp
+    T_dust = fmax( T_dust, 2.725/aexp ); // ! Limit dust temp minimum to CMB temp
 
     double dust_coll_cool = dust_hc_const * sqrt(T) * (T - T_dust) * ( 1.0 - ( 0.80 * exp(-75.0/T) ) );
     return dust_coll_cool * nH * nH * f_dg;

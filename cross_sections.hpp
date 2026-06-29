@@ -319,6 +319,9 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         group_bin_data(i, 0) = number_denominator;
         group_bin_data(i, 1) = energy_denominator;
         group_bin_data(i, 2) = group_energy;
+
+        // Persist the mean photon energy [eV] of this group for the G0 update
+        tabData.group_energy(i) = group_energy;
     });
 
     auto grp_pair_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});

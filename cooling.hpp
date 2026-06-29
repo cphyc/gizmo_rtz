@@ -1411,7 +1411,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
                    const Element* elements,
                    std::array<double, N_GROUPS>& dNp,
                    double nCO,
-                   double G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
+                   double G0, double UV_background_G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
                    bool rt_advect,
                    bool rtz_include_photoionization,
@@ -1630,7 +1630,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 	}
 
     // Photoheating from the G0 FUV background
-    double uvb_photoheat_G0 = photoheating_UVB_G0(G0,
+    double uvb_photoheat_G0 = photoheating_UVB_G0(UV_background_G0,
                                                   n_and_ion_fracs,
                                                   tabData);
 

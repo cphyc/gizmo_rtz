@@ -267,6 +267,9 @@ typedef struct
     Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
     Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
 
+    // Mean photon energy [eV] of each group, weighted over the blackbody spectrum
+    Kokkos::View<double[N_GROUPS]> group_energy {"group_energy"};
+
     // Reduced speed of light factor
     Kokkos::View<double> c_frac {"c_frac"};
 

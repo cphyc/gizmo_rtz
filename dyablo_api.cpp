@@ -435,7 +435,7 @@ double subcycle_chemistry(
                       const double* depletion,
                       CompactIonData &n_and_ion_fracs,
                       double &nCO, double T2, 
-                      double aexp, double total_dt, double UV_background_G0,
+                      double dx, double aexp, double total_dt, double UV_background_G0,
                       double primary_cosmic_ray_ionization_rate,
                       double dust_to_gas_mass_ratio_over_mw,
                       int conv_its, int max_its, int& total_iter_reached,
@@ -562,8 +562,12 @@ double subcycle_chemistry(
         // double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
 
+        double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
+        double G0 = UV_background_G0;
+
         if constexpr (rt_advect) {
             double phAbs = 0.0;
+            double group_egy;
 
             // First get the opacity
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
@@ -593,6 +597,12 @@ double subcycle_chemistry(
                 F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
                 F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
                 F_phot_new[k][2] = F_PHOT[k][2] / (1.0 + ddt * phAbs);
+
+                group_egy = tabData.group_energy(k);
+                if (group_egy > 5.6 && group_egy < 13.6) {
+                    G0 += N_PHOT[k] * (C_CGS * tabData.c_frac())
+                          * group_egy * EV_2_ERG / G_conv;
+                }
 
                 // Measure the redisual
                 residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
@@ -628,7 +638,8 @@ double subcycle_chemistry(
                                     elements,
                                     N_phot_new,
                                     nCO,
-                                    UV_background_G0, 
+                                    G0, 
+                                    UV_background_G0,
                                     dust_to_gas_mass_ratio_over_mw, 
                                     xe, 
                                     primary_cosmic_ray_ionization_rate, 
@@ -647,6 +658,7 @@ double subcycle_chemistry(
                                             elements,
                                             N_phot_new,
                                             nCO,
+                                            G0,
                                             UV_background_G0, 
                                             dust_to_gas_mass_ratio_over_mw, 
                                             xe, 
@@ -721,7 +733,7 @@ double subcycle_chemistry(
                 // Contains formation on dust and via the primordial channel
                 // TODO(code): update G0 to be the total G0
                 alpha_H2_loc = alpha_H2(TK, dust_to_gas_mass_ratio_over_mw, xe, H2_cosmic_ray_ionization_rate, 
-                                        UV_background_G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
+                                        G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
                                         n_and_ion_fracs[1].n_element_new); //! [cm3 s-1]
 
                 // We can only create H2 if there is any HI and HII

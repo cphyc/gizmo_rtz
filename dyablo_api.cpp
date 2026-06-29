@@ -487,6 +487,7 @@ double subcycle_chemistry(
     //int atomic_number;
 
     // Self-shielding
+    double dx_SS = dx; // [cm] --> set the self-shielding length to the cell size
     double ss_factor = 1.0;
     if (include_self_shielding) {
         ss_factor = exp(-1.0 * n_and_ion_fracs[1].n_element/1E-2);
@@ -559,8 +560,16 @@ double subcycle_chemistry(
         /////////////////////////
         //      Radiation      //
         /////////////////////////
-        // double f_shd_H2 = 1.0;
+        double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
+
+        double nH = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[0];
+        double nH2 = 0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2];
+
+        if constexpr (include_H2)
+            f_shd_H2 = fmin(comp_SH2(nH2, dx_SS)      * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw), 1.0);
+        if constexpr (include_CO)
+            f_shd_CO = fmin(comp_SCO(nCO, nH2, dx_SS) * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw), 1.0);
 
         double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
         double G0 = UV_background_G0;
@@ -586,10 +595,8 @@ double subcycle_chemistry(
                 } // End loop over elements
 
                 // Deal with molecular hydrogen separately if needed
-                if constexpr (include_H2) {
-                    // TODO(code): for better accuracy need to include self-shielding here
-                    phAbs += (0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] * tabData.cs_ph(1,2,k,0));
-                }
+                if constexpr (include_H2)
+                    phAbs += (nH2 * tabData.cs_ph(1, 2, k, 0) * f_shd_H2);
 
                 // Next deplete the photons from the group
                 N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * phAbs);
@@ -749,8 +756,17 @@ double subcycle_chemistry(
                                         n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element_new);
                 de_H2 += beta_H2_loc;
 
-                // Photodissociation
+                // Photodissociation UV background
                 de_H2 += UV_background_G0 * 5.68E-11;
+
+                // Photodissociation from local radiation field
+                for (int k = 0; k < N_GROUPS; k++) {
+                    if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
+                        // self-shield the LW band
+                        de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k] * f_shd_H2;
+                    else
+                        de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k];
+                }
 
                 // Cosmic ray destruction
                 de_H2 += H2_cosmic_ray_ionization_rate;
@@ -794,7 +810,7 @@ double subcycle_chemistry(
 
             // CO
             if (include_CO && compute_atoms) {
-                // Check if there is enough C, O, and CO to warrant computing the chemistru
+                // Check if there is enough C, O, and CO to warrant computing the chemistry
                 if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > 1e-10) {
 
                     double nH = n_and_ion_fracs[1].n_element_new;
@@ -804,10 +820,10 @@ double subcycle_chemistry(
                     double x_OI  = n_OI / nH;
 
                     //!! Creation !!
-                    cr_CO = alpha_CO(UV_background_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI, nH);
+                    cr_CO = alpha_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI, nH);
 
                     //!! Destruction !!
-                    de_CO = beta_CO(UV_background_G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
+                    de_CO = beta_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
 
                     // Compute the initial guess of new nCO
                     nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
@@ -825,8 +841,8 @@ double subcycle_chemistry(
 
                     // Enforce positivity floors: don't destroy more CO than exists,
                     // and don't create more than allowed by available CII and OI
-                    double max_delta_CO = fmin(n_CII - 1e-30, n_OI - 1e-30);
-                    double min_delta_CO = -nCO + 1e-30;       
+                    double max_delta_CO = fmax(fmin(n_CII - 1e-30, n_OI - 1e-30), 0.0);
+                    double min_delta_CO = fmax(-nCO + 1e-30, 0.0);
 
                     // Clip delta_CO to enforce physical bounds
                     delta_CO = fmax(fmin(delta_CO, max_delta_CO), min_delta_CO);
@@ -1375,6 +1391,7 @@ template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_adve
 KOKKOS_FUNCTION
 void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::solve_chemistry_and_cooling(
     double TK,
+    const double dx,
     const double metallicity,
     const double aexp,
     const double total_dt,
@@ -1401,6 +1418,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
         double Tmu_final = subcycle_chemistry<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             elements, depletion_loc, n_and_ion_fracs_loc,
             nCO, TK,
+            dx,
             aexp, total_dt, UV_background_G0,
             generic_cosmic_ray_ionization_rate,
             dust_to_gas_mass_ratio_over_mw,

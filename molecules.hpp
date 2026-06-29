@@ -101,7 +101,7 @@ double beta_H2_krome(double T, double nH, double ne, double nH2, double nHe){
     destruction_rate += ((6.67E-12 * sqrt(T) * exp(-1.0 * (1.0 + (63593.0/T)))) * nH);
 
     // H2 + H2 --> H2 + H + H (k19)
-    destruction_rate += ((5.996E-30 * pow(T,4.1881) * pow(1.0 + (6.761 * T),-5.6881) * exp(-54657.4/T)) * nH2);
+    destruction_rate += ((5.996E-30 * pow(T,4.1881) * pow(1.0 + (6.761E-6 * T),-5.6881) * exp(-54657.4/T)) * nH2);
 
     // H2 + e- --> H + H + e- (k22)
     destruction_rate += (4.38E-10 * pow(T,0.35) * exp(-102000.0/T) * ne);

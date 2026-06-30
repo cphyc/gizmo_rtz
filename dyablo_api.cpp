@@ -169,12 +169,6 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool inclu
     elements[26].depletion = 0.01;
 }
 
-// typedef struct
-// {
-//     double n_element;
-//     double ion_fracs[MAX_ELEMENTS];
-//     double ion_fracs_new[MAX_ELEMENTS];
-// } ParticleIonData;
 
 KOKKOS_FUNCTION
 double get_dust_mass_and_depletion(
@@ -232,8 +226,6 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
         } else {
             n_and_ion_fracs[i].n_element = hdens * elements[i].z_solar * metallicity * elements[i].depletion;
         }
-        // n_and_ion_fracs[i].ion_fracs = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
-        // n_and_ion_fracs[i].ion_fracs_new = (double *)malloc((elements[i].n_ions + elements[i].n_mol) * sizeof(double));
 
         switch (itype) {
         case 1:
@@ -414,14 +406,6 @@ void reduce_xion_max(std::array<double, MAX_ELEMENTS>& ion_fracs, int size)
     ion_fracs[max_idx] -= (total_ion_frac - 1.0);
 }
 
-// void copyArray(double src[], double dest[], int size)
-// {
-//     for (int i = 0; i < size; i++)
-//     {
-//         dest[i] = src[i];
-//     }
-// }
-
 template <
     bool constant_temperature,
     bool include_H2=true,
@@ -484,7 +468,6 @@ double subcycle_chemistry(
     Array2D_RT F_phot_new{};
 
     int n_ions; //Number of ions --> reset per element
-    //int atomic_number;
 
     // Self-shielding
     double dx_SS = dx; // [cm] --> set the self-shielding length to the cell size
@@ -505,7 +488,6 @@ double subcycle_chemistry(
 
     //# infinite loop
     while (1) {  // Infinite loop: TODO(code): put a max loop counter here and then call an error function
-        //printf("%e %e %e\n",ddt,total_dt,total_time);
         total_iterations += 1;
         compute_atoms = true;
         compute_molecules = true;
@@ -616,7 +598,6 @@ double subcycle_chemistry(
                 max_residual_all = fmax(max_residual_all, residual);
 
                 if (residual > X_PCT_RULE){
-                    // printf("Broken photons %e %e %e %e %e %d %e %e %e %e %e\n",Tmu_new,Tmu_old,residual,mu,ddt,total_iterations,element_ion_fractions[1]
                     // Reset the success counter
                     success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -635,10 +616,6 @@ double subcycle_chemistry(
         //     Temperature     //
         /////////////////////////
         if (!constant_temperature) {
-
-            // double *element_number_densities;
-            // double *element_number_ions;
-            // double **element_ion_fractions;
 
             cooling_rate = all_cooling(TK, ne, aexp,
                                     n_and_ion_fracs, 
@@ -704,7 +681,6 @@ double subcycle_chemistry(
             max_residual_all = fmax(max_residual_all,residual);
 
             if (residual > X_PCT_RULE){
-                // printf("Broken temperature %e %e %e %e %e %d %e %e %e %e %e\n",Tmu_new,Tmu_old,residual,mu,ddt,total_iterations,element_ion_fractions[1][0],element_ion_fractions[1][1],element_ion_fractions[1][2],cooling_rate,cooling_rate_prime);
                 // Reset the success counter
                 success_counter = 0;
                 // Declare the x-percent rule was violated
@@ -793,7 +769,6 @@ double subcycle_chemistry(
                 max_residual_all = fmax(max_residual_all,residual);
 
                 if (residual > X_PCT_RULE && n_and_ion_fracs[1].ion_fracs[2] > 1E-10){
-                    // printf("Broken molecules %e %e %e %e\n",n_and_ion_fracs[1].ion_fracs_new[2],n_and_ion_fracs[1].ion_fracs[2],residual,ddt);
                     // Reset the success counter
                     success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -1064,6 +1039,7 @@ double subcycle_chemistry(
                     /////////////////////////
                     //       Update        //
                     /////////////////////////
+
                     // The update
                     n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
                     n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
@@ -1110,7 +1086,6 @@ double subcycle_chemistry(
                     // Check if X percent rule is broken
                     if (n_and_ion_fracs[i].ion_fracs[j] > 1E-10){
                         if (residual > X_PCT_RULE){
-                            // printf("Broken element %d %d, %e %e %e %e\n",i,j,n_and_ion_fracs[i].ion_fracs_new[j],n_and_ion_fracs[i].ion_fracs[j],residual,ddt);
                             // Reset the success counter
                             success_counter = 0;
                             // Declare the x-percent rule was violated
@@ -1267,19 +1242,6 @@ double subcycle_chemistry(
     total_iter_reached = total_iterations;
 
     // printf("%e %e %e %d\n",n_and_ion_fracs[1].n_element,n_and_ion_fracs[1].ion_fracs_new[0],Tmu_old,total_iterations);
-
-    //printf("%e %e %e %e %d %e %e %e %e %e\n",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[1].ion_fracs_new[0],n_and_ion_fracs[1].ion_fracs_new[1],n_and_ion_fracs[1].ion_fracs_new[2],ddt,total_time);
-    // printf("%e %e %e %e %d %e %e %e",n_and_ion_fracs[1].n_element,Tmu_old*mu,Tmu_old,mu,total_iterations,n_and_ion_fracs[6].n_element,nCO,ddt);
-
-    // printf("%e ",Tmu_old);
-    // for (int i=0; i<27; i++){
-    //     printf("%e ",n_and_ion_fracs[26].ion_fracs_new[i]);
-    // }
-
-    // printf("%e ",Tmu_old);
-    // for (int i=0; i<2; i++){
-    //     printf("%e ",n_and_ion_fracs[1].ion_fracs_new[i]);
-    // }
 
     return Tmu_old;
 }

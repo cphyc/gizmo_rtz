@@ -1649,7 +1649,6 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
                                                     tabData);
 	}
 
-    // TODO(code): call local photoheating
     double local_phot_heat = 0.0;
     if (rt_advect) {
         local_phot_heat += local_photoheating(dNp, n_and_ion_fracs, elements, tabData);

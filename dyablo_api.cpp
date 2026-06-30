@@ -817,7 +817,7 @@ double subcycle_chemistry(
                     // Enforce positivity floors: don't destroy more CO than exists,
                     // and don't create more than allowed by available CII and OI
                     double max_delta_CO = fmax(fmin(n_CII - 1e-30, n_OI - 1e-30), 0.0);
-                    double min_delta_CO = fmax(-nCO + 1e-30, 0.0);
+                    double min_delta_CO = fmin(-nCO + 1e-30, 0.0);
 
                     // Clip delta_CO to enforce physical bounds
                     delta_CO = fmax(fmin(delta_CO, max_delta_CO), min_delta_CO);

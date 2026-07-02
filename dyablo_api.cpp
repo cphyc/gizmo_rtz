@@ -712,28 +712,28 @@ double subcycle_chemistry(
                                         n_and_ion_fracs[1].n_element_new); //! [cm3 s-1]
 
                 // We can only create H2 if there is any HI and HII
-                cr_H2 += alpha_H2_loc;   
+                cr_H2 += alpha_H2_loc;
 
                 // Destruction //
 
                 // Collisional destruction
-                beta_H2_loc = beta_H2_krome(TK,     
-                                        n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new,
-                                        ne,
-                                        xH2 * n_and_ion_fracs[1].n_element_new,
-                                        n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element_new);
+                beta_H2_loc = beta_H2_krome(TK, n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new,
+                                            ne, xH2 * n_and_ion_fracs[1].n_element_new,
+                                            n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element_new);
                 de_H2 += beta_H2_loc;
 
                 // Photodissociation UV background
                 de_H2 += UV_background_G0 * 5.68E-11;
 
                 // Photodissociation from local radiation field
-                for (int k = 0; k < N_GROUPS; k++) {
-                    if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
-                        // self-shield the LW band
-                        de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k] * f_shd_H2;
-                    else
-                        de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k];
+                if constexpr (rt_advect) {
+                    for (int k = 0; k < N_GROUPS; k++) {
+                        if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
+                            // self-shield the LW band
+                            de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k] * f_shd_H2;
+                        else
+                            de_H2 += tabData.cs_ph(1, 2, k, 0) * N_phot_new[k];
+                    }
                 }
 
                 // Cosmic ray destruction

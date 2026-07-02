@@ -780,14 +780,14 @@ double subcycle_chemistry(
                 // Check if there is enough C, O, and CO to warrant computing the chemistry
                 if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > 1e-10) {
 
-                    double nH = n_and_ion_fracs[1].n_element_new;
-                    double n_CII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
-                    double n_OI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
-                    double n_H2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / 2.0;
-                    double x_OI  = n_OI / nH;
+                    double nH   = n_and_ion_fracs[1].n_element_new;
+                    double nCII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
+                    double nOI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
+                    double nH2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / 2.0;
+                    double x_OI = nOI / nH;
 
                     //!! Creation !!
-                    cr_CO = alpha_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI, nH);
+                    cr_CO = alpha_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate, nCII, nH2, x_OI, nH * n_and_ion_fracs[1].ion_fracs_new[0]);
 
                     //!! Destruction !!
                     de_CO = beta_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
@@ -808,7 +808,7 @@ double subcycle_chemistry(
 
                     // Enforce positivity floors: don't destroy more CO than exists,
                     // and don't create more than allowed by available CII and OI
-                    double max_delta_CO = fmax(fmin(n_CII - 1e-30, n_OI - 1e-30), 0.0);
+                    double max_delta_CO = fmax(fmin(nCII - 1e-30, nOI - 1e-30), 0.0);
                     double min_delta_CO = fmin(-nCO + 1e-30, 0.0);
 
                     // Clip delta_CO to enforce physical bounds
@@ -816,8 +816,8 @@ double subcycle_chemistry(
 
                     // Apply updates
                     nCO_new  = nCO + delta_CO;
-                    double nCII_new = n_CII - delta_CO;
-                    double nOI_new  = n_OI  - delta_CO;
+                    double nCII_new = nCII - delta_CO;
+                    double nOI_new  = nOI  - delta_CO;
 
                     // Now update the ion fractions for C and O
                     double tot_C = n_and_ion_fracs[6].n_element_new - delta_CO;

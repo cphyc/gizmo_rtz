@@ -612,47 +612,46 @@ double subcycle_chemistry(
         if (!constant_temperature && compute_temperature) {
 
             cooling_rate = all_cooling(TK, ne, aexp,
-                                    n_and_ion_fracs, 
-                                    elements,
-                                    N_phot_new,
-                                    nCO,
-                                    G0, 
-                                    UV_background_G0,
+                                    n_and_ion_fracs, elements, N_phot_new,
+                                    nCO, G0,  UV_background_G0,
                                     dust_to_gas_mass_ratio_over_mw, 
-                                    xe, 
-                                    primary_cosmic_ray_ionization_rate, 
+                                    xe, primary_cosmic_ray_ionization_rate, 
                                     H2_cosmic_ray_ionization_rate,
-                                    ss_factor,
-                                    rt_advect,
-                                    flags.include_photoionization,
-                                    flags.include_cosmic_ray_ionization, 
-                                    flags.include_HM12_UVB,
-                                    flags.include_dust_recombination, 
-                                    flags.include_charge_exchange,
-                                    tabData);
+                                    ss_factor, rt_advect,
+                                    flags, tabData
+                                );
 
-            cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-                                            n_and_ion_fracs, 
-                                            elements,
-                                            N_phot_new,
-                                            nCO,
-                                            G0,
-                                            UV_background_G0, 
-                                            dust_to_gas_mass_ratio_over_mw, 
-                                            xe, 
-                                            primary_cosmic_ray_ionization_rate, 
+            // cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
+            //                                 n_and_ion_fracs, elements, N_phot_new,
+            //                                 nCO, G0, UV_background_G0,
+            //                                 dust_to_gas_mass_ratio_over_mw,
+            //                                 xe, primary_cosmic_ray_ionization_rate,
+            //                                 H2_cosmic_ray_ionization_rate,
+            //                                 ss_factor, rt_advect,
+            //                                 flags, tabData
+            //                             );
+            // cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*TK) - TK);
+
+            double cooling_rate_plus = all_cooling(TK + (1e-5 * TK), ne, aexp,
+                                            n_and_ion_fracs, elements, N_phot_new,
+                                            nCO, G0, UV_background_G0,
+                                            dust_to_gas_mass_ratio_over_mw,
+                                            xe, primary_cosmic_ray_ionization_rate,
                                             H2_cosmic_ray_ionization_rate,
-                                            ss_factor,
-                                            rt_advect, 
-                                            flags.include_photoionization,
-                                            flags.include_cosmic_ray_ionization, 
-                                            flags.include_HM12_UVB,
-                                            flags.include_dust_recombination, 
-                                            flags.include_charge_exchange,
-                                            tabData
+                                            ss_factor, rt_advect,
+                                            flags, tabData
                                         );
+            double cooling_rate_minus = all_cooling(TK - (1e-5 * TK), ne, aexp,
+                                            n_and_ion_fracs, elements, N_phot_new,
+                                            nCO, G0, UV_background_G0,
+                                            dust_to_gas_mass_ratio_over_mw,
+                                            xe, primary_cosmic_ray_ionization_rate,
+                                            H2_cosmic_ray_ionization_rate,
+                                            ss_factor, rt_advect,
+                                            flags, tabData
+                                        );
+            cooling_rate_prime = (cooling_rate_plus - cooling_rate_minus) / (2e-5 * TK);
 
-            cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*TK) - TK);
 
             double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
 

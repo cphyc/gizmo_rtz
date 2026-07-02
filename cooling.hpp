@@ -1414,11 +1414,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
                    double G0, double UV_background_G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
                    bool rt_advect,
-                   bool rtz_include_photoionization,
-                   bool rtz_include_cosmic_ray_ionization,
-                   bool rtz_include_HM12_UVB,
-                   bool rtz_include_dust_recombination,
-                   bool rtz_include_charge_exchange,
+                   const PhysicsFlags& flags,
                    const TabulatedData& tabData){
     // Main cooling driver
     /*
@@ -1611,7 +1607,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Cosmic ray heating
     double cosmic_ray_heat = 0.0;
-    if (rtz_include_cosmic_ray_ionization) {
+    if (flags.include_cosmic_ray_ionization) {
 		cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2,
 		                                            ne, xi_h_cr,
 		                                            n_and_ion_fracs,
@@ -1622,7 +1618,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Photoheating from the UV background
 	double uvb_photoheat = 0.0;
-    if (rtz_include_HM12_UVB) {
+    if (flags.include_HM12_UVB) {
         uvb_photoheat = photoheating_UVB(n_and_ion_fracs,
                                             elements,
                                             tabData);
@@ -1643,7 +1639,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Heating and cooling from charge transfer reactions
     double charge_transfer_heat_cool = 0.0;
-    if (rtz_include_charge_exchange) {
+    if (flags.include_charge_exchange) {
 		charge_transfer_heat_cool = CT_heat_cool(T,
                                                     n_and_ion_fracs,
                                                     tabData);

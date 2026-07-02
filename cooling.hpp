@@ -1294,8 +1294,6 @@ double CT_heat_cool(double T, const CompactIonData& n_and_ion_fracs,
         return ct_hc_rate;
     }
 
-    //nN(ixHII) --> nHI
-    //nI(2) == nI(ixHII)   == nHII
 
     double loc_nHI = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
     double loc_nHII = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
@@ -1384,14 +1382,14 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
 }
 
 KOKKOS_INLINE_FUNCTION
-double CO_cooling_koyama_00(double n, double nH2, double nHI, double nCO, double T) {
+double CO_cooling_koyama_00(double nH, double nH2, double nHI, double nCO, double T) {
     // CO cooling
     double T_pivot = 3080.0;
-    double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / n;
+    double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / nH;
 
     // CO Rotational cooling
-    double rot_numerator = n * nCO * 4.0 * pow(KB * T, 2.0) * 9.7e-8;
-    double rot_denominator = n * 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
+    double rot_numerator = nCO * 4.0 * pow(KB * T, 2.0) * 9.7e-8;
+    double rot_denominator = 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
     double rot = rot_numerator / rot_denominator;
 
     // CO Vibrational cooling (H2 collisions)
@@ -1430,17 +1428,17 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
     xi_h_cr --> cosmic ray ionization rate
     */
 
-    double nH_I = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
-    double nH_II = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
-    double nH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
-    double nHe_I = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[0];
-    double nHe_II = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1];
-    double nHe_III = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[2];
+    double nH    = n_and_ion_fracs.n_element_new[1];
+    double xHI   = n_and_ion_fracs[1].ion_fracs_new[0];
+    double xHII  = n_and_ion_fracs[1].ion_fracs_new[1];
+    double xH2   = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
+    double nH_I  = nH * xHI;
+    double nH_II = nH * xHII;
+    double nH2   = nH * xH2 * 0.5;
 
-    double nH = nH_I + nH_II + (2.0 * nH2);
-    double xHI = n_and_ion_fracs[1].ion_fracs_new[0];
-    double xHII = n_and_ion_fracs[1].ion_fracs_new[1];
-    double xH2 = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
+    double nHe_I   = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[0];
+    double nHe_II  = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1];
+    double nHe_III = n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[2];
 
     // metal cool smoothing parameters
     double metal_cool_smooth_f1 = 0.5 * (tanh( (5E-3) * ( T - 1.E4 ) ) + 1.0 );
@@ -1467,9 +1465,8 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Metal line cooling -- high temperature
     double high_T_metal_cooling = 0.0;
-    high_T_metal_cooling = get_high_t_cooling_rates(T, ne, 
-                                                    n_and_ion_fracs,
-                                                    elements,
+    high_T_metal_cooling = get_high_t_cooling_rates(T, ne,
+                                                    n_and_ion_fracs, elements,
                                                     metal_cool_smooth_f1,
                                                     tabData);
 
@@ -1482,9 +1479,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CI = CI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                 ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z,
-                                                                 tabData);
+                                                               ne, nH2, nHe_I, nHe_II, 
+                                                               nHe_III, z,
+                                                               tabData);
             total_fine_structure += cooling_fine_structure_CI;
         }
         
@@ -1492,9 +1489,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_CII = CII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z,
-                                                                   tabData);
+                                                                 ne, nH2, nHe_I, nHe_II, 
+                                                                 nHe_III, z,
+                                                                 tabData);
             //printf("CII cool: %e\n",cooling_fine_structure_CII);
             total_fine_structure += cooling_fine_structure_CII;
         }
@@ -1503,9 +1500,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_NII = NII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z,
-                                                                   tabData);
+                                                                 ne, nH2, nHe_I, nHe_II, 
+                                                                 nHe_III, z,
+                                                                 tabData);
             total_fine_structure += cooling_fine_structure_NII;
         }
         
@@ -1513,9 +1510,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_OI = OI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                 ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z,
-                                                                 tabData);
+                                                               ne, nH2, nHe_I, nHe_II, 
+                                                               nHe_III, z,
+                                                               tabData);
             //printf("OI cool: %e\n",cooling_fine_structure_OI);
             total_fine_structure += cooling_fine_structure_OI;
         }
@@ -1544,9 +1541,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiI = SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
-                                                                   nHe_III, z,
-                                                                   tabData);
+                                                                 ne, nH2, nHe_I, nHe_II, 
+                                                                 nHe_III, z,
+                                                                 tabData);
             total_fine_structure += cooling_fine_structure_SiI;
         }
         
@@ -1554,9 +1551,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SiII = SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                     ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z,
-                                                                     tabData);
+                                                                   ne, nH2, nHe_I, nHe_II, 
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_SiII;
         }
         
@@ -1564,9 +1561,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_SI = SI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                 ne, nH2, nHe_I, nHe_II, 
-                                                                 nHe_III, z,
-                                                                 tabData);
+                                                               ne, nH2, nHe_I, nHe_II, 
+                                                               nHe_III, z,
+                                                               tabData);
             total_fine_structure += cooling_fine_structure_SI;
         }
         
@@ -1574,7 +1571,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[0];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeI = FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                   ne, nH2, nHe_I, nHe_II, 
+                                                                 ne, nH2, nHe_I, nHe_II, 
                                                                    nHe_III, z,
                                                                    tabData);
             total_fine_structure += cooling_fine_structure_FeI;
@@ -1584,9 +1581,9 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
         n_ion_fs = n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[1];
         if (n_ion_fs > MIN_COOL_ION) {
             double cooling_fine_structure_FeII = FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, 
-                                                                     ne, nH2, nHe_I, nHe_II, 
-                                                                     nHe_III, z,
-                                                                     tabData);
+                                                                   ne, nH2, nHe_I, nHe_II, 
+                                                                   nHe_III, z,
+                                                                   tabData);
             total_fine_structure += cooling_fine_structure_FeII;
         }
            
@@ -1596,42 +1593,33 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Dust cooling
     double dust_cooling = 0.0;
-    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, n_and_ion_fracs.n_element_new[1]);
-    dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, n_and_ion_fracs.n_element_new[1], f_dg);
+    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, nH);
+    dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, nH, f_dg);
 
     // CO cooling
     double CO_cooling = CO_cooling_koyama_00(nH, nH2, nH_I, nCO, T);
 
     // Photoelectric heating --> note factor of 1.7 is because IUV
-    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, n_and_ion_fracs.n_element_new[1]);
+    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, nH);
 
     // Cosmic ray heating
     double cosmic_ray_heat = 0.0;
     if (flags.include_cosmic_ray_ionization) {
-		cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2,
-		                                            ne, xi_h_cr,
-		                                            n_and_ion_fracs,
-		                                            elements,
-		                                            tabData
-		                                        );
+		cosmic_ray_heat = cosmic_ray_heating(xe, nH_I, nHe_I, nH2, ne, xi_h_cr,
+                                             n_and_ion_fracs, elements, tabData);
 	}
 
     // Photoheating from the UV background
 	double uvb_photoheat = 0.0;
     if (flags.include_HM12_UVB) {
-        uvb_photoheat = photoheating_UVB(n_and_ion_fracs,
-                                            elements,
-                                            tabData);
+        uvb_photoheat = photoheating_UVB(n_and_ion_fracs, elements, tabData);
 	    uvb_photoheat *= ss_factor; // Account for self-shielding
 	}
 
     // Photoheating from the G0 FUV background
-    double uvb_photoheat_G0 = photoheating_UVB_G0(UV_background_G0,
-                                                  n_and_ion_fracs,
-                                                  tabData);
+    double uvb_photoheat_G0 = photoheating_UVB_G0(UV_background_G0, n_and_ion_fracs,  tabData);
 
     // Heating from H2 formation and destruction
-    // double h2_heat = H2_heating(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
     double h2_heat = 0.0;
     if (elements[1].n_mol > 0) {
         h2_heat = H2_heating_bialy(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
@@ -1640,9 +1628,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
     // Heating and cooling from charge transfer reactions
     double charge_transfer_heat_cool = 0.0;
     if (flags.include_charge_exchange) {
-		charge_transfer_heat_cool = CT_heat_cool(T,
-                                                    n_and_ion_fracs,
-                                                    tabData);
+		charge_transfer_heat_cool = CT_heat_cool(T, n_and_ion_fracs, tabData);
 	}
 
     double local_phot_heat = 0.0;

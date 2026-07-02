@@ -536,6 +536,14 @@ double subcycle_chemistry(
         /////////////////////////
         //      Radiation      //
         /////////////////////////
+
+        // TODO(code) Dust opacity
+        double dustAbs[N_GROUPS];
+        for (int k = 0; k < N_GROUPS; k++) {
+            dustAbs[k] = 0.0;
+        }
+
+        // Self-shielding factors
         double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
 
@@ -543,9 +551,9 @@ double subcycle_chemistry(
         double nH2 = 0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2];
 
         if constexpr (include_H2)
-            f_shd_H2 = fmin(comp_SH2(nH2, dx_SS)      * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw), 1.0);
+            f_shd_H2 = comp_SH2(nH2, dx_SS) * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw);
         if constexpr (include_CO)
-            f_shd_CO = fmin(comp_SCO(nCO, nH2, dx_SS) * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw), 1.0);
+            f_shd_CO = comp_SCO(nCO, nH2, dx_SS);
 
         double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
         double G0 = UV_background_G0;
@@ -554,11 +562,17 @@ double subcycle_chemistry(
             double phAbs = 0.0;
             double group_egy;
 
-            // First get the opacity
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
 
-                phAbs = 0.0; // zero out absorption
+                // G0 from the radiation field
+                group_egy = tabData.group_energy(k);
+                if (group_egy > 5.6 && group_egy < 13.6) {
+                    G0 += N_PHOT[k] * (C_CGS * tabData.c_frac())
+                          * group_egy * EV_2_ERG / G_conv;
+                }
 
+                // Get the opacity
+                phAbs = 0.0; // zero out absorption
                 for (int i = 1; i < MAX_ELEMENTS; i++) { // Loop over all elements
                     if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
@@ -566,25 +580,22 @@ double subcycle_chemistry(
                     n_ions = elements[i].n_ions;
 
                     for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
-                        phAbs += (n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0));
+                        phAbs += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(i,j,k,0);
                     } // End loop over ions
                 } // End loop over elements
 
                 // Deal with molecular hydrogen separately if needed
-                if constexpr (include_H2)
-                    phAbs += (nH2 * tabData.cs_ph(1, 2, k, 0) * f_shd_H2);
+                if constexpr (include_H2) {
+                    if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
+                        phAbs += nH2 * tabData.cs_ph(1, 2, k, 0) * f_shd_H2;
+                    else
+                        phAbs += nH2 * tabData.cs_ph(1, 2, k, 0);
+                }
 
                 // Next deplete the photons from the group
-                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * phAbs);
-                // TODO(code): loop over dimensions here and update RT
-                F_phot_new[k][0] = F_PHOT[k][0] / (1.0 + ddt * phAbs);
-                F_phot_new[k][1] = F_PHOT[k][1] / (1.0 + ddt * phAbs);
-                F_phot_new[k][2] = F_PHOT[k][2] / (1.0 + ddt * phAbs);
-
-                group_egy = tabData.group_energy(k);
-                if (group_egy > 5.6 && group_egy < 13.6) {
-                    G0 += N_PHOT[k] * (C_CGS * tabData.c_frac())
-                          * group_egy * EV_2_ERG / G_conv;
+                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * (phAbs + dustAbs[k]));
+                for (int d = 0; d < N_DIM; d++) {
+                    F_phot_new[k][d] = F_PHOT[k][d] / (1.0 + ddt * (phAbs + dustAbs[k]));
                 }
 
                 // Measure the redisual

@@ -31,12 +31,9 @@ const double T_MAX = 1E9;
 template<typename T, typename T2>
 void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
-    for (uint i = 0; i < dst.extent(0); i++)
-    {
-        for (uint j = 0; j < dst.extent(1); j++)
-        {
-            for (uint k = 0; k < dst.extent(2); k++)
-            {
+    for (uint i = 0; i < dst.extent(0); i++) {
+        for (uint j = 0; j < dst.extent(1); j++) {
+            for (uint k = 0; k < dst.extent(2); k++) {
                 dst_h(i, j, k) = src[i][j][k];
             }
         }
@@ -47,10 +44,8 @@ void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
 template<typename T, typename T2>
 void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
-    for (uint i = 0; i < dst.extent(0); i++)
-    {
-        for (uint j = 0; j < dst.extent(1); j++)
-        {
+    for (uint i = 0; i < dst.extent(0); i++) {
+        for (uint j = 0; j < dst.extent(1); j++) {
             dst_h(i, j) = src[i][j];
         }
     }
@@ -60,8 +55,7 @@ void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
 template<typename T, typename T2>
 void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
-    for (uint i = 0; i < dst.extent(0); i++)
-    {
+    for (uint i = 0; i < dst.extent(0); i++) {
         dst_h(i) = src[i];
     }
     Kokkos::deep_copy(dst, dst_h);
@@ -76,8 +70,7 @@ KOKKOS_FUNCTION
 void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool include_h2)
 {
     // Initialize
-    for (int i = 0; i < MAX_ELEMENTS; i++)
-    {
+    for (int i = 0; i < MAX_ELEMENTS; i++) {
         elements[i].atomic_number = -1;
         elements[i].n_ions = -1;
         elements[i].atomic_mass = -1.0;
@@ -692,7 +685,7 @@ double subcycle_chemistry(
                 compute_atoms = false;
             }
         }
-        
+
         /////////////////////////
         //      Molecules      //
         /////////////////////////
@@ -715,7 +708,6 @@ double subcycle_chemistry(
                 // Creation //
 
                 // Contains formation on dust and via the primordial channel
-                // TODO(code): update G0 to be the total G0
                 alpha_H2_loc = alpha_H2(TK, dust_to_gas_mass_ratio_over_mw, xe, H2_cosmic_ray_ionization_rate, 
                                         G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
                                         n_and_ion_fracs[1].n_element_new); //! [cm3 s-1]

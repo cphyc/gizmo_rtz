@@ -441,13 +441,14 @@ double subcycle_chemistry(
     }
 
     // Convergence variables 
-    int success_counter     = 0;
-    int total_iterations    = 0;
-    bool model_converged    = false;
-    bool x_percent_rule     = true;
-    bool compute_atoms      = true;
-    bool compute_molecules  = true;
-    double total_time       = 0.E0;
+    int success_counter         = 0;
+    int total_iterations        = 0;
+    bool model_converged        = false;
+    bool x_percent_rule         = true;
+    bool compute_atoms          = true;
+    bool compute_molecules      = true;
+    bool compute_temperature    = true;
+    double total_time           = 0.E0;
     double residual;  
     double ne_residual;  
     double max_residual_all;  
@@ -602,8 +603,8 @@ double subcycle_chemistry(
                     success_counter = 0;
                     // Declare the x-percent rule was violated
                     x_percent_rule = false;
-                    // // Don't compute temperature
-                    // compute_temperature = false;
+                    // Don't compute temperature
+                    compute_temperature = false;
                     // Dont compute molecules
                     compute_molecules = false;
                     // Don't compute atoms
@@ -615,7 +616,7 @@ double subcycle_chemistry(
         /////////////////////////
         //     Temperature     //
         /////////////////////////
-        if (!constant_temperature) {
+        if (!constant_temperature && compute_temperature) {
 
             cooling_rate = all_cooling(TK, ne, aexp,
                                     n_and_ion_fracs, 

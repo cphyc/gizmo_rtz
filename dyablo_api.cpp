@@ -537,10 +537,15 @@ double subcycle_chemistry(
         //      Radiation      //
         /////////////////////////
 
-        // TODO(code) Dust opacity
+        // Dust photoabsorption (Zubko+2004 BARE-GR-S)
         double dustAbs[N_GROUPS];
         for (int k = 0; k < N_GROUPS; k++) {
             dustAbs[k] = 0.0;
+        }
+        if (TK < 1.0e6) {
+            for (int k = 0; k < N_GROUPS; k++) {
+                dustAbs[k] = tabData.cs_dust(k) * n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+            }
         }
 
         // Self-shielding factors

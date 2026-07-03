@@ -13,6 +13,52 @@ constexpr double group_E_min[N_GROUPS] = { 13.6 };
 constexpr double group_E_max[N_GROUPS] = { 500.0 };
 constexpr int n_photo_elements = 27;
 constexpr int n_photo_pairs = (n_photo_elements * (n_photo_elements - 1)) / 2;
+
+// -------------------------------------------------------------------------
+// Load the Zubko+2004 BARE-GR-S dust absorption cross sections (Runs on Host)
+// -------------------------------------------------------------------------
+void load_bare_gr_s_dust(const std::string& path_to_data, TabulatedData &tabData) {
+    auto h_wav      = Kokkos::create_mirror_view(tabData.dust_wav);
+    auto h_cabs     = Kokkos::create_mirror_view(tabData.dust_cabs);
+    auto h_log_wav  = Kokkos::create_mirror_view(tabData.dust_log_wav);
+    auto h_log_cabs = Kokkos::create_mirror_view(tabData.dust_log_cabs);
+
+    const std::string filepath = path_to_data + "/zubko2004_bare_gr_s_cross_sections.dat";
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        Kokkos::abort(("ERROR: could not open " + filepath).c_str());
+    }
+
+    std::string line;
+    int n = 0;
+    while (std::getline(file, line)) {
+        // Skip comment lines (first non-whitespace character is '!') and blanks
+        const size_t p = line.find_first_not_of(" \t\r\n");
+        if (p == std::string::npos || line[p] == '!') continue;
+        if (n >= N_DUST_WAV) break;
+
+        std::istringstream iss(line);
+        double wav, cabs, csca, csrp; // columns: wav, C_abs, C_sca, (1-g)C_sca
+        if (!(iss >> wav >> cabs >> csca >> csrp)) continue;
+
+        h_wav(n)      = wav;
+        h_cabs(n)     = cabs;
+        h_log_wav(n)  = log10(wav);
+        h_log_cabs(n) = (cabs > 0.0) ? log10(cabs) : -50.0;
+        ++n;
+    }
+    file.close();
+
+    if (n != N_DUST_WAV) {
+        Kokkos::abort("ERROR: unexpected row count in zubko2004_bare_gr_s_cross_sections.dat");
+    }
+
+    Kokkos::deep_copy(tabData.dust_wav,      h_wav);
+    Kokkos::deep_copy(tabData.dust_cabs,     h_cabs);
+    Kokkos::deep_copy(tabData.dust_log_wav,  h_log_wav);
+    Kokkos::deep_copy(tabData.dust_log_cabs, h_log_cabs);
+}
+
 // -------------------------------------------------------------------------
 // Initialization Routine (Runs on Host)
 // -------------------------------------------------------------------------
@@ -85,6 +131,9 @@ void initialize_cross_sections(const std::string& path_to_data, TabulatedData &t
     // 5. Deep copy from Host memory to Device memory
     Kokkos::deep_copy(tabData.photoionization_cross_sections_tot, h_tot);
     Kokkos::deep_copy(tabData.photoionization_cross_sections_nl, h_nl);
+
+    // 6. Load the tabulated dust (BARE-GR-S) absorption cross sections
+    load_bare_gr_s_dust(path_to_data, tabData);
 }
 
 // -------------------------------------------------------------------------
@@ -165,6 +214,37 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
     }
 
     return cross_sec;
+}
+
+// -------------------------------------------------------------------------
+// Dust absorption cross section (Callable on Device)
+// -------------------------------------------------------------------------
+// Effective per-H dust absorption cross section [cm^2/H] for the BARE-GR-S model
+KOKKOS_INLINE_FUNCTION
+double getCrosssection_dust(double lambda, const TabulatedData& tabData) {
+    const auto& wav      = tabData.dust_wav;
+    const auto& cabs     = tabData.dust_cabs;
+    const auto& log_wav  = tabData.dust_log_wav;
+    const auto& log_cabs = tabData.dust_log_cabs;
+
+    if (lambda <= wav(0)) {
+        return cabs(0);
+    } else if (lambda >= wav(N_DUST_WAV - 1)) {
+        return cabs(N_DUST_WAV - 1);
+    }
+
+    // Binary search for the bracketing wavelength interval [low, low+1]
+    int low = 0;
+    int high = N_DUST_WAV - 1;
+    while (high - low > 1) {
+        const int mid = (low + high) / 2;
+        if (wav(mid) <= lambda) low = mid;
+        else high = mid;
+    }
+
+    const double t = (log10(lambda) - log_wav(low)) / (log_wav(low + 1) - log_wav(low));
+    const double log_val = log_cabs(low) + t * (log_cabs(low + 1) - log_cabs(low));
+    return pow(10.0, log_val);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -250,6 +330,26 @@ void compute_weighted_cross_sections(double E0, double E1, double T,
 }
 
 KOKKOS_INLINE_FUNCTION
+double compute_weighted_dust_cross_section(double E0, double E1, double T,
+                                           const TabulatedData& tabData,
+                                           double number_denominator) {
+    double a, b, h;
+    integration_bounds(E0, E1, a, b, h);
+
+    double weighted_number_sum = 0.0;
+    for (int i = 0; i <= n_int_points; ++i) {
+        const double nu = a + (i * h);
+        const double weight = simpson_weight(i);
+        const double B_nu = blackbody_nu(T, nu);
+        const double sigma = getCrosssection_dust((C_CGS / nu) * 1e8, tabData);
+
+        weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
+    }
+
+    return (weighted_number_sum * h / 3.0) / number_denominator;
+}
+
+KOKKOS_INLINE_FUNCTION
 double sigma_N(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData){
     // Photon number-weighted cross section
     // E0 lower energy of the bin in eV
@@ -322,6 +422,14 @@ void update_cross_sections(double T, TabulatedData &tabData) {
 
         // Persist the mean photon energy [eV] of this group for the G0 update
         tabData.group_energy(i) = group_energy;
+
+        // Blackbody-averaged dust absorption rate constant [cm^3/s]
+        double sigma_dust = 0.0;
+        if (number_denominator > 0.0) {
+            sigma_dust = compute_weighted_dust_cross_section(group_E_min(i), group_E_max(i), T,
+                                                             tabData, number_denominator);
+        }
+        tabData.cs_dust(i) = sigma_dust * C_CGS * c_frac();
     });
 
     auto grp_pair_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});

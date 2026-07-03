@@ -270,6 +270,15 @@ typedef struct
     // Mean photon energy [eV] of each group, weighted over the blackbody spectrum
     Kokkos::View<double[N_GROUPS]> group_energy {"group_energy"};
 
+    // Dust absorption cross section per H [cm^2/H] from the BARE-GR-S model
+    Kokkos::View<double[N_DUST_WAV]> dust_wav {"dust_wav"};
+    Kokkos::View<double[N_DUST_WAV]> dust_cabs {"dust_cabs"}; 
+    Kokkos::View<double[N_DUST_WAV]> dust_log_wav {"dust_log_wav"};
+    Kokkos::View<double[N_DUST_WAV]> dust_log_cabs {"dust_log_cabs"};
+
+    // Blackbody-averaged dust absorption rate
+    Kokkos::View<double[N_GROUPS]> cs_dust {"cs_dust"};
+
     // Reduced speed of light factor
     Kokkos::View<double> c_frac {"c_frac"};
 

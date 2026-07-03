@@ -1431,7 +1431,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
     double nH    = n_and_ion_fracs.n_element_new[1];
     double xHI   = n_and_ion_fracs[1].ion_fracs_new[0];
     double xHII  = n_and_ion_fracs[1].ion_fracs_new[1];
-    double xH2   = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs_new[2] * 0.5 : 0.0;
+    double xH2   = (elements[1].n_mol > 0) ? n_and_ion_fracs[1].ion_fracs_new[2] : 0.0;
     double nH_I  = nH * xHI;
     double nH_II = nH * xHII;
     double nH2   = nH * xH2 * 0.5;

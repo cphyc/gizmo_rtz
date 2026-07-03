@@ -515,6 +515,7 @@ double subcycle_chemistry(
         total_iterations += 1;
         compute_atoms = true;
         compute_molecules = true;
+        compute_temperature = true;
 
         //Loop over elements and set the ion_fracs new to
         //the old ion fracs

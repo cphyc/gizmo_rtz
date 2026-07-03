@@ -17,22 +17,9 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
 {
     initialize_elements(elements, include_H2);
 
-    // Update depletion factors based on dust-to-gas ratio BEFORE computing n_element
-    {
-        double loc_z = 12.0 + log10(elements[8].z_solar * metallicity / (elements[1].z_solar + 1E-20));
-        double x = fmax(loc_z, 5.0);
-        double y;
-        if (loc_z > 8.10)
-            y = 2.21 + 1.00 * (8.69 - x);
-        else
-            y = 0.96 + 3.10 * (8.69 - x);
-        double G2D = pow(10.0, y);
-        double G2D_sol = pow(10.0, 2.21);
-        double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
         for (int i = 1; i < MAX_ELEMENTS; i++) {
             if (elements[i].atomic_number < 1) continue;
-            elements[i].depletion = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
-        }
+        elements[i].depletion = 1.0;
     }
 
     std::array<ParticleIonData, MAX_ELEMENTS> n_and_ion_fracs{};
@@ -61,7 +48,7 @@ void solve_one_step(const SolverType &rtz_solver,
                     Kokkos::View<double[MAX_TOTAL_IONS]> &d_xions,
                     Kokkos::View<double[1]> &d_TK,
                     Kokkos::View<double[1]> &d_nCO,
-                    double metallicity, double aexp, PhysicsFlags flags,
+                    double aexp, PhysicsFlags flags,
                     int conv_its, int max_its,
                     // int n_total_ions,
                     Kokkos::View<StepResult[1]> &d_result)
@@ -92,7 +79,7 @@ void solve_one_step(const SolverType &rtz_solver,
 
         int total_iter_reached = 0;
 
-        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, -1.0,
+        rtz_solver.solve_chemistry_and_cooling(TK, dx, aexp, -1.0,
                                                n_and_ion_fracs, nCO,
                                                N_PHOT, F_PHOT,
                                                out_Tmu, out_mu,
@@ -136,7 +123,7 @@ void solve_photoheat_step(const SolverType &rtz_solver,
                           Kokkos::View<double[MAX_TOTAL_IONS]> &d_xions,
                           Kokkos::View<double[1]> &d_TK,
                           Kokkos::View<double[N_GROUPS]> &d_Nphot,
-                          double metallicity, double aexp, double total_dt_s,
+                          double aexp, double total_dt_s,
                           PhysicsFlags flags,
                           int conv_its, int max_its,
                           Kokkos::View<StepResult[1]> &d_result)
@@ -162,7 +149,7 @@ void solve_photoheat_step(const SolverType &rtz_solver,
         Array2D_RT F_PHOT{};
         int total_iter_reached = 0;
 
-        rtz_solver.solve_chemistry_and_cooling(TK, metallicity, aexp, total_dt_s,
+        rtz_solver.solve_chemistry_and_cooling(TK, dx, aexp, total_dt_s,
                                                n_and_ion_fracs, nCO,
                                                N_PHOT, F_PHOT,
                                                out_Tmu, out_mu,
@@ -295,7 +282,7 @@ static int run_photoheating_test()
     double t = 0.0;
     for (int i = 0; i < NT; i++) {
         solve_photoheat_step(rtz_solver, d_nel, d_xions, d_TK, d_Nphot,
-                             metallicity, aexp, dt_step_s,
+                             aexp, dt_step_s,
                              flags, 200000, 4000000, d_result);
         t += dt_step_s * 3.17e-8;  // convert to yr
         Kokkos::deep_copy(h_result, d_result);
@@ -365,9 +352,9 @@ static int run_ism_test()
         for (int ii = 1; ii < MAX_ELEMENTS; ii++) {
             if (elements[ii].atomic_number < 1) continue;
             if (ii < 3) {
-                h_nel(ii) = rho * elements[ii].z_solar * elements[ii].depletion;
+                h_nel(ii) = rho * elements[ii].z_solar;                // TOTAL (H, He)
             } else {
-                h_nel(ii) = rho * elements[ii].z_solar * metallicity * elements[ii].depletion;
+                h_nel(ii) = rho * elements[ii].z_solar * metallicity;  // TOTAL (metals)
             }
         }
         rho_old = rho;
@@ -378,7 +365,7 @@ static int run_ism_test()
         Kokkos::deep_copy(d_nCO, h_nCO);
 
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, d_result);
+                       aexp, flags, 20000, 40000, d_result);
 
         Kokkos::deep_copy(h_result, d_result);
         auto &r = h_result(0);
@@ -488,7 +475,7 @@ static int run_cie_test()
 
         auto t_start = std::chrono::high_resolution_clock::now();
         solve_one_step(rtz_solver, d_nel, d_xions, d_TK, d_nCO,
-                       metallicity, aexp, flags, 20000, 40000, d_result);
+                       aexp, flags, 20000, 40000, d_result);
         auto t_end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
 

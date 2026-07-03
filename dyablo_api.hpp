@@ -51,7 +51,6 @@ public:
     void solve_chemistry_and_cooling(
         double TK,
         double dx,
-        const double metallicity,
         const double aexp,
         const double total_dt,
         CompactIonData& n_and_ion_fracs_loc,

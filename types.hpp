@@ -7,6 +7,7 @@
 #define MAX_TOTAL_IONS 113
 #define N_GROUPS 1
 #define N_DIM 3
+#define N_DUST_WAV 1000
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
 using Array2D_RT = std::array<std::array<double, N_DIM>, N_GROUPS>;
 

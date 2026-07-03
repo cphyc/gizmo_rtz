@@ -79,6 +79,7 @@ void solve_one_step(const SolverType &rtz_solver,
 
         int total_iter_reached = 0;
 
+        const double dx = 3.086e18;
         rtz_solver.solve_chemistry_and_cooling(TK, dx, aexp, -1.0,
                                                n_and_ion_fracs, nCO,
                                                N_PHOT, F_PHOT,
@@ -149,6 +150,7 @@ void solve_photoheat_step(const SolverType &rtz_solver,
         Array2D_RT F_PHOT{};
         int total_iter_reached = 0;
 
+        const double dx = 3.086e18;
         rtz_solver.solve_chemistry_and_cooling(TK, dx, aexp, total_dt_s,
                                                n_and_ion_fracs, nCO,
                                                N_PHOT, F_PHOT,

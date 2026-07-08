@@ -583,16 +583,17 @@ double subcycle_chemistry(
         double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
 
-        double nH = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[0];
+        double nHI = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[0];
         double nH2 = 0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2];
 
         if constexpr (include_H2)
-            f_shd_H2 = comp_SH2(nH2, dx_SS) * comp_Sd(nH, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw);
+            f_shd_H2 = comp_SH2(nH2, dx_SS) * comp_Sd(nHI, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw);
         if constexpr (include_CO)
             f_shd_CO = comp_SCO(nCO, nH2, dx_SS);
 
         double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
-        double G0 = UV_background_G0;
+
+        double G0_local = 0.0;
 
         if constexpr (rt_advect) {
             double phAbs = 0.0;
@@ -603,7 +604,7 @@ double subcycle_chemistry(
                 // G0 from the radiation field
                 group_egy = tabData.group_energy(k);
                 if (group_egy > 5.6 && group_egy < 13.6) {
-                    G0 += N_PHOT[k] * (C_CGS * tabData.c_frac())
+                    G0_local += N_PHOT[k] * (C_CGS * tabData.c_frac())
                           * group_egy * EV_2_ERG / G_conv;
                 }
 
@@ -660,7 +661,7 @@ double subcycle_chemistry(
 
             cooling_rate = all_cooling(TK, ne, aexp,
                                     n_and_ion_fracs, elements, N_phot_new,
-                                    nCO, G0,  UV_background_G0,
+                                    nCO, G0_local, UV_background_G0, f_shd_H2,
                                     dust_to_gas_mass_ratio_over_mw, 
                                     xe, primary_cosmic_ray_ionization_rate, 
                                     H2_cosmic_ray_ionization_rate,
@@ -681,7 +682,7 @@ double subcycle_chemistry(
 
             double cooling_rate_plus = all_cooling(TK + (1e-5 * TK), ne, aexp,
                                             n_and_ion_fracs, elements, N_phot_new,
-                                            nCO, G0, UV_background_G0,
+                                            nCO, G0_local, UV_background_G0, f_shd_H2,
                                             dust_to_gas_mass_ratio_over_mw,
                                             xe, primary_cosmic_ray_ionization_rate,
                                             H2_cosmic_ray_ionization_rate,
@@ -690,7 +691,7 @@ double subcycle_chemistry(
                                         );
             double cooling_rate_minus = all_cooling(TK - (1e-5 * TK), ne, aexp,
                                             n_and_ion_fracs, elements, N_phot_new,
-                                            nCO, G0, UV_background_G0,
+                                            nCO, G0_local, UV_background_G0, f_shd_H2,
                                             dust_to_gas_mass_ratio_over_mw,
                                             xe, primary_cosmic_ray_ionization_rate,
                                             H2_cosmic_ray_ionization_rate,
@@ -755,7 +756,7 @@ double subcycle_chemistry(
 
                 // Contains formation on dust and via the primordial channel
                 alpha_H2_loc = alpha_H2(TK, dust_to_gas_mass_ratio_over_mw, xe, H2_cosmic_ray_ionization_rate, 
-                                        G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
+                                        G0_local*f_shd_H2 + UV_background_G0, n_and_ion_fracs[1].ion_fracs_new[0], n_and_ion_fracs[1].ion_fracs_new[1],
                                         n_and_ion_fracs[1].n_element_new); //! [cm3 s-1]
 
                 // We can only create H2 if there is any HI and HII
@@ -834,10 +835,10 @@ double subcycle_chemistry(
                     double x_OI = nOI / nH;
 
                     //!! Creation !!
-                    cr_CO = alpha_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate, nCII, nH2, x_OI, nH * n_and_ion_fracs[1].ion_fracs_new[0]);
+                    cr_CO = alpha_CO(G0_local*f_shd_CO + UV_background_G0, H2_cosmic_ray_ionization_rate, nCII, nH2, x_OI, nH * n_and_ion_fracs[1].ion_fracs_new[0]);
 
                     //!! Destruction !!
-                    de_CO = beta_CO(G0*f_shd_CO, H2_cosmic_ray_ionization_rate);
+                    de_CO = beta_CO(G0_local*f_shd_CO + UV_background_G0, H2_cosmic_ray_ionization_rate);
 
                     // Compute the initial guess of new nCO
                     nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
@@ -1214,7 +1215,7 @@ double subcycle_chemistry(
             if constexpr (rt_advect) {
                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
                     // Update the photon properties
-                    N_PHOT[k] = fmax(N_phot_new[k], 1E-20);
+                    N_PHOT[k] = N_phot_new[k];
                     
                     // Update flux for all dimensions
                     double fred = 0.0;
@@ -1386,6 +1387,12 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     auto c_frac_h = Kokkos::create_mirror_view(tabData.c_frac);
     c_frac_h() = factor;
     Kokkos::deep_copy(tabData.c_frac, c_frac_h);
+}
+
+template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_UV_background_G0(double G0) {
+    UV_background_G0 = G0;
+    printf("Overriding G0 UV background: now %f\n", UV_background_G0);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

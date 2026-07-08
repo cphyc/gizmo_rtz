@@ -1409,7 +1409,8 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
                    const Element* elements,
                    std::array<double, N_GROUPS>& dNp,
                    double nCO,
-                   double G0, double UV_background_G0, double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
+                   double G0_local, double UV_background_G0, double f_shd_H2,
+                   double f_dg, double xe, double xi_h_cr, double xi_h2_cr,
                    double ss_factor,
                    bool rt_advect,
                    const PhysicsFlags& flags,
@@ -1593,14 +1594,14 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Dust cooling
     double dust_cooling = 0.0;
-    dust_cooling = dust_recombination_cooling(T, G0, ne, f_dg, nH);
-    dust_cooling += dust_gas_collisional_cooling(T, G0, xH2*2.0, aexp, nH, f_dg);
+    dust_cooling = dust_recombination_cooling(T, G0_local + UV_background_G0, ne, f_dg, nH);
+    dust_cooling += dust_gas_collisional_cooling(T, G0_local + UV_background_G0, xH2*2.0, aexp, nH, f_dg);
 
     // CO cooling
     double CO_cooling = CO_cooling_koyama_00(nH, nH2, nH_I, nCO, T);
 
     // Photoelectric heating --> note factor of 1.7 is because IUV
-    double photoelectric_heat = photoelectric_heating(T, G0, ne, f_dg, nH);
+    double photoelectric_heat = photoelectric_heating(T, G0_local + UV_background_G0, ne, f_dg, nH);
 
     // Cosmic ray heating
     double cosmic_ray_heat = 0.0;
@@ -1622,7 +1623,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
     // Heating from H2 formation and destruction
     double h2_heat = 0.0;
     if (elements[1].n_mol > 0) {
-        h2_heat = H2_heating_bialy(G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
+        h2_heat = H2_heating_bialy(G0_local*f_shd_H2 + UV_background_G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
     }
 
     // Heating and cooling from charge transfer reactions

@@ -34,6 +34,9 @@ public:
     // Set the reduced speed of light factor (1.0 = no reduction)
     void set_reduced_speed_of_light_factor(double factor);
 
+    // Set the static (sub-ionizing) UV background G0
+    void set_UV_background_G0(double G0);
+
     // Update the UV background for a given redshift
     void need_to_update_UVB(double redshift);
 

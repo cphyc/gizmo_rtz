@@ -17,8 +17,8 @@ static void setup_elements(std::array<Element, MAX_ELEMENTS> &elements,
 {
     initialize_elements(elements, include_H2);
 
-        for (int i = 1; i < MAX_ELEMENTS; i++) {
-            if (elements[i].atomic_number < 1) continue;
+    for (int i = 1; i < MAX_ELEMENTS; i++) {
+        if (elements[i].atomic_number < 1) continue;
         elements[i].depletion = 1.0;
     }
 

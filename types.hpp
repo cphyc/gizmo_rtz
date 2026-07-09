@@ -1,5 +1,6 @@
 #pragma once
 #include <Kokkos_Core.hpp>
+#include <cstdint>
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
 // Maximum total ion+molecule states across all elements:
@@ -41,74 +42,107 @@ typedef struct
     std::array<double, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
 
-// Compact 2D array for element-indexed ion data. Uses flat MAX_TOTAL_IONS
-// storage with per-element offsets, preserving [element][ion] access syntax.
-struct CompactArray2D {
-    double data[MAX_TOTAL_IONS];
-    int offsets[MAX_ELEMENTS];
+// Reduced-precision storage (enabled with -DRTZ_REDUCED_PRECISION):
+// element number densities are stored as float and ion fractions as 16-bit
+// log-encoded integers
+// ln(x) in [-70, 0] is mapped linearly onto [1, 65535]; 0 encodes exactly 0.0. Relative resolution
+KOKKOS_INLINE_FUNCTION
+uint16_t encode_log(double x) {
+    if (x <= 1e-30) return 0;
+    double ln_x = log(x);
+    if (ln_x < -70.0) return 0;
+    // Map [-70, 0] to [1, 65535]
+    double val = (ln_x + 70.0) * (65534.0 / 70.0) + 1.0;
+    if (val < 1.0) val = 1.0;
+    if (val > 65535.0) val = 65535.0;
+    return (uint16_t)val;
+}
 
-    struct RowProxy {
-        double* row;
-        KOKKOS_INLINE_FUNCTION double& operator[](int j) { return row[j]; }
-        KOKKOS_INLINE_FUNCTION const double& operator[](int j) const { return row[j]; }
-    };
-    struct ConstRowProxy {
-        const double* row;
-        KOKKOS_INLINE_FUNCTION const double& operator[](int j) const { return row[j]; }
-    };
+KOKKOS_INLINE_FUNCTION
+double decode_log(uint16_t encoded) {
+    if (encoded == 0) return 0.0;
+    double ln_x = ((double)encoded - 1.0) * (70.0 / 65534.0) - 70.0;
+    return exp(ln_x);
+}
 
-    KOKKOS_INLINE_FUNCTION RowProxy operator[](int i) { return {data + offsets[i]}; }
-    KOKKOS_INLINE_FUNCTION ConstRowProxy operator[](int i) const { return {data + offsets[i]}; }
-
-    KOKKOS_INLINE_FUNCTION
-    void init_offsets(const Element* elements) {
-        for (int i = 0; i < MAX_ELEMENTS; i++) offsets[i] = 0;
-        for (int i = 0; i < MAX_TOTAL_IONS; i++) data[i] = 0.0;
-        int offset = 0;
-        for (int i = 1; i < MAX_ELEMENTS; i++) {
-            if (elements[i].atomic_number < 1) continue;
-            offsets[i] = offset;
-            offset += elements[i].n_ions + elements[i].n_mol;
-        }
-    }
+#ifdef RTZ_REDUCED_PRECISION
+// Reference-like proxy to a log-encoded ion fraction: reads decode to double,
+// writes encode. Lets solver code keep plain x[i].ion_fracs_new[j] syntax.
+struct XionRef {
+    uint16_t& raw;
+    KOKKOS_INLINE_FUNCTION operator double() const { return decode_log(raw); }
+    KOKKOS_INLINE_FUNCTION XionRef& operator=(double x) { raw = encode_log(x); return *this; }
+    KOKKOS_INLINE_FUNCTION XionRef& operator=(const XionRef& o) { raw = o.raw; return *this; }
+    KOKKOS_INLINE_FUNCTION XionRef& operator+=(double x) { return *this = (double)*this + x; }
+    KOKKOS_INLINE_FUNCTION XionRef& operator-=(double x) { return *this = (double)*this - x; }
+    KOKKOS_INLINE_FUNCTION XionRef& operator*=(double x) { return *this = (double)*this * x; }
+    KOKKOS_INLINE_FUNCTION XionRef& operator/=(double x) { return *this = (double)*this / x; }
 };
+
+struct XionSpan {
+    uint16_t* p;
+    KOKKOS_INLINE_FUNCTION XionRef operator[](int j) const { return {p[j]}; }
+};
+struct ConstXionSpan {
+    const uint16_t* p;
+    KOKKOS_INLINE_FUNCTION double operator[](int j) const { return decode_log(p[j]); }
+};
+#endif
 
 // Compact version that stores ion fractions in flat arrays with element offsets.
 // Provides the same n_and_ion_fracs[element].ion_fracs[ion] access pattern as
 // std::array<ParticleIonData, MAX_ELEMENTS> but uses MAX_TOTAL_IONS storage
 // instead of MAX_ELEMENTS * MAX_ELEMENTS.
 struct CompactIonData {
-    double n_element[MAX_ELEMENTS];
-    double n_element_new[MAX_ELEMENTS];
-    double ion_fracs_flat[MAX_TOTAL_IONS];
-    double ion_fracs_new_flat[MAX_TOTAL_IONS];
+#ifdef RTZ_REDUCED_PRECISION
+    using ndens_t = float;
+    using xion_t = uint16_t;   // log-encoded, see encode_log/decode_log
+#else
+    using ndens_t = double;
+    using xion_t = double;
+#endif
+
+    ndens_t n_element[MAX_ELEMENTS];
+    ndens_t n_element_new[MAX_ELEMENTS];
+    xion_t ion_fracs_flat[MAX_TOTAL_IONS];
+    xion_t ion_fracs_new_flat[MAX_TOTAL_IONS];
     int offsets[MAX_ELEMENTS]; // offset into flat arrays, -1 if inactive
 
     // Proxy to support n_and_ion_fracs[i].ion_fracs[j] syntax
     struct ElementProxy {
-        double& n_element;
-        double& n_element_new;
+        ndens_t& n_element;
+        ndens_t& n_element_new;
+#ifdef RTZ_REDUCED_PRECISION
+        XionSpan ion_fracs;
+        XionSpan ion_fracs_new;
+#else
         double* ion_fracs;
         double* ion_fracs_new;
+#endif
     };
     struct ConstElementProxy {
-        const double& n_element;
-        const double& n_element_new;
+        const ndens_t& n_element;
+        const ndens_t& n_element_new;
+#ifdef RTZ_REDUCED_PRECISION
+        ConstXionSpan ion_fracs;
+        ConstXionSpan ion_fracs_new;
+#else
         const double* ion_fracs;
         const double* ion_fracs_new;
+#endif
     };
 
     KOKKOS_INLINE_FUNCTION
     ElementProxy operator[](int i) {
         return {n_element[i], n_element_new[i],
-                ion_fracs_flat + offsets[i],
-                ion_fracs_new_flat + offsets[i]};
+                {ion_fracs_flat + offsets[i]},
+                {ion_fracs_new_flat + offsets[i]}};
     }
     KOKKOS_INLINE_FUNCTION
     ConstElementProxy operator[](int i) const {
         return {n_element[i], n_element_new[i],
-                ion_fracs_flat + offsets[i],
-                ion_fracs_new_flat + offsets[i]};
+                {ion_fracs_flat + offsets[i]},
+                {ion_fracs_new_flat + offsets[i]}};
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -119,8 +153,8 @@ struct CompactIonData {
             offsets[i] = 0;  // safe default (points to start of flat array)
         }
         for (int i = 0; i < MAX_TOTAL_IONS; i++) {
-            ion_fracs_flat[i] = 0.0;
-            ion_fracs_new_flat[i] = 0.0;
+            ion_fracs_flat[i] = xion_t(0);  // encoded 0 is exactly 0.0
+            ion_fracs_new_flat[i] = xion_t(0);
         }
         int offset = 0;
         for (int i = 1; i < MAX_ELEMENTS; i++) {

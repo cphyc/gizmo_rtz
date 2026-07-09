@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-#include <iostream>
 
 #include "types.hpp"
 #include "recombination.hpp"
@@ -11,7 +10,6 @@
 #include "photoionization_UVB.hpp"
 #include "charge_transfer.hpp"
 #include "dust_recombination.hpp"
-#include "molecules.hpp"
 #include "cooling.hpp"
 #include "dyablo_api.hpp"
 #include "cross_sections.hpp"
@@ -589,7 +587,7 @@ double subcycle_chemistry(
         if constexpr (include_H2)
             f_shd_H2 = comp_SH2(nH2, dx_SS) * comp_Sd(nHI, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw);
         if constexpr (include_CO)
-            f_shd_CO = comp_SCO(nCO, nH2, dx_SS);
+            f_shd_CO = comp_SCO(tabData, nCO, nH2, dx_SS);
 
         double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
 
@@ -1352,6 +1350,16 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
         init_recombination_rates(tabData);
         init_cloudy_rad_rec_data(path_to_data, tabData);
         init_collisional_ionization(path_to_data, tabData);
+
+        // H2 and CO cross sections
+        if (include_CO) {
+            copy_data_1D(sco_col1, tabData.sco_col1);
+            copy_data_1D(sco_col2, tabData.sco_col2);
+        }
+        if (include_H2) {
+            copy_data_1D(sh2_col1, tabData.sh2_col1);
+            copy_data_1D(sh2_col2, tabData.sh2_col2);
+        }
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

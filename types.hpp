@@ -155,7 +155,7 @@ typedef struct {
     int l;
 } CrossSectionsNL;
 
-typedef struct
+struct TabulatedData
 {
     Kokkos::View<double[27][27][2]> HM12_UVB_z {"HM12_UVB_z"};
     Kokkos::View<double[27]> G0_heating_rates {"G0_heating_rates"};
@@ -264,6 +264,11 @@ typedef struct
     // Photoionization cross sections and photoheating rates for each group, element, and ion
     Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};
 
+    Kokkos::View<double[52]> sco_col1 {"sigma_CO_1"};
+    Kokkos::View<double[52]> sco_col2 {"sigma_CO_2"};
+    Kokkos::View<double[43]> sh2_col1 {"sigma_H2_1"};
+    Kokkos::View<double[43]> sh2_col2 {"sigma_H2_2"};
+
     // Photon bins
     Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
     Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
@@ -283,4 +288,7 @@ typedef struct
     // Reduced speed of light factor
     Kokkos::View<double> c_frac {"c_frac"};
 
-} TabulatedData;
+    // Explicitly host-only destructor to avoid device context warnings
+    ~TabulatedData() = default;
+
+};

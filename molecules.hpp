@@ -220,14 +220,15 @@ constexpr double sh2_col2[43] = {
     4.666e-03
 };
 
+
 KOKKOS_INLINE_FUNCTION
-double comp_SCO(double nco_mol, double nh2, double dx_SS) {
+double comp_SCO(const TabulatedData& tabData, double nco_mol, double nh2, double dx_SS) {
     // initialize to 1.0
     double ss_factor = 1.0;
 
     // CO self-shielding
     // Pinned to table at lower boundary, extrapolated above upper boundary
-    double effcNCO = fmax(nco_mol*dx_SS, sco_col1[1]);
+    double effcNCO = fmax(nco_mol*dx_SS, tabData.sco_col1(1));
     if (effcNCO >= 1.578e+20) {
         ss_factor *= 1.619e-05;
     } else {
@@ -235,37 +236,37 @@ double comp_SCO(double nco_mol, double nh2, double dx_SS) {
         int idxCO = 0;
         for (int i=0; i<51; i++) { // If above upper boundary then extrapolate using the slope 
             // between the last two points, so conveniently we set i to not go to 51
-            if (effcNCO >= sco_col1[i]) idxCO = i;
+            if (effcNCO >= tabData.sco_col1(i)) idxCO = i;
         }
 
         double logeffcNCO = log10(effcNCO);
         // Interpolate or extrapolate automatically
-        double logsCO = log10(sco_col2[idxCO])
-                        + (log10(sco_col2[idxCO+1]) - log10(sco_col2[idxCO]))
-                        * (logeffcNCO - log10(sco_col1[idxCO]))
-                        / (log10(sco_col1[idxCO+1]) - log10(sco_col1[idxCO]));
+        double logsCO = log10(tabData.sco_col2(idxCO))
+                        + (log10(tabData.sco_col2(idxCO+1)) - log10(tabData.sco_col2(idxCO)))
+                        * (logeffcNCO - log10(tabData.sco_col1(idxCO)))
+                        / (log10(tabData.sco_col1(idxCO+1)) - log10(tabData.sco_col1(idxCO)));
 
         ss_factor *= pow(10.0,logsCO);
     }
 
     // H2 shielding of CO
     // Pinned to table at lower boundary, extrapolated above upper boundary
-    double effcNH2 = fmax(nh2*dx_SS, sh2_col1[1]);
+    double effcNH2 = fmax(nh2*dx_SS, tabData.sh2_col1(1));
     if (effcNH2 >= 1.016e+22) {
         ss_factor *= 4.666e-03;
     } else {
         // Find the lower closest index
         int idxH2 = 0;
         for (int i=1; i<42; i++) {
-            if (effcNH2 >= sh2_col1[i]) idxH2 = i;
+            if (effcNH2 >= tabData.sh2_col1(i)) idxH2 = i;
         }
 
         double logeffcNH2 = log10(effcNH2);
         // Interpolate or extrapolate automatically
-        double logsH2 = log10(sh2_col2[idxH2])
-                        + (log10(sh2_col2[idxH2+1]) - log10(sh2_col2[idxH2]))
-                        * (logeffcNH2 - log10(sh2_col1[idxH2]))
-                        / (log10(sh2_col1[idxH2+1]) - log10(sh2_col1[idxH2]));
+        double logsH2 = log10(tabData.sh2_col2(idxH2))
+                        + (log10(tabData.sh2_col2(idxH2+1)) - log10(tabData.sh2_col2(idxH2)))
+                        * (logeffcNH2 - log10(tabData.sh2_col1(idxH2)))
+                        / (log10(tabData.sh2_col1(idxH2+1)) - log10(tabData.sh2_col1(idxH2)));
 
         ss_factor *= pow(10.0,logsH2);
     }

@@ -5,6 +5,7 @@
 
 #include "constants.hpp"
 #include "types.hpp"
+#include "molecules.hpp"
 
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling

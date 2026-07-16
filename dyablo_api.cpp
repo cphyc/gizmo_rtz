@@ -488,7 +488,7 @@ double subcycle_chemistry(
 
     // Radiation
     std::array<double, N_GROUPS> N_phot_new{};
-    Array2D_RT F_phot_new{};
+    std::array<double, N_GROUPS> phot_att{};
 
     int n_ions; //Number of ions --> reset per element
 
@@ -564,17 +564,6 @@ double subcycle_chemistry(
         //      Radiation      //
         /////////////////////////
 
-        // Dust photoabsorption (Zubko+2004 BARE-GR-S)
-        double dustAbs[N_GROUPS];
-        for (int k = 0; k < N_GROUPS; k++) {
-            dustAbs[k] = 0.0;
-        }
-        if (TK < 1.0e6) {
-            for (int k = 0; k < N_GROUPS; k++) {
-                dustAbs[k] = tabData.cs_dust(k) * n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
-            }
-        }
-
         // Self-shielding factors
         double f_shd_H2 = 1.0;
         double f_shd_CO = 1.0;
@@ -625,13 +614,16 @@ double subcycle_chemistry(
                     else
                         phAbs += nH2 * tabData.cs_ph(elem_row(1), 2, k, 0);
                 }
+
+                // Dust photoabsorption (Zubko+2004 BARE-GR-S)
+                double dustAbs = 0.0;
+                if (TK < 1.0e6) {
+                    dustAbs = tabData.cs_dust(k) * n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
                 }
 
                 // Next deplete the photons from the group
-                N_phot_new[k] = N_PHOT[k] / (1.0 + ddt * (phAbs + dustAbs[k]));
-                for (int d = 0; d < N_DIM; d++) {
-                    F_phot_new[k][d] = F_PHOT[k][d] / (1.0 + ddt * (phAbs + dustAbs[k]));
-                }
+                phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
+                N_phot_new[k] = N_PHOT[k] * phot_att[k];
 
                 // Measure the redisual
                 residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
@@ -1199,8 +1191,8 @@ double subcycle_chemistry(
                     // Update flux for all dimensions
                     double fred = 0.0;
                     for (int dim = 0; dim < N_DIM; dim++) {
-                        F_PHOT[k][dim] = F_phot_new[k][dim];
-                        fred += pow(F_PHOT[k][dim], 2.0);
+                        F_PHOT[k][dim] *= phot_att[k];
+                        fred += F_PHOT[k][dim] * F_PHOT[k][dim];
                     }
                     fred = sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
                     

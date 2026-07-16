@@ -46,10 +46,13 @@ void init_collisional_ionization(std::string path_to_data, TabulatedData& tabDat
     fclose(file);
 
     auto h = Kokkos::create_mirror_view(tabData.collisional_ionization_data);
-    for (int i = 0; i < 27; i++)
+    for (int i = 0; i < 27; i++) {
+        int row = elem_row(i);
+        if (row < 0) continue;
         for (int j = 0; j < 27; j++)
             for (int k = 0; k < 5; k++)
-                h(i, j, k) = data[i][j][k];
+                h(row, j, k) = data[i][j][k];
+    }
     Kokkos::deep_copy(tabData.collisional_ionization_data, h);
 };
 
@@ -76,11 +79,12 @@ double collisional_ionization(double T, int ion, int element_idx, const Tabulate
     int n_electron = element_idx - ion;
 
     if (n_electron > 0) {
-        double dE = tabData.collisional_ionization_data(element_idx, n_electron, 0);
-        double P  = tabData.collisional_ionization_data(element_idx, n_electron, 1);
-        double A  = tabData.collisional_ionization_data(element_idx, n_electron, 2);
-        double X  = tabData.collisional_ionization_data(element_idx, n_electron, 3);
-        double K  = tabData.collisional_ionization_data(element_idx, n_electron, 4);
+        const int erow = elem_row(element_idx);
+        double dE = tabData.collisional_ionization_data(erow, n_electron, 0);
+        double P  = tabData.collisional_ionization_data(erow, n_electron, 1);
+        double A  = tabData.collisional_ionization_data(erow, n_electron, 2);
+        double X  = tabData.collisional_ionization_data(erow, n_electron, 3);
+        double K  = tabData.collisional_ionization_data(erow, n_electron, 4);
 
         col = coll_ion(T, dE, A, X, K, P);
     }

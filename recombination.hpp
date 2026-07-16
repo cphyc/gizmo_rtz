@@ -666,21 +666,23 @@ double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
     double tt;
     double rate;
 
+    const int ez = elem_row(iz);
+
     if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
         (iz == 26 && in_ > 11)) {
-        tt = sqrt(t / tabData.rnew(in_ - 1, iz - 1, 2));
-        rate = tabData.rnew(in_ - 1, iz - 1, 0) /
-               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, iz - 1, 1)) *
-                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, iz - 1, 3)),
-                    1.0 + tabData.rnew(in_ - 1, iz - 1, 1)));
+        tt = sqrt(t / tabData.rnew(in_ - 1, ez, 2));
+        rate = tabData.rnew(in_ - 1, ez, 0) /
+               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, ez, 1)) *
+                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, ez, 3)),
+                    1.0 + tabData.rnew(in_ - 1, ez, 1)));
     } else {
         tt = t * 1.0e-04;
         if (iz == 26 && in_ <= 13) {
             rate = tabData.fe(in_ - 1, 0) /
                    pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
         } else {
-            rate = tabData.rrec(in_ - 1, iz - 1, 0) /
-                   pow(tt, tabData.rrec(in_ - 1, iz - 1, 1));
+            rate = tabData.rrec(in_ - 1, ez, 0) /
+                   pow(tt, tabData.rrec(in_ - 1, ez, 1));
         }
     }
 
@@ -821,21 +823,26 @@ void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) 
     }
     fclose(file);
 
-    // Copy to Kokkos views
     {
         auto h = Kokkos::create_mirror_view(tabData.rrec);
         for (int a = 0; a < 30; a++)
-            for (int b = 0; b < 30; b++)
+            for (int b = 0; b < 30; b++) {
+                int row = elem_row(b + 1);
+                if (row < 0) continue;
                 for (int c = 0; c < 2; c++)
-                    h(a, b, c) = rrec[a][b][c];
+                    h(a, row, c) = rrec[a][b][c];
+            }
         Kokkos::deep_copy(tabData.rrec, h);
     }
     {
         auto h = Kokkos::create_mirror_view(tabData.rnew);
         for (int a = 0; a < 30; a++)
-            for (int b = 0; b < 30; b++)
+            for (int b = 0; b < 30; b++) {
+                int row = elem_row(b + 1);
+                if (row < 0) continue;
                 for (int c = 0; c < 4; c++)
-                    h(a, b, c) = rnew[a][b][c];
+                    h(a, row, c) = rnew[a][b][c];
+            }
         Kokkos::deep_copy(tabData.rnew, h);
     }
     {

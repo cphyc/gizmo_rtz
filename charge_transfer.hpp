@@ -80,14 +80,16 @@ double charge_transfer_recombination(int ion, int nelem, double T, const Tabulat
         return ct_recomb;
     }
     
+    const int en = elem_row(nelem);
+
     // Make sure te is between temp. boundaries; set constant outside of range
     double tused = 0.0;
-    tused = fmin(fmax(T,tabData.CTRecomb(4, ipIon, nelem)),tabData.CTRecomb(5, ipIon, nelem));
+    tused = fmin(fmax(T,tabData.CTRecomb(4, ipIon, en)),tabData.CTRecomb(5, ipIon, en));
     tused *= 1E-4;
     tused = fmax(tused,1E-10); //! harley added to prevent zero temperature
 
     // The interpolation equation
-    ct_recomb = tabData.CTRecomb(0, ipIon, nelem) * 1E-9 * pow(tused,tabData.CTRecomb(1, ipIon, nelem)) * (1. + tabData.CTRecomb(2, ipIon, nelem) * exp(tabData.CTRecomb(3, ipIon, nelem)*tused) );
+    ct_recomb = tabData.CTRecomb(0, ipIon, en) * 1E-9 * pow(tused,tabData.CTRecomb(1, ipIon, en)) * (1. + tabData.CTRecomb(2, ipIon, en) * exp(tabData.CTRecomb(3, ipIon, en)*tused) );
 
     // Clamp
     ct_recomb = fmax(ct_recomb,1E-100);
@@ -111,14 +113,16 @@ double charge_transfer_ionization(int ion, int nelem, double T, const TabulatedD
         return ct_ion;
     }
 
+    const int en = elem_row(nelem);
+
     // ! Make sure te is between temp. boundaries; set constant outside of range
     double tused = 0.0;
-    tused = fmin(fmax(T, tabData.CTIon(4, ipIon, nelem)), tabData.CTIon(5, ipIon, nelem));
+    tused = fmin(fmax(T, tabData.CTIon(4, ipIon, en)), tabData.CTIon(5, ipIon, en));
     tused *= 1E-4;
     tused = fmax(tused,1E-10); //! harley added to prevent zero temperature
 
     // ! the interpolation equation
-    ct_ion = tabData.CTIon(0, ipIon, nelem) * 1E-9 * pow(tused,tabData.CTIon(1, ipIon, nelem)) * (1. + tabData.CTIon(2, ipIon, nelem) * exp(tabData.CTIon(3, ipIon, nelem)*tused) ) * exp(-1.0 * tabData.CTIon(6, ipIon, nelem)/tused);
+    ct_ion = tabData.CTIon(0, ipIon, en) * 1E-9 * pow(tused,tabData.CTIon(1, ipIon, en)) * (1. + tabData.CTIon(2, ipIon, en) * exp(tabData.CTIon(3, ipIon, en)*tused) ) * exp(-1.0 * tabData.CTIon(6, ipIon, en)/tused);
 
     // Clamp
     ct_ion = fmax(ct_ion,1E-100);

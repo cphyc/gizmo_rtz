@@ -6,7 +6,27 @@
 // Maximum total ion+molecule states across all elements:
 // H(3) + He(3) + C(7) + N(8) + O(9) + Ne(11) + Mg(13) + Si(15) + S(17) + Fe(27) = 113
 #define MAX_TOTAL_IONS 113
-#define N_GROUPS 1
+// Number of elements with tabulated data (see initialize_elements)
+#define N_TAB_ELEMENTS 10
+
+// Maps an atomic number to its row in the element-compacted tables
+KOKKOS_INLINE_FUNCTION
+constexpr int elem_row(int Z) {
+    switch (Z) {
+        case  1: return 0; // H
+        case  2: return 1; // He
+        case  6: return 2; // C
+        case  7: return 3; // N
+        case  8: return 4; // O
+        case 10: return 5; // Ne
+        case 12: return 6; // Mg
+        case 14: return 7; // Si
+        case 16: return 8; // S
+        case 26: return 9; // Fe
+        default: return -1;
+    }
+}
+#define N_GROUPS 6
 #define N_DIM 3
 #define N_DUST_WAV 1000
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
@@ -191,18 +211,18 @@ typedef struct {
 
 struct TabulatedData
 {
-    Kokkos::View<double[27][27][2]> HM12_UVB_z {"HM12_UVB_z"};
-    Kokkos::View<double[27]> G0_heating_rates {"G0_heating_rates"};
-    Kokkos::View<double[27][27]> cosmic_ray_ionization_rates {"cosmic_ray_ionization_rates"};
-    Kokkos::View<double[27]> cosmic_ray_ionization_rates_induced_UV {"cosmic_ray_ionization_rates_induced_UV"};
-    Kokkos::View<double[27]> cosmic_ray_ionization_rates_induced_UV_heat {"cosmic_ray_ionization_rates_induced_UV_heat"};
-    Kokkos::View<double[27][7]> dust_rec_coefs {"dust_rec_coefs"};
-    Kokkos::View<double[7][3][31]> CTIon {"CTIon"};
-    Kokkos::View<double[6][4][31]> CTRecomb {"CTRecomb"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27][2]> HM12_UVB_z {"HM12_UVB_z"};
+    Kokkos::View<double[N_TAB_ELEMENTS]> G0_heating_rates {"G0_heating_rates"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27]> cosmic_ray_ionization_rates {"cosmic_ray_ionization_rates"};
+    Kokkos::View<double[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV {"cosmic_ray_ionization_rates_induced_UV"};
+    Kokkos::View<double[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV_heat {"cosmic_ray_ionization_rates_induced_UV_heat"};
+    Kokkos::View<double[N_TAB_ELEMENTS][7]> dust_rec_coefs {"dust_rec_coefs"};
+    Kokkos::View<double[7][3][N_TAB_ELEMENTS]> CTIon {"CTIon"};
+    Kokkos::View<double[6][4][N_TAB_ELEMENTS]> CTRecomb {"CTRecomb"};
     Kokkos::View<double[27][160][8]> fs_cool_tab {"fs_cool_tab"};
 
-    Kokkos::View<double[121][27][27]> high_t_cooling_rates {"high_t_cooling_rates"};
-    Kokkos::View<bool[27][27]> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
+    Kokkos::View<double[121][N_TAB_ELEMENTS][27]> high_t_cooling_rates {"high_t_cooling_rates"};
+    Kokkos::View<bool[N_TAB_ELEMENTS][27]> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
 
     Kokkos::View<double[3][9]> DR_rates_c_helium {"DR_rates_c_helium"};
     Kokkos::View<double[3][9]> DR_rates_e_helium {"DR_rates_e_helium"};
@@ -284,19 +304,19 @@ struct TabulatedData
     Kokkos::View<double[26]> P_iron {"P_iron"};
 
     // Cloudy radiative recombination data (from rad_rec.dat)
-    Kokkos::View<double[30][30][2]> rrec {"rrec"};
-    Kokkos::View<double[30][30][4]> rnew {"rnew"};
+    Kokkos::View<double[30][N_TAB_ELEMENTS][2]> rrec {"rrec"};
+    Kokkos::View<double[30][N_TAB_ELEMENTS][4]> rnew {"rnew"};
     Kokkos::View<double[13][3]> fe {"fe"};
 
     // Collisional ionization data (from collisional_ionization.dat)
-    Kokkos::View<double[27][27][5]> collisional_ionization_data {"collisional_ionization_data"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27][5]> collisional_ionization_data {"collisional_ionization_data"};
 
     // Verner cross sections
     Kokkos::View<CrossSections[27][27]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
     Kokkos::View<CrossSectionsNL[27][27][8]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
     // Photoionization cross sections and photoheating rates for each group, element, and ion
-    Kokkos::View<double[27][27][N_GROUPS][3]> cs_ph {"cs_ph"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27][N_GROUPS][3]> cs_ph {"cs_ph"};
 
     Kokkos::View<double[52]> sco_col1 {"sigma_CO_1"};
     Kokkos::View<double[52]> sco_col2 {"sigma_CO_2"};

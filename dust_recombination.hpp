@@ -38,7 +38,7 @@ double dust_rec_coefs[27][7] = {
 
 
 KOKKOS_FUNCTION
-double dust_recombination_rates(int ion, int nelem, double T, double G, double ne, Kokkos::View<double[27][7]> dust_rec_coefs){
+double dust_recombination_rates(int ion, int nelem, double T, double G, double ne, const Kokkos::View<double[N_TAB_ELEMENTS][7]>& dust_rec_coefs){
     double dust_rec_rate = 0.0;
     double dr_sf = 1.0;
 
@@ -61,10 +61,12 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
 
     loc_T = fmax(T,10.0);
 
+    const int en = elem_row(nelem);
+
     // First check to make sure that all elements are not zero
     double row_sum = 0.0;
     for (int i = 0; i < 7; i++) {
-        row_sum += fabs(dust_rec_coefs(nelem, i));
+        row_sum += fabs(dust_rec_coefs(en, i));
     } 
 
     // In this case there is nothing to compute
@@ -75,11 +77,11 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
     // Extra fac on the denominator to avoid divide by zero
     double phi = (G + 1E-8) * sqrt(loc_T) / (ne + 1E-10); // units K^1/2 cm^3
 
-    double a1 = dust_rec_coefs(nelem, 1) * pow(phi, dust_rec_coefs(nelem, 2));
-    double a2 = dust_rec_coefs(nelem, 3) * pow(T, dust_rec_coefs(nelem, 4));
-    double a3 = (-1.0 * dust_rec_coefs(nelem, 5)) - (dust_rec_coefs(nelem, 6) * log(T));
+    double a1 = dust_rec_coefs(en, 1) * pow(phi, dust_rec_coefs(en, 2));
+    double a2 = dust_rec_coefs(en, 3) * pow(T, dust_rec_coefs(en, 4));
+    double a3 = (-1.0 * dust_rec_coefs(en, 5)) - (dust_rec_coefs(en, 6) * log(T));
 
-    dust_rec_rate = 1.E-14 * dust_rec_coefs(nelem, 0);
+    dust_rec_rate = 1.E-14 * dust_rec_coefs(en, 0);
     dust_rec_rate = dust_rec_rate / (1.0 + (a1 * (1.0 + (a2 * pow(phi, a3)))));
     dust_rec_rate = dust_rec_rate * dr_sf;
 

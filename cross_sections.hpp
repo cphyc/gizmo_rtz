@@ -439,6 +439,8 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         const double group_energy = group_bin_data(i, 2);
         const int j = (int)((1.0 + sqrt(1.0 + 8.0 * pair_index)) / 2.0);
         const int k = pair_index - j * (j - 1) / 2;
+        const int ej = elem_row(j);
+        if (ej < 0) return;
 
         double sigma_number = 0.0;
         double sigma_energy = 0.0;
@@ -448,14 +450,14 @@ void update_cross_sections(double T, TabulatedData &tabData) {
                                         sigma_number, sigma_energy);
 
         // Update number-weighted cross section
-        cs_ph(j, k, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(ej, k, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
 
         // Update energy-weighted cross section
-        cs_ph(j, k, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(ej, k, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
 
         // Update photoheating rates
-        cs_ph(j, k, i, 2) = (cs_ph(j, k, i, 1) * group_energy) - (cs_ph(j, k, i, 0) * verner_cross_sections(j, k + 1).E_th);
-        cs_ph(j, k, i, 2) = fmax(cs_ph(j, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+        cs_ph(ej, k, i, 2) = (cs_ph(ej, k, i, 1) * group_energy) - (cs_ph(ej, k, i, 0) * verner_cross_sections(j, k + 1).E_th);
+        cs_ph(ej, k, i, 2) = fmax(cs_ph(ej, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 
     Kokkos::parallel_for("update_cross_sections_h2", N_GROUPS, KOKKOS_LAMBDA(const int i) {
@@ -470,9 +472,10 @@ void update_cross_sections(double T, TabulatedData &tabData) {
                                         number_denominator, energy_denominator,
                                         sigma_number, sigma_energy);
 
-        cs_ph(1, 2, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
-        cs_ph(1, 2, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
-        cs_ph(1, 2, i, 2) = (cs_ph(1, 2, i, 1) * group_energy) - (cs_ph(1, 2, i, 0) * verner_cross_sections(1, 2 + 1).E_th);
-        cs_ph(1, 2, i, 2) = fmax(cs_ph(1, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+        constexpr int eH = elem_row(1);
+        cs_ph(eH, 2, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(eH, 2, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(eH, 2, i, 2) = (cs_ph(eH, 2, i, 1) * group_energy) - (cs_ph(eH, 2, i, 0) * verner_cross_sections(1, 2 + 1).E_th);
+        cs_ph(eH, 2, i, 2) = fmax(cs_ph(eH, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 }

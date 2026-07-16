@@ -159,10 +159,13 @@ double bremmstrahlung(double T){
 
 KOKKOS_INLINE_FUNCTION
 double compton_cooling(double T, double a){
+
+    double Tcmb_over_a = 2.727/a;
+
     // Haiman+ 1996
     double term_1 = 1.017E-37;
-    double term_2 = pow(2.727/a,4.0);
-    double term_3 = T - (2.727/a);
+    double term_2 = pow(Tcmb_over_a, 4);
+    double term_3 = T - Tcmb_over_a;
     double cooling_rate = term_1 * term_2 * term_3;
     return cooling_rate;
 }
@@ -399,7 +402,8 @@ double get_high_t_cooling_rates(double T, double ne,
     double t_max = 9.0;
     double dt = 0.05;
     double total_metal_cooling_rate = 0.0;
-    double t_scale_fac = exp(-1.0 * pow(2000.0/loc_T,5.0));
+    double two_e4_overT = 2000.0/loc_T;
+    double t_scale_fac = exp(-1.0 * pow(two_e4_overT, 5));
 
     // bounds for temperature --> no cooling
     if (log_T < t_min){
@@ -431,7 +435,7 @@ double get_high_t_cooling_rates(double T, double ne,
                 // Interpolate the cooling rate for the ion
                 double loc_cooling_rate = (frac_low * tabData.high_t_cooling_rates(idx_low, ei, j));
                 loc_cooling_rate += (frac_high * tabData.high_t_cooling_rates(idx_low+1, ei, j));
-                loc_cooling_rate = pow(10.0,loc_cooling_rate);
+                loc_cooling_rate = exp10(loc_cooling_rate);
 
                 // Smooth with temperature if necessary
                 double loc_temp_smooth = 1.0;
@@ -528,27 +532,30 @@ double three_level(double g_0, double g_1, double g_2,
     double delta_temp = 0.025;
     logT = fmax(logT,1.0);
     logT = fmin(logT,tmax);
+    double lam_10_minus4 = lam_10 * 1E-4;
+    double lam_20_minus4 = lam_20 * 1E-4;
+    double lam_21_minus4 = lam_21 * 1E-4;
 
-    double nu_10 = C_CGS / (lam_10 * 1E-4); //! Hz
-    double nu_20 = C_CGS / (lam_20 * 1E-4); //! Hz
-    double nu_21 = C_CGS / (lam_21 * 1E-4); //! Hz
+    double nu_10 = C_CGS / lam_10_minus4; //! Hz
+    double nu_20 = C_CGS / lam_20_minus4; //! Hz
+    double nu_21 = C_CGS / lam_21_minus4; //! Hz
 
-    double E_10 = (H_PLANCK * C_CGS / (lam_10 * 1E-4)) / KB; //! E/K (K)
-    double E_20 = (H_PLANCK * C_CGS / (lam_20 * 1E-4)) / KB; //! E/K (K)
-    double E_21 = (H_PLANCK * C_CGS / (lam_21 * 1E-4)) / KB; //! E/K (K)
+    double E_10 = (H_PLANCK * C_CGS / lam_10_minus4) / KB; //! E/K (K)
+    double E_20 = (H_PLANCK * C_CGS / lam_20_minus4) / KB; //! E/K (K)
+    double E_21 = (H_PLANCK * C_CGS / lam_21_minus4) / KB; //! E/K (K)
 
-    double B_01 = A_10 * (pow(lam_10 * 1.E-4,3.0)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
-    double B_02 = A_20 * (pow(lam_20 * 1.E-4,3.0)) * (g_2 / g_0) / (2.0 * H_PLANCK * C_CGS);
-    double B_12 = A_21 * (pow(lam_21 * 1.E-4,3.0)) * (g_2 / g_1) / (2.0 * H_PLANCK * C_CGS);
+    double B_01 = A_10 * (pow(lam_10_minus4, 3)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_02 = A_20 * (pow(lam_20_minus4, 3)) * (g_2 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_12 = A_21 * (pow(lam_21_minus4, 3)) * (g_2 / g_1) / (2.0 * H_PLANCK * C_CGS);
 
     double B_10 = (g_0 / g_1) * B_01;
     double B_20 = (g_0 / g_2) * B_02;
     double B_21 = (g_1 / g_2) * B_12;
 
     //! CMB black body spectrum
-    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
-    double B_nu_20 = (2.0 * H_PLANCK * pow(nu_20,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_20 / (KB * T_cmb)) - 1.0);
-    double B_nu_21 = (2.0 * H_PLANCK * pow(nu_21,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_21 / (KB * T_cmb)) - 1.0);
+    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+    double B_nu_20 = (2.0 * H_PLANCK * pow(nu_20, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_20 / (KB * T_cmb)) - 1.0);
+    double B_nu_21 = (2.0 * H_PLANCK * pow(nu_21, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_21 / (KB * T_cmb)) - 1.0);
 
     // ! Find temperature index.
     int itemp_low = (int)floor((logT - tmin)/delta_temp);
@@ -664,17 +671,18 @@ double two_level(double g_0, double g_1, double lam_10, double A_10,
     double delta_temp = 0.025;
     logT = fmax(logT,tmin);
     logT = fmin(logT,tmax);
+    double lam_10_minus4 = lam_10 * 1E-4; 
 
-    double nu_10 = C_CGS / (lam_10 * 1E-4); //! Hz
+    double nu_10 = C_CGS / lam_10_minus4; //! Hz
 
-    double E_10 = (H_PLANCK * C_CGS / (lam_10 * 1E-4)) / KB; //! E/K (K)
+    double E_10 = (H_PLANCK * C_CGS / lam_10_minus4) / KB; //! E/K (K)
 
-    double B_01 = A_10 * (pow(lam_10 * 1.E-4,3.0)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_01 = A_10 * pow(lam_10_minus4, 3) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
 
     double B_10 = (g_0 / g_1) * B_01;
 
     //! CMB black body spectrum
-    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10,3.0) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
 
     // ! Find temperature index.
     int itemp_low = (int)floor((logT - tmin)/delta_temp);
@@ -1393,7 +1401,7 @@ double CO_cooling_koyama_00(double nH, double nH2, double nHI, double nCO, doubl
     double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / nH;
 
     // CO Rotational cooling
-    double rot_numerator = nCO * 4.0 * pow(KB * T, 2.0) * 9.7e-8;
+    double rot_numerator = nCO * 4.0 * pow(KB * T, 2) * 9.7e-8;
     double rot_denominator = 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
     double rot = rot_numerator / rot_denominator;
 

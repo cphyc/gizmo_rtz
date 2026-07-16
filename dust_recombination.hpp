@@ -67,7 +67,7 @@ double dust_recombination_rates(int ion, int nelem, double T, double G, double n
     double row_sum = 0.0;
     for (int i = 0; i < 7; i++) {
         row_sum += fabs(dust_rec_coefs(en, i));
-    } 
+    }
 
     // In this case there is nothing to compute
     if (row_sum <= 0.0) {

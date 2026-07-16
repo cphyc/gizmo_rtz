@@ -197,7 +197,7 @@ double get_dust_mass_and_depletion(
     double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
 
     return y_ratio;
-    }
+}
 
 KOKKOS_INLINE_FUNCTION
 double depletion_factor(const Element& element, const double y_ratio)
@@ -650,23 +650,23 @@ double subcycle_chemistry(
         if (!constant_temperature && compute_temperature) {
 
             cooling_rate = all_cooling(TK, ne, aexp,
-                                    n_and_ion_fracs, elements, N_phot_new,
-                                    nCO, G0_local, UV_background_G0, f_shd_H2,
-                                    dust_to_gas_mass_ratio_over_mw, 
-                                    xe, primary_cosmic_ray_ionization_rate, 
-                                    H2_cosmic_ray_ionization_rate,
-                                    ss_factor, rt_advect,
-                                    flags, tabData
+                                       n_and_ion_fracs, elements, N_phot_new,
+                                       nCO, G0_local, UV_background_G0, f_shd_H2,
+                                       dust_to_gas_mass_ratio_over_mw, 
+                                       xe, primary_cosmic_ray_ionization_rate, 
+                                       H2_cosmic_ray_ionization_rate,
+                                       ss_factor, rt_advect,
+                                       flags, tabData
                                 );
 
             cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-                                            n_and_ion_fracs, elements, N_phot_new,
-                                            nCO, G0_local, UV_background_G0, f_shd_H2,
-                                            dust_to_gas_mass_ratio_over_mw,
-                                            xe, primary_cosmic_ray_ionization_rate,
-                                            H2_cosmic_ray_ionization_rate,
-                                            ss_factor, rt_advect,
-                                            flags, tabData
+                                             n_and_ion_fracs, elements, N_phot_new,
+                                             nCO, G0_local, UV_background_G0, f_shd_H2,
+                                             dust_to_gas_mass_ratio_over_mw,
+                                             xe, primary_cosmic_ray_ionization_rate,
+                                             H2_cosmic_ray_ionization_rate,
+                                             ss_factor, rt_advect,
+                                             flags, tabData
                                         );
             cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*TK) - TK);
 

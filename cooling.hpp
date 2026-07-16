@@ -388,7 +388,7 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
 }
 
 KOKKOS_FUNCTION
-double get_high_t_cooling_rates(double T, double ne, 
+double get_high_t_cooling_rates(double T, double ne,
                                 const CompactIonData& n_and_ion_fracs,
                                 const Element* elements,
                                 double temp_smooth,
@@ -428,7 +428,7 @@ double get_high_t_cooling_rates(double T, double ne,
             // Get the element number density
             double n_element = n_and_ion_fracs.n_element_new[i];
             const int ei = elem_row(i);
-            for (int j = 0; j < (elements[i].n_ions + elements[i].n_mol); j++) { 
+            for (int j = 0; j < (elements[i].n_ions + elements[i].n_mol); j++) {
                 // Get the element ion fraction
                 double n_ion = n_and_ion_fracs[i].ion_fracs_new[j];
 
@@ -506,7 +506,7 @@ void init_fine_structure_tables(std::string path_to_data){
 }
 
 KOKKOS_FUNCTION
-double three_level(double g_0, double g_1, double g_2, 
+double three_level(double g_0, double g_1, double g_2,
                    double lam_10, double lam_20, double lam_21, 
                    double A_10, double A_20, double A_21, 
                    double z, double T, double n_ion, 
@@ -1182,7 +1182,7 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
         const int ei = elem_row(i);
-        
+
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
             double x_ion = n_and_ion_fracs[i].ion_fracs_new[j];
 
@@ -1192,7 +1192,7 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
             // This is the secondary heating term from induced UV emission
             // Only happend for the ground state
             if (j == 0){
-                cr_heating_tot += ( n_element * x_ion 
+                cr_heating_tot += ( n_element * x_ion
                                     * tabData.cosmic_ray_ionization_rates_induced_UV_heat(ei)
                                     * tabData.cosmic_ray_ionization_rates_induced_UV(ei) * EV_2_ERG
                                     * induced_UV_heat_scale_fac ); // erg/s/cm^3
@@ -1383,7 +1383,7 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
         const int ei = elem_row(i);
-        
+
         for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
 
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups

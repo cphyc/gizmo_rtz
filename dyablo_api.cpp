@@ -163,18 +163,14 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool inclu
 
 KOKKOS_FUNCTION
 double get_dust_mass_and_depletion(
-    const Element* elements, double* depletion_out,
+    const Element* elements,
     const double nO, const double nH, const double nCO)
 {
-    // Dust-to-gas mass ratio (relative to the MW value) and the per-element gas-phase
-    // depletion factors.
+    // Dust-to-gas mass ratio (relative to the MW value). The per-element
+    // gas-phase depletion factor follows from the returned ratio alone as
+    // 1 - (1 - elements[i].depletion) * ratio.
     if (elements[8].atomic_number < 1) {
-        for (int i = 1; i < MAX_ELEMENTS; i++) {
-            if (elements[i].atomic_number < 1)
-                continue;
-            depletion_out[i] = 1.0; // no depletion without a dust budget
-        }
-        return 0.0;
+        return 0.0; // no depletion without a dust budget
     }
 
     // Parameters for the RR14 dust-to-gas mass ratio
@@ -200,40 +196,42 @@ double get_dust_mass_and_depletion(
 
     double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
 
-    for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (elements[i].atomic_number < 1)
-            continue;
-        depletion_out[i] = 1.0 - ((1.0 - elements[i].depletion) * y_ratio);
+    return y_ratio;
     }
 
-    return y_ratio;
+KOKKOS_INLINE_FUNCTION
+double depletion_factor(const Element& element, const double y_ratio)
+{
+    return 1.0 - ((1.0 - element.depletion) * y_ratio);
 }
 
 KOKKOS_FUNCTION
-void apply_dust_depletion(const double* depletion,
+void apply_dust_depletion(const Element* elements, const double y_ratio,
                           CompactIonData& n_and_ion_fracs, const double nCO)
 {
     for (int i = 1; i < MAX_ELEMENTS; i++) {
         if (n_and_ion_fracs.n_element[i] == 0.0)
             continue;
+        double depletion = depletion_factor(elements[i], y_ratio);
         if (i == 6 || i == 8)
-            n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) * depletion[i] - nCO;
+            n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) * depletion - nCO;
         else
-            n_and_ion_fracs.n_element[i] *= depletion[i];
+            n_and_ion_fracs.n_element[i] *= depletion;
     }
 }
 
 KOKKOS_FUNCTION
-void remove_dust_depletion(const double* depletion,
+void remove_dust_depletion(const Element* elements, const double y_ratio,
                            CompactIonData& n_and_ion_fracs, const double nCO)
 {
     for (int i = 1; i < MAX_ELEMENTS; i++) {
         if (n_and_ion_fracs.n_element[i] == 0.0)
             continue;
+        double depletion = depletion_factor(elements[i], y_ratio);
         if (i == 6 || i == 8)
-            n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) / depletion[i] - nCO;
+            n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) / depletion - nCO;
         else
-            n_and_ion_fracs.n_element[i] /= depletion[i];
+            n_and_ion_fracs.n_element[i] /= depletion;
     }
 }
 
@@ -1423,16 +1421,14 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 {
 
         const Element* elements = elements_d.data();
-        double depletion_loc[MAX_ELEMENTS];
-        for (int i = 0; i < MAX_ELEMENTS; i++) depletion_loc[i] = elements[i].depletion;
 
         double dust_to_gas_mass_ratio_over_mw = get_dust_mass_and_depletion(
-            elements, depletion_loc,
-            n_and_ion_fracs_loc.n_element[8], n_and_ion_fracs_loc.n_element[1], nCO);
+            elements, n_and_ion_fracs_loc.n_element[8], n_and_ion_fracs_loc.n_element[1], nCO
+        );
 
         double loc_rho = get_rho(elements, n_and_ion_fracs_loc);
 
-        apply_dust_depletion(depletion_loc, n_and_ion_fracs_loc, nCO);
+        apply_dust_depletion(elements, dust_to_gas_mass_ratio_over_mw, n_and_ion_fracs_loc, nCO);
 
         // get_chemical_eqm returns Tmu (= T/mu), matching the reference
         double Tmu_final = subcycle_chemistry<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
@@ -1456,7 +1452,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             TK = Tmu_final;
         }
 
-        remove_dust_depletion(depletion_loc, n_and_ion_fracs_loc, nCO);
+        remove_dust_depletion(elements, dust_to_gas_mass_ratio_over_mw, n_and_ion_fracs_loc, nCO);
 }
 
 

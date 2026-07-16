@@ -667,18 +667,7 @@ double subcycle_chemistry(
                                     flags, tabData
                                 );
 
-            // cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
-            //                                 n_and_ion_fracs, elements, N_phot_new,
-            //                                 nCO, G0, UV_background_G0,
-            //                                 dust_to_gas_mass_ratio_over_mw,
-            //                                 xe, primary_cosmic_ray_ionization_rate,
-            //                                 H2_cosmic_ray_ionization_rate,
-            //                                 ss_factor, rt_advect,
-            //                                 flags, tabData
-            //                             );
-            // cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*TK) - TK);
-
-            double cooling_rate_plus = all_cooling(TK + (1e-5 * TK), ne, aexp,
+            cooling_rate_prime = all_cooling(1.001 * TK, ne, aexp,
                                             n_and_ion_fracs, elements, N_phot_new,
                                             nCO, G0_local, UV_background_G0, f_shd_H2,
                                             dust_to_gas_mass_ratio_over_mw,
@@ -687,16 +676,7 @@ double subcycle_chemistry(
                                             ss_factor, rt_advect,
                                             flags, tabData
                                         );
-            double cooling_rate_minus = all_cooling(TK - (1e-5 * TK), ne, aexp,
-                                            n_and_ion_fracs, elements, N_phot_new,
-                                            nCO, G0_local, UV_background_G0, f_shd_H2,
-                                            dust_to_gas_mass_ratio_over_mw,
-                                            xe, primary_cosmic_ray_ionization_rate,
-                                            H2_cosmic_ray_ionization_rate,
-                                            ss_factor, rt_advect,
-                                            flags, tabData
-                                        );
-            cooling_rate_prime = (cooling_rate_plus - cooling_rate_minus) / (2e-5 * TK);
+            cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*TK) - TK);
 
 
             double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);

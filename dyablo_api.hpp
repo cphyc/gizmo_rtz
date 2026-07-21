@@ -71,6 +71,13 @@ public:
     // Constant element data (lives on device, shared across threads)
     Kokkos::View<Element*> elements_d;
 
+    // TEMPORARY while GPU solver is being profiled/developed:
+    // Accessors for drivers that launch the solver step functions as
+    // separate kernels (see CoolingUpdate_PRISM_GPU.cpp)
+    const TabulatedData& get_tabData() const { return tabData; }
+    double get_UV_background_G0() const { return UV_background_G0; }
+    double get_generic_cosmic_ray_ionization_rate() const { return generic_cosmic_ray_ionization_rate; }
+
 private:
 
     // Tabulated rate data (lives on device)

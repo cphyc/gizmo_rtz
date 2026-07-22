@@ -1388,7 +1388,8 @@ void HandHe_ions_step(
 
 
 // Parallel (Jacobi) update of the metal ionization stages: one team thread per
-// (element, stage) entry of ion_map (H/He entries are skipped). Every stage
+// (element, stage) entry of ion_map, which holds metal stages only (Z >= 3; H
+// and He were already updated by HandHe_ions_step). Every stage
 // reads a frozen snapshot of the post-H/He ion fractions with ne, xe, mu, TK
 // and the cosmic-ray rates frozen, so the metals see the sequential H/He
 // result but update independently of each other. The electron-density residual
@@ -1445,7 +1446,6 @@ void metal_ions_step(
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (i < 3) return; // H/He handled by HandHe_ions_step
         if (n_and_ion_fracs.n_element[i] == 0.0) return;
 
         const int n_ions = elements[i].n_ions;
@@ -1575,7 +1575,9 @@ void metal_ions_step(
         double x_new = (cr*ddt + xi_snap[j])/(1.0 + de*ddt);
         n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(x_new,MIN_XION),1.0);
     });
-    team.team_barrier(); // < -- do I need this?
+    // I think the residual reduces below redistribute indices across threads,
+    // so they may read an ion_fracs_new[j] written by a different thread above.
+    team.team_barrier();
 
     /////////////////////////
     //     Convergence     //
@@ -1587,7 +1589,6 @@ void metal_ions_step(
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, double& lmax) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (i < 3) return;
         if (n_and_ion_fracs.n_element[i] == 0.0) return;
         const double x_old = n_and_ion_fracs[i].ion_fracs[j];
         const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
@@ -1598,7 +1599,6 @@ void metal_ions_step(
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, int& lviol) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (i < 3) return;
         if (n_and_ion_fracs.n_element[i] == 0.0) return;
         const double x_old = n_and_ion_fracs[i].ion_fracs[j];
         const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
@@ -1612,7 +1612,6 @@ void metal_ions_step(
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, double& lsum) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (i < 3) return;
         if (n_and_ion_fracs.n_element[i] == 0.0) return;
         lsum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
                - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (double)j;

@@ -151,51 +151,52 @@ typedef struct {
     int l;
 } CrossSectionsNL;
 
+// One term of the dielectronic recombination sum alpha_DR = T^(-3/2) * sum_i
+// c_i * exp(-E_i/T). Energy and coefficient are interleaved and 16-byte
+// aligned so a thread fetches the pair with a single-sector access instead of
+// two gathers into separate tables. e == 0 marks an unused term; the tables
+// only have trailing zeros, so a zero e terminates the row.
+struct alignas(16) DRTerm {
+    double e;
+    double c;
+};
+
 struct TabulatedData
 {
-    Kokkos::View<double[N_TAB_ELEMENTS][27][2]> HM12_UVB_z {"HM12_UVB_z"};
-    Kokkos::View<double[N_TAB_ELEMENTS]> G0_heating_rates {"G0_heating_rates"};
-    Kokkos::View<double[N_TAB_ELEMENTS][27]> cosmic_ray_ionization_rates {"cosmic_ray_ionization_rates"};
-    Kokkos::View<double[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV {"cosmic_ray_ionization_rates_induced_UV"};
-    Kokkos::View<double[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV_heat {"cosmic_ray_ionization_rates_induced_UV_heat"};
-    Kokkos::View<double[N_TAB_ELEMENTS][7]> dust_rec_coefs {"dust_rec_coefs"};
-    Kokkos::View<double[7][3][N_TAB_ELEMENTS]> CTIon {"CTIon"};
-    Kokkos::View<double[6][4][N_TAB_ELEMENTS]> CTRecomb {"CTRecomb"};
-    Kokkos::View<double[27][160][8]> fs_cool_tab {"fs_cool_tab"};
+    Kokkos::View<float[N_TAB_ELEMENTS][27][2], Kokkos::LayoutRight> HM12_UVB_z {"HM12_UVB_z"};
+    Kokkos::View<float[N_TAB_ELEMENTS]> G0_heating_rates {"G0_heating_rates"};
+    Kokkos::View<float[N_TAB_ELEMENTS][27], Kokkos::LayoutRight> cosmic_ray_ionization_rates {"cosmic_ray_ionization_rates"};
+    Kokkos::View<float[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV {"cosmic_ray_ionization_rates_induced_UV"};
+    Kokkos::View<float[N_TAB_ELEMENTS]> cosmic_ray_ionization_rates_induced_UV_heat {"cosmic_ray_ionization_rates_induced_UV_heat"};
+    Kokkos::View<float[N_TAB_ELEMENTS][7], Kokkos::LayoutRight> dust_rec_coefs {"dust_rec_coefs"};
+    Kokkos::View<float[7][3][N_TAB_ELEMENTS], Kokkos::LayoutRight> CTIon {"CTIon"};
+    Kokkos::View<float[6][4][N_TAB_ELEMENTS], Kokkos::LayoutRight> CTRecomb {"CTRecomb"};
+    Kokkos::View<float[27][160][8], Kokkos::LayoutRight> fs_cool_tab {"fs_cool_tab"};
 
-    Kokkos::View<double[121][N_TAB_ELEMENTS][27]> high_t_cooling_rates {"high_t_cooling_rates"};
-    Kokkos::View<bool[N_TAB_ELEMENTS][27]> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
+    Kokkos::View<float[121][N_TAB_ELEMENTS][27], Kokkos::LayoutRight> high_t_cooling_rates {"high_t_cooling_rates"};
+    Kokkos::View<bool[N_TAB_ELEMENTS][27], Kokkos::LayoutRight> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
 
-    Kokkos::View<double[3][9]> DR_rates_c_helium {"DR_rates_c_helium"};
-    Kokkos::View<double[3][9]> DR_rates_e_helium {"DR_rates_e_helium"};
-    Kokkos::View<double[7][6]> RR_rates_carbon {"RR_rates_carbon"};
-    Kokkos::View<double[7][9]> DR_rates_c_carbon {"DR_rates_c_carbon"};
-    Kokkos::View<double[7][9]> DR_rates_e_carbon {"DR_rates_e_carbon"};
-    Kokkos::View<double[8][6]> RR_rates_nitrogen {"RR_rates_nitrogen"};
-    Kokkos::View<double[8][9]> DR_rates_c_nitrogen {"DR_rates_c_nitrogen"};
-    Kokkos::View<double[8][9]> DR_rates_e_nitrogen {"DR_rates_e_nitrogen"};
-    Kokkos::View<double[9][6]> RR_rates_oxygen {"RR_rates_oxygen"};
-    Kokkos::View<double[9][9]> DR_rates_c_oxygen {"DR_rates_c_oxygen"};
-    Kokkos::View<double[9][9]> DR_rates_e_oxygen {"DR_rates_e_oxygen"};
-    Kokkos::View<double[11][6]> RR_rates_neon {"RR_rates_neon"};
-    Kokkos::View<double[11][9]> DR_rates_c_neon {"DR_rates_c_neon"};
-    Kokkos::View<double[11][9]> DR_rates_e_neon {"DR_rates_e_neon"};
-    Kokkos::View<double[13][6]> RR_rates_magnesium {"RR_rates_magnesium"};
-    Kokkos::View<double[13][9]> DR_rates_c_magnesium {"DR_rates_c_magnesium"};
-    Kokkos::View<double[13][9]> DR_rates_e_magnesium {"DR_rates_e_magnesium"};
-    Kokkos::View<double[15][6]> RR_rates_silicon {"RR_rates_silicon"};
-    Kokkos::View<double[15][9]> DR_rates_c_silicon {"DR_rates_c_silicon"};
-    Kokkos::View<double[15][9]> DR_rates_e_silicon {"DR_rates_e_silicon"};
-    Kokkos::View<double[17][6]> RR_rates_sulfur {"RR_rates_sulfur"};
-    Kokkos::View<double[17][9]> DR_rates_c_sulfur {"DR_rates_c_sulfur"};
-    Kokkos::View<double[17][9]> DR_rates_e_sulfur {"DR_rates_e_sulfur"};
-    Kokkos::View<double[17][2]> RR_rates_alt_sulfur {"RR_rates_alt_sulfur"};
-    Kokkos::View<double[17][4]> DR_rates_alt_sulfur {"DR_rates_alt_sulfur"};
-    Kokkos::View<double[27][6]> RR_rates_iron {"RR_rates_iron"};
-    Kokkos::View<double[27][9]> DR_rates_c_iron {"DR_rates_c_iron"};
-    Kokkos::View<double[27][9]> DR_rates_e_iron {"DR_rates_e_iron"};
-    Kokkos::View<double[27][2]> RR_rates_alt_iron {"RR_rates_alt_iron"};
-    Kokkos::View<double[27][8]> DR_rates_alt_iron {"DR_rates_alt_iron"};
+    Kokkos::View<DRTerm[3][9], Kokkos::LayoutRight> DR_rates_helium {"DR_rates_helium"};
+    Kokkos::View<double[7][6], Kokkos::LayoutRight> RR_rates_carbon {"RR_rates_carbon"};
+    Kokkos::View<DRTerm[7][9], Kokkos::LayoutRight> DR_rates_carbon {"DR_rates_carbon"};
+    Kokkos::View<double[8][6], Kokkos::LayoutRight> RR_rates_nitrogen {"RR_rates_nitrogen"};
+    Kokkos::View<DRTerm[8][9], Kokkos::LayoutRight> DR_rates_nitrogen {"DR_rates_nitrogen"};
+    Kokkos::View<double[9][6], Kokkos::LayoutRight> RR_rates_oxygen {"RR_rates_oxygen"};
+    Kokkos::View<DRTerm[9][9], Kokkos::LayoutRight> DR_rates_oxygen {"DR_rates_oxygen"};
+    Kokkos::View<double[11][6], Kokkos::LayoutRight> RR_rates_neon {"RR_rates_neon"};
+    Kokkos::View<DRTerm[11][9], Kokkos::LayoutRight> DR_rates_neon {"DR_rates_neon"};
+    Kokkos::View<double[13][6], Kokkos::LayoutRight> RR_rates_magnesium {"RR_rates_magnesium"};
+    Kokkos::View<DRTerm[13][9], Kokkos::LayoutRight> DR_rates_magnesium {"DR_rates_magnesium"};
+    Kokkos::View<double[15][6], Kokkos::LayoutRight> RR_rates_silicon {"RR_rates_silicon"};
+    Kokkos::View<DRTerm[15][9], Kokkos::LayoutRight> DR_rates_silicon {"DR_rates_silicon"};
+    Kokkos::View<double[17][6], Kokkos::LayoutRight> RR_rates_sulfur {"RR_rates_sulfur"};
+    Kokkos::View<DRTerm[17][9], Kokkos::LayoutRight> DR_rates_sulfur {"DR_rates_sulfur"};
+    Kokkos::View<double[17][2], Kokkos::LayoutRight> RR_rates_alt_sulfur {"RR_rates_alt_sulfur"};
+    Kokkos::View<double[17][4], Kokkos::LayoutRight> DR_rates_alt_sulfur {"DR_rates_alt_sulfur"};
+    Kokkos::View<double[27][6], Kokkos::LayoutRight> RR_rates_iron {"RR_rates_iron"};
+    Kokkos::View<DRTerm[27][9], Kokkos::LayoutRight> DR_rates_iron {"DR_rates_iron"};
+    Kokkos::View<double[27][2], Kokkos::LayoutRight> RR_rates_alt_iron {"RR_rates_alt_iron"};
+    Kokkos::View<double[27][8], Kokkos::LayoutRight> DR_rates_alt_iron {"DR_rates_alt_iron"};
 
     Kokkos::View<double[6]> dE_carbon {"dE_carbon"};
     Kokkos::View<double[6]> A_carbon {"A_carbon"};
@@ -246,19 +247,19 @@ struct TabulatedData
     Kokkos::View<double[26]> P_iron {"P_iron"};
 
     // Cloudy radiative recombination data (from rad_rec.dat)
-    Kokkos::View<double[30][N_TAB_ELEMENTS][2]> rrec {"rrec"};
-    Kokkos::View<double[30][N_TAB_ELEMENTS][4]> rnew {"rnew"};
-    Kokkos::View<double[13][3]> fe {"fe"};
+    Kokkos::View<double[30][N_TAB_ELEMENTS][2], Kokkos::LayoutRight> rrec {"rrec"};
+    Kokkos::View<double[30][N_TAB_ELEMENTS][4], Kokkos::LayoutRight> rnew {"rnew"};
+    Kokkos::View<double[13][3], Kokkos::LayoutRight> fe {"fe"};
 
     // Collisional ionization data (from collisional_ionization.dat)
-    Kokkos::View<double[N_TAB_ELEMENTS][27][5]> collisional_ionization_data {"collisional_ionization_data"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27][5], Kokkos::LayoutRight> collisional_ionization_data {"collisional_ionization_data"};
 
     // Verner cross sections
-    Kokkos::View<CrossSections[27][27]> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
-    Kokkos::View<CrossSectionsNL[27][27][8]> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
+    Kokkos::View<CrossSections[27][27], Kokkos::LayoutRight> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
+    Kokkos::View<CrossSectionsNL[27][27][8], Kokkos::LayoutRight> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
     // Photoionization cross sections and photoheating rates for each group, element, and ion
-    Kokkos::View<double[N_TAB_ELEMENTS][27][N_GROUPS][3]> cs_ph {"cs_ph"};
+    Kokkos::View<double[N_TAB_ELEMENTS][27][N_GROUPS][3], Kokkos::LayoutRight> cs_ph {"cs_ph"};
 
     Kokkos::View<double[52]> sco_col1 {"sigma_CO_1"};
     Kokkos::View<double[52]> sco_col2 {"sigma_CO_2"};

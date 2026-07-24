@@ -6,15 +6,29 @@
 #include "types.hpp"
 
 
-template<int N, int M>
-void copy2D (double src[N][M], Kokkos::View<double[N][M]> &data_d) {
-    data_d = Kokkos::View<double[N][M]>("data_d", N, M);
+template<int N, int M, typename V>
+void copy2D (double (&src)[N][M], V &data_d) {
     auto data_h = Kokkos::create_mirror_view(data_d);
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < M; j++)
         {
             data_h(i, j) = src[i][j];
+        }
+    }
+    Kokkos::deep_copy(data_d, data_h);
+}
+
+
+// Interleave a DR energy/coefficient table pair into one view of DRTerm
+template<int N, int M, typename V>
+void copy2D_pair (double (&e_src)[N][M], double (&c_src)[N][M], V &data_d) {
+    auto data_h = Kokkos::create_mirror_view(data_d);
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < M; j++)
+        {
+            data_h(i, j) = DRTerm{ e_src[i][j], c_src[i][j] };
         }
     }
     Kokkos::deep_copy(data_d, data_h);
@@ -49,14 +63,13 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.4170e-03, 2.2350e-04,-2.1850e-05, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
     };
-    copy2D(DR_rates_c_helium, tabData.DR_rates_c_helium);
 
     double DR_rates_e_helium[3][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
         { 4.6330e+05, 5.5320e+05, 8.8870e+05, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00 },
     };
-    copy2D(DR_rates_e_helium, tabData.DR_rates_e_helium);
+    copy2D_pair(DR_rates_e_helium, DR_rates_c_helium, tabData.DR_rates_helium);
 
     // ###
     // ### Carbon
@@ -82,7 +95,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.4260e-03, 3.0460e-02, 8.3730e-04, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_carbon, tabData.DR_rates_c_carbon);
 
     double DR_rates_e_carbon[7][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -93,7 +105,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 3.1160e+06, 4.0750e+06, 5.7490e+06, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_carbon, tabData.DR_rates_e_carbon);
+    copy2D_pair(DR_rates_e_carbon, DR_rates_c_carbon, tabData.DR_rates_carbon);
 
     // ###
     // ### Nitrogen
@@ -122,7 +134,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 2.8010e-03, 4.3620e-02, 1.1170e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_nitrogen, tabData.DR_rates_c_nitrogen);
 
     double DR_rates_e_nitrogen[8][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -134,7 +145,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 4.1980e+06, 5.5160e+06, 8.0500e+06, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_nitrogen, tabData.DR_rates_e_nitrogen);
+    copy2D_pair(DR_rates_e_nitrogen, DR_rates_c_nitrogen, tabData.DR_rates_nitrogen);
 
     // ###
     // ### Oxygen
@@ -165,7 +176,6 @@ void init_recombination_rates(TabulatedData &tabData) {
     { 4.9250e-03, 5.8370e-02, 1.3590e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_oxygen, tabData.DR_rates_c_oxygen);
 
     double DR_rates_e_oxygen[9][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -178,7 +188,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 5.4400e+06, 7.1700e+06, 1.1520e+07, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_oxygen, tabData.DR_rates_e_oxygen);
+    copy2D_pair(DR_rates_e_oxygen, DR_rates_c_oxygen, tabData.DR_rates_oxygen);
 
     // ###
     // ### Neon
@@ -212,7 +222,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.1830e-02, 9.0110e-02, 1.8280e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_neon, tabData.DR_rates_c_neon);
 
     double DR_rates_e_neon[11][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -227,7 +236,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 8.4050e+06, 1.1110e+07, 1.8120e+07, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_neon, tabData.DR_rates_e_neon);
+    copy2D_pair(DR_rates_e_neon, DR_rates_c_neon, tabData.DR_rates_neon);
 
     // ###
     // ### Magnesium
@@ -265,7 +274,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 2.2620e-02, 1.2160e-01, 2.5310e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_magnesium, tabData.DR_rates_c_magnesium);
 
     double DR_rates_e_magnesium[13][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -282,7 +290,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.2010e+07, 1.5880e+07, 2.4730e+07, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_magnesium, tabData.DR_rates_e_magnesium);
+    copy2D_pair(DR_rates_e_magnesium, DR_rates_c_magnesium, tabData.DR_rates_magnesium);
 
     // ###
     // ### Silicon
@@ -324,7 +332,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 3.8460e-02, 1.4910e-01, 2.7790e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_silicon, tabData.DR_rates_c_silicon);
 
     double DR_rates_e_silicon[15][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -343,7 +350,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.6270e+07, 2.1540e+07, 3.8270e+07, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_silicon, tabData.DR_rates_e_silicon);
+    copy2D_pair(DR_rates_e_silicon, DR_rates_c_silicon, tabData.DR_rates_silicon);
 
     // ###
     // ### Sulfur
@@ -389,7 +396,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 6.6590e-02, 1.7620e-01, -6.5220e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_sulfur, tabData.DR_rates_c_sulfur);
 
     double DR_rates_e_sulfur[17][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -410,7 +416,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 2.1220e+07, 2.8970e+07, 5.7860e+07, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_sulfur, tabData.DR_rates_e_sulfur);
+    copy2D_pair(DR_rates_e_sulfur, DR_rates_c_sulfur, tabData.DR_rates_sulfur);
 
     double RR_rates_alt_sulfur[17][2] = {
         { 0.0000e+00, 0.0000e+00  },
@@ -518,7 +524,6 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 1.9840e-01, 2.6760e-01, -2.2930e-03, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_c_iron, tabData.DR_rates_c_iron);
 
     double DR_rates_e_iron[27][9] = {
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
@@ -549,7 +554,7 @@ void init_recombination_rates(TabulatedData &tabData) {
         { 5.5520e+07, 7.4750e+07, 1.2360e+08, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
         { 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00, 0.0000e+00  },
     };
-    copy2D(DR_rates_e_iron, tabData.DR_rates_e_iron);
+    copy2D_pair(DR_rates_e_iron, DR_rates_c_iron, tabData.DR_rates_iron);
 
     double RR_rates_alt_iron[27][2] = {
         { 0.0000e+00, 0.0000e+00  },
@@ -616,7 +621,7 @@ void init_recombination_rates(TabulatedData &tabData) {
 
 template <int N, int M>
 KOKKOS_INLINE_FUNCTION
-double alpha_RR(const double T, const Kokkos::View<double [N][M]>& RR_rates, const int ion){
+double alpha_RR(const double T, const Kokkos::View<float [N][M], Kokkos::LayoutRight>& RR_rates, const int ion){
     static_assert(M == 6, "The second dimension of RR_rates must be 6");
     // #HK NOTE: in many cases C and T2 are 0 so B = B
 
@@ -639,15 +644,18 @@ double alpha_RR(const double T, const Kokkos::View<double [N][M]>& RR_rates, con
 
 template <int N, int M>
 KOKKOS_INLINE_FUNCTION
-double alpha_DR(const double T, const Kokkos::View<double [N][M]>& DR_rates_e, const Kokkos::View<double [N][M]>& DR_rates_c, const int ion){
-    static_assert(M == 9, "The second dimension of DR_rates_c must be 9");
+double alpha_DR(const double T, const Kokkos::View<DRTerm [N][M], Kokkos::LayoutRight>& DR_rates, const int ion){
+    static_assert(M == 9, "The second dimension of DR_rates must be 9");
     // # ! Dielectronic recombination
     // # ! T**(-3/2) * sum c_i * exp(-E_i/T)
+    // Each term is one 16-byte (E_i, c_i) access; zeros are strictly trailing
+    // in every table, so the first zero E_i ends the row.
+    const double T_m32 = pow(T,-3./2.);
     double comp_Alpha = 0.0;
-    for (int i = 0; i < 9; i++) { 
-        if (DR_rates_e(ion, i) > 0.0){
-            comp_Alpha += ( pow(T,-3./2.) * DR_rates_c(ion, i) * exp(-1. * DR_rates_e(ion, i) / T) );
-        }
+    for (int i = 0; i < 9; i++) {
+        const DRTerm term = DR_rates(ion, i);
+        if (!(term.e > 0.0)) break;
+        comp_Alpha += ( T_m32 * term.c * exp(-1. * term.e / T) );
     }
     return comp_Alpha;
 }
@@ -711,56 +719,56 @@ double recombination(double T, int ion, int element_idx, const TabulatedData& ta
             // rec = alpha_RR(T, tabData.RR_rates_helium, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_helium, tabData.DR_rates_c_helium, ion);
+            rec += alpha_DR(T, tabData.DR_rates_helium, ion);
             break;
         case 6: // carbon
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_carbon, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_carbon, tabData.DR_rates_c_carbon, ion);
+            rec += alpha_DR(T, tabData.DR_rates_carbon, ion);
             break;
         case 7: // nitrogen
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_nitrogen, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T,tabData.DR_rates_e_nitrogen, tabData.DR_rates_c_nitrogen, ion);
+            rec += alpha_DR(T, tabData.DR_rates_nitrogen, ion);
             break;
         case 8: // oxygen
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_oxygen, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_oxygen, tabData.DR_rates_c_oxygen, ion);
+            rec += alpha_DR(T, tabData.DR_rates_oxygen, ion);
             break;
         case 10: // neon
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_neon, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_neon, tabData.DR_rates_c_neon, ion);
+            rec += alpha_DR(T, tabData.DR_rates_neon, ion);
             break;
         case 12: // magnesium
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_magnesium, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_magnesium, tabData.DR_rates_c_magnesium, ion);
+            rec += alpha_DR(T, tabData.DR_rates_magnesium, ion);
             break;
         case 14: // silicon
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_silicon, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_silicon, tabData.DR_rates_c_silicon, ion);
+            rec += alpha_DR(T, tabData.DR_rates_silicon, ion);
             break;
         case 16: // sulfur
             // #! Radiative recombination
             // rec = alpha_RR(T, tabData.RR_rates_sulfur, ion);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_sulfur, tabData.DR_rates_c_sulfur, ion);
+            rec += alpha_DR(T, tabData.DR_rates_sulfur, ion);
             break;
         case 26: // iron
             // #! Radiative recombination
@@ -775,7 +783,7 @@ double recombination(double T, int ion, int element_idx, const TabulatedData& ta
             // rec = cloudy_rad_rec(26, 26 - ion + 1, T);
 
             // #!  Dielectronic recombination
-            rec += alpha_DR(T, tabData.DR_rates_e_iron, tabData.DR_rates_c_iron, ion);
+            rec += alpha_DR(T, tabData.DR_rates_iron, ion);
             break;
     }
     return rec;

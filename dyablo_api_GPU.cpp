@@ -39,8 +39,8 @@ const double T_MAX = 1E9;
 #define uint unsigned int
 
 
-template<typename T, typename T2>
-void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
+template<typename T, typename V>
+void copy_data_3D(T& src, V &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++) {
         for (uint j = 0; j < dst.extent(1); j++) {
@@ -52,8 +52,8 @@ void copy_data_3D(T& src, Kokkos::View<T2> &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
-template<typename T, typename T2>
-void copy_data_2D(T& src, Kokkos::View<T2> &dst) {
+template<typename T, typename V>
+void copy_data_2D(T& src, V &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++) {
         for (uint j = 0; j < dst.extent(1); j++) {

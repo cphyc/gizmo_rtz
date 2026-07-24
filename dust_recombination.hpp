@@ -38,7 +38,7 @@ double dust_rec_coefs[27][7] = {
 
 
 KOKKOS_FUNCTION
-double dust_recombination_rates(int ion, int nelem, double T, double G, double ne, const Kokkos::View<double[N_TAB_ELEMENTS][7]>& dust_rec_coefs){
+double dust_recombination_rates(int ion, int nelem, double T, double G, double ne, const Kokkos::View<float[N_TAB_ELEMENTS][7], Kokkos::LayoutRight>& dust_rec_coefs){
     double dust_rec_rate = 0.0;
     double dr_sf = 1.0;
 

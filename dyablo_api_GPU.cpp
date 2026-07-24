@@ -1337,12 +1337,53 @@ void ions_step(
 }
 
 
-// Sequential (Gauss-Seidel) update of hydrogen then helium, on a single team
-// thread: exact in-place ne/xe/mu/TK updates and per-stage residual checks, as
+// Sequential (Gauss-Seidel) update of hydrogen then helium on one thread:
+// exact in-place ne/xe/mu/TK updates and per-stage residual checks, as
 // ions_step does element-by-element. The stiff H/He/electron coupling needs
 // this sequential treatment; the (weakly coupled) metals are then swept in
-// parallel by metal_ions_step. Ends with a team barrier so the updated H/He
-// fractions and state are visible to every lane.
+// parallel by metal_ions_step.
+template <
+    bool constant_temperature,
+    bool include_H2,
+    bool include_CO,
+    bool rt_advect,
+    bool include_self_shielding
+>
+KOKKOS_INLINE_FUNCTION
+void HandHe_ions_step(
+    const double ddt,
+    const Element* elements,
+    CompactIonData& n_and_ion_fracs,
+    const TabulatedData& tabData,
+    const PhysicsFlags& flags,
+    const double dust_to_gas_mass_ratio_over_mw,
+    const double UV_background_G0,
+    const double primary_cosmic_ray_ionization_rate,
+    const double ss_factor,
+    const std::array<double, N_GROUPS>& N_phot_new,
+    SubcycleState& state)
+{
+    if (!state.compute_atoms) return;
+
+    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+
+    for (int i = 1; i <= 2; i++) {
+        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+
+        ions_gs_element<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
+            i, ddt, elements, n_and_ion_fracs, tabData, flags,
+            dust_to_gas_mass_ratio_over_mw, UV_background_G0,
+            primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new,
+            dust_effective_number_density, state);
+
+        if (!state.x_percent_rule) break;
+    }
+}
+
+
+// Team wrapper for the fused tail kernel: runs the sequential H/He update on
+// a single team thread, then a team barrier so the updated H/He fractions and
+// state are visible to every lane before metal_ions_step.
 template <
     bool constant_temperature,
     bool include_H2,
@@ -1368,20 +1409,11 @@ void HandHe_ions_step(
 {
     if (!state.compute_atoms) return;
 
-    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
-
     Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        for (int i = 1; i <= 2; i++) {
-            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
-
-            ions_gs_element<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
-                i, ddt, elements, n_and_ion_fracs, tabData, flags,
-                dust_to_gas_mass_ratio_over_mw, UV_background_G0,
-                primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new,
-                dust_effective_number_density, state);
-
-            if (!state.x_percent_rule) break;
-        }
+        HandHe_ions_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
+            ddt, elements, n_and_ion_fracs, tabData, flags,
+            dust_to_gas_mass_ratio_over_mw, UV_background_G0,
+            primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new, state);
     });
     team.team_barrier();
 }

@@ -746,27 +746,20 @@ double OI_fine_structure(double T, double n_ion, double nH, double nHp,
                          double ne, double nH2, double nHe, double nHep, 
                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 5.0;
+    double g_1 = 3.0;
+    double g_2 = 1.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 8.910E-5;
+    double A_20 = 1.340E-10;
+    double A_21 = 1.750E-5;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 5.0;
-    g_1 = 3.0;
-    g_2 = 1.0;
-    
-    lam_10 = 63.1679;
-    lam_20 = 44.0453;
-    lam_21 = 145.495;
-    
-    A_10 = 8.910E-5;
-    A_20 = 1.340E-10;
-    A_21 = 1.750E-5;
-    
+    double lam_10 = 63.1679;
+    double lam_20 = 44.0453;
+    double lam_21 = 145.495;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -782,27 +775,20 @@ double OIII_fine_structure(double T, double n_ion, double nH, double nHp,
                            double ne, double nH2, double nHe, double nHep, 
                            double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 1.0;
+    double g_1 = 3.0;
+    double g_2 = 5.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 2.597e-5;
+    double A_20 = 3.170e-11;
+    double A_21 = 9.760e-5;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 1.0;
-    g_1 = 3.0;
-    g_2 = 5.0;
-    
-    lam_10 = 88.3323;
-    lam_20 = 32.6523;
-    lam_21 = 51.8004;
-    
-    A_10 = 2.597e-5;
-    A_20 = 3.170e-11;
-    A_21 = 9.760e-5;
-    
+    double lam_10 = 88.3323;
+    double lam_20 = 32.6523;
+    double lam_21 = 51.8004;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -817,27 +803,20 @@ double CI_fine_structure(double T, double n_ion, double nH, double nHp,
                            double ne, double nH2, double nHe, double nHep, 
                            double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 1.0;
+    double g_1 = 3.0;
+    double g_2 = 5.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 7.930E-8;
+    double A_20 = 1.000E-30;
+    double A_21 = 2.650E-7;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 1.0;
-    g_1 = 3.0;
-    g_2 = 5.0;
-    
-    lam_10 = 609.590;
-    lam_20 = 230.352;
-    lam_21 = 370.269;
-    
-    A_10 = 7.930E-8;
-    A_20 = 1.000E-30;
-    A_21 = 2.650E-7;
-    
+    double lam_10 = 609.590;
+    double lam_20 = 230.352;
+    double lam_21 = 370.269;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -852,21 +831,15 @@ double CII_fine_structure(double T, double n_ion, double nH, double nHp,
                           double ne, double nH2, double nHe, double nHep, 
                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1;
+    double g_0 = 2.0;
+    double g_1 = 4.0;
 
     /* Transition rates (s^-1) */
-    double A_10;
+    double A_10 = 2.290E-6;
 
     /* Wavelengths (microns) */
-    double lam_10;
-    
-    g_0 = 2.0;
-    g_1 = 4.0;
-    
-    lam_10 = 157.636;
-    
-    A_10 = 2.290E-6;
-    
+    double lam_10 = 157.636;
+
     return two_level(g_0, g_1,
                     lam_10,
                     A_10,
@@ -881,27 +854,20 @@ double NII_fine_structure(double T, double n_ion, double nH, double nHp,
                           double ne, double nH2, double nHe, double nHep, 
                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 1.0;
+    double g_1 = 3.0;
+    double g_2 = 5.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 2.080E-06;
+    double A_20 = 1.000E-30;
+    double A_21 = 7.460E-06;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 1.0;
-    g_1 = 3.0;
-    g_2 = 5.0;
-    
-    lam_10 = 205.244;
-    lam_20 = 76.4318;
-    lam_21 = 121.767;
-    
-    A_10 = 2.080E-06;
-    A_20 = 1.000E-30;
-    A_21 = 7.460E-06;
-    
+    double lam_10 = 205.244;
+    double lam_20 = 76.4318;
+    double lam_21 = 121.767;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -916,27 +882,20 @@ double SiI_fine_structure(double T, double n_ion, double nH, double nHp,
                           double ne, double nH2, double nHe, double nHep, 
                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 1.0;
+    double g_1 = 3.0;
+    double g_2 = 5.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 8.250E-6;
+    double A_20 = 3.490E-10;
+    double A_21 = 4.210E-5;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 1.0;
-    g_1 = 3.0;
-    g_2 = 5.0;
-    
-    lam_10 = 129.641;
-    lam_20 = 44.7993;
-    lam_21 = 68.4548;
-    
-    A_10 = 8.250E-6;
-    A_20 = 3.490E-10;
-    A_21 = 4.210E-5;
-    
+    double lam_10 = 129.641;
+    double lam_20 = 44.7993;
+    double lam_21 = 68.4548;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -951,21 +910,15 @@ double SiII_fine_structure(double T, double n_ion, double nH, double nHp,
                            double ne, double nH2, double nHe, double nHep, 
                            double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1;
+    double g_0 = 2.0;
+    double g_1 = 4.0;
 
     /* Transition rates (s^-1) */
-    double A_10;
+    double A_10 = 2.131E-4;
 
     /* Wavelengths (microns) */
-    double lam_10;
-    
-    g_0 = 2.0;
-    g_1 = 4.0;
-    
-    lam_10 = 34.8046;
-    
-    A_10 = 2.131E-4;
-    
+    double lam_10 = 34.8046;
+
     return two_level(g_0, g_1,
                     lam_10,
                     A_10,
@@ -979,21 +932,15 @@ double NeII_fine_structure(double T, double n_ion, double nH, double nHp,
                            double ne, double nH2, double nHe, double nHep, 
                            double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1;
+    double g_0 = 4.0;
+    double g_1 = 2.0;
 
     /* Transition rates (s^-1) */
-    double A_10;
+    double A_10 = 8.590E-3;
 
     /* Wavelengths (microns) */
-    double lam_10;
-    
-    g_0 = 4.0;
-    g_1 = 2.0;
-    
-    lam_10 = 12.8101;
-    
-    A_10 = 8.590E-3;
-    
+    double lam_10 = 12.8101;
+
     return two_level(g_0, g_1,
                     lam_10,
                     A_10,
@@ -1007,27 +954,20 @@ double FeI_fine_structure(double T, double n_ion, double nH, double nHp,
                           double ne, double nH2, double nHe, double nHep, 
                           double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
+    double g_0 = 9.0;
+    double g_1 = 7.0;
+    double g_2 = 5.0;
     
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 2.510E-3;
+    double A_20 = 1.000E-30;
+    double A_21 = 1.560E-3;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 9.0;
-    g_1 = 7.0;
-    g_2 = 5.0;
-    
-    lam_10 = 24.0358;
-    lam_20 = 14.2005;
-    lam_21 = 34.7038;
-    
-    A_10 = 2.510E-3;
-    A_20 = 1.000E-30;
-    A_21 = 1.560E-3;
-    
+    double lam_10 = 24.0358;
+    double lam_20 = 14.2005;
+    double lam_21 = 34.7038;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -1042,27 +982,20 @@ double FeII_fine_structure(double T, double n_ion, double nH, double nHp,
                            double ne, double nH2, double nHe, double nHep, 
                            double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 10.0;
+    double g_1 = 8.0;
+    double g_2 = 6.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 2.050E-3;
+    double A_20 = 1.000E-30;
+    double A_21 = 1.560E-3;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 10.0;
-    g_1 = 8.0;
-    g_2 = 6.0;
-    
-    lam_10 = 25.9811;
-    lam_20 = 14.9731;
-    lam_21 = 35.3394;
-    
-    A_10 = 2.050E-3;
-    A_20 = 1.000E-30;
-    A_21 = 1.560E-3;
-    
+    double lam_10 = 25.9811;
+    double lam_20 = 14.9731;
+    double lam_21 = 35.3394;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,
@@ -1077,27 +1010,20 @@ double SI_fine_structure(double T, double n_ion, double nH, double nHp,
                          double ne, double nH2, double nHe, double nHep, 
                          double nHepp, double z, const TabulatedData& tabData){
     /* Degeneracy variables */
-    double g_0, g_1, g_2;
-    
+    double g_0 = 5.0;
+    double g_1 = 3.0;
+    double g_2 = 1.0;
+
     /* Transition rates (s^-1) */
-    double A_10, A_20, A_21;
-    
+    double A_10 = 1.400E-3;
+    double A_20 = 7.050E-8;
+    double A_21 = 3.020E-4;
+
     /* Wavelengths (microns) */
-    double lam_10, lam_20, lam_21;
-    
-    /* Initialize constants */
-    g_0 = 5.0;
-    g_1 = 3.0;
-    g_2 = 1.0;
-    
-    lam_10 = 25.2421;
-    lam_20 = 17.4278;
-    lam_21 = 56.2957;
-    
-    A_10 = 1.400E-3;
-    A_20 = 7.050E-8;
-    A_21 = 3.020E-4;
-    
+    double lam_10 = 25.2421;
+    double lam_20 = 17.4278;
+    double lam_21 = 56.2957;
+
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
                       lam_10, lam_20, lam_21,

@@ -1186,7 +1186,10 @@ double Epump(double nH, double T, double xH2, double xHI){
 KOKKOS_INLINE_FUNCTION
 double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, double xHI,
                         double xHII, double xe, double f_dg, double xi_h2_cr){
+
     // Heating from H2 formation and destruction following Bialy 2018
+    double H2_heating = 0.0;
+
     double D0 = 5.68E-11;
     double I_UV = 1.7 * G0;
 
@@ -1195,30 +1198,27 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
     double ncrit_factor = 1.0 / (1.0 + (n_crit/nH));
 
     // heating from H2 pumping
-    double Hrate_H2_pump = 9.0 * D0 * I_UV * E_pump * nH2 * ncrit_factor; // erg/s/cm^3
+    H2_heating += 9.0 * D0 * I_UV * E_pump * nH2 * ncrit_factor; // erg/s/cm^3
 
     // heating from H2 photodissociation
     double E_pd = 0.4 * EV_2_ERG;
-    double Hrate_H2_pd = D0 * I_UV * E_pd * nH2; // erg/s/cm^3
-
-    // heating from H2 formation
-    double Hrate_H2_form = 0.0;
+    H2_heating += D0 * I_UV * E_pd * nH2; // erg/s/cm^3
 
     // heating from H2 formation --> dust channel
     double E_form1_dust = 0.2 * EV_2_ERG;
     double E_form2_dust = 4.48 * EV_2_ERG * ncrit_factor;
     double H2_formation_rate_dust = alpha_H2_dust(T, f_dg);
 
-    Hrate_H2_form += H2_formation_rate_dust * (E_form1_dust + E_form2_dust) * nH * nH * xHI; // erg/s/cm^3
+    H2_heating += H2_formation_rate_dust * (E_form1_dust + E_form2_dust) * nH * nH * xHI; // erg/s/cm^3
 
     // heating from H2 formation --> primordial channel
     double E_form1_prim = 0.6 * EV_2_ERG;
     double E_form2_prim = 3.13 * EV_2_ERG * ncrit_factor;
     double H2_formation_rate_prim = alpha_H2_prim(T, xe, xi_h2_cr, G0, xHI, xHII, nH);
 
-    Hrate_H2_form += H2_formation_rate_prim * (E_form1_prim + E_form2_prim) * nH * nH * xHI; // erg/s/cm^3
-    
-    return fmax(Hrate_H2_pd + Hrate_H2_form + Hrate_H2_pump, 1e-100);
+    H2_heating += H2_formation_rate_prim * (E_form1_prim + E_form2_prim) * nH * nH * xHI; // erg/s/cm^3
+
+    return fmax(H2_heating, 1e-100);
 }
 
 struct CTReaction { bool is_ionization; int stage; int Z; double dE; };

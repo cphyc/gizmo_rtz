@@ -1342,24 +1342,22 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
 KOKKOS_INLINE_FUNCTION
 double CO_cooling_koyama_00(double nH, double nH2, double nHI, double nCO, double T) {
     // CO cooling
+    double rate = 0.0;
     double T_pivot = 3080.0;
     double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / nH;
 
     // CO Rotational cooling
     double rot_numerator = nCO * 4.0 * pow(KB * T, 2) * 9.7e-8;
     double rot_denominator = 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
-    double rot = rot_numerator / rot_denominator;
+    rate += rot_numerator / rot_denominator;
 
     // CO Vibrational cooling (H2 collisions)
-    double vib_H2 = nH2 * nCO * T_pivot * KB * 4.3e-14 * T * exp(-pow(3.14e5 / T, 0.333)) * exp(-T_pivot / T);
+    rate += nH2 * nCO * T_pivot * KB * 4.3e-14 * T * exp(-pow(3.14e5 / T, 0.333)) * exp(-T_pivot / T);
 
     // CO Vibrational cooling (HI collisions)
-    double vib_H = nHI * nCO * T_pivot * KB * 3.0e-12 * sqrt(T) * exp(-pow(2000.0 / T, 3.43)) * exp(-T_pivot / T);
+    rate += nHI * nCO * T_pivot * KB * 3.0e-12 * sqrt(T) * exp(-pow(2000.0 / T, 3.43)) * exp(-T_pivot / T);
 
-    // Sum the rate
-    double rate = rot + vib_H2 + vib_H;
-
-    return fmax(rate,1e-100);
+    return fmax(rate, 1e-100);
 }
 
 KOKKOS_FUNCTION

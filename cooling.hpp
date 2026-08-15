@@ -1221,6 +1221,8 @@ double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, 
     return fmax(Hrate_H2_pd + Hrate_H2_form + Hrate_H2_pump, 1e-100);
 }
 
+struct CTReaction { bool is_ionization; int stage; int Z; double dE; };
+
 KOKKOS_INLINE_FUNCTION
 double CT_heat_cool(double T, const CompactIonData& n_and_ion_fracs,
                     const TabulatedData& tabData){
@@ -1236,59 +1238,76 @@ double CT_heat_cool(double T, const CompactIonData& n_and_ion_fracs,
     double loc_nHI = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[0];
     double loc_nHII = n_and_ion_fracs.n_element_new[1] * n_and_ion_fracs[1].ion_fracs_new[1];
 
-    // Helium
-    ct_hc_rate += charge_transfer_recombination(1, 2, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[2] * n_and_ion_fracs[2].ion_fracs_new[1] * 10.99 * EV_2_ERG; // H + He+ -> He + H+ 
+    // Charge transfer reactions, one table entry per reaction:
+    //   is_ionization : true  --> H+ + X(n)  -> X(n+1) + H,  rate scales with nHII
+    //                   false --> H  + X(n)  -> X(n-1) + H+, rate scales with nHI
+    //   stage         : ionization stage of X, which is also its ion_fracs_new index
+    //   Z             : atomic number of X
+    //   dE            : energy released by the reaction [eV], negative if absorbed
+    static constexpr CTReaction ct_reactions[] = {
+        // Helium
+        {false, 1,  2,  10.99}, // H + He+ -> He + H+
 
-    // Carbon
-    ct_hc_rate += charge_transfer_ionization(0, 6, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[0] * 2.34 * EV_2_ERG; // H+ + C -> C+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[1] * (-2.34) * EV_2_ERG; // H + C+ -> C + H+
-    ct_hc_rate += charge_transfer_recombination(2, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[2] * 4.01 * EV_2_ERG; // H + C++ -> C+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + C+++ -> C++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 6, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[6] * n_and_ion_fracs[6].ion_fracs_new[4] * 11.3 * EV_2_ERG; // H + C++++ -> C+++ + H+
+        // Carbon
+        {true,  0,  6,   2.34}, // H+ + C -> C+ + H
+        {false, 1,  6,  -2.34}, // H + C+ -> C + H+
+        {false, 2,  6,   4.01}, // H + C++ -> C+ + H+
+        {false, 3,  6,   5.73}, // H + C+++ -> C++ + H+
+        {false, 4,  6,  11.3 }, // H + C++++ -> C+++ + H+
 
-    // Nitrogen
-    ct_hc_rate += charge_transfer_ionization(0, 7, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[0] * (-0.94) * EV_2_ERG; // H+ + N -> N+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[1] * 0.94 * EV_2_ERG; // H + N+ -> N + H+
-    ct_hc_rate += charge_transfer_recombination(2, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[2] * 4.56 * EV_2_ERG; // H + N++ -> N+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[3] * 6.40 * EV_2_ERG; // H + N+++ -> N++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 7, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[7] * n_and_ion_fracs[7].ion_fracs_new[4] * 11.0 * EV_2_ERG; // H + N++++ -> N+++ + H+
+        // Nitrogen
+        {true,  0,  7,  -0.94}, // H+ + N -> N+ + H
+        {false, 1,  7,   0.94}, // H + N+ -> N + H+
+        {false, 2,  7,   4.56}, // H + N++ -> N+ + H+
+        {false, 3,  7,   6.40}, // H + N+++ -> N++ + H+
+        {false, 4,  7,  11.0 }, // H + N++++ -> N+++ + H+
 
-    // Oxygen
-    ct_hc_rate += charge_transfer_ionization(0, 8, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[0] * (-0.02) * EV_2_ERG; // H+ + O -> O+ + H
-    ct_hc_rate += charge_transfer_recombination(1, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[1] * 0.02 * EV_2_ERG; // H + O+ -> O + H+
-    ct_hc_rate += charge_transfer_recombination(2, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[2] * 6.65 * EV_2_ERG; // H + O++ -> O+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[3] * 5.00 * EV_2_ERG; // H + O+++ -> O++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 8, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[8] * n_and_ion_fracs[8].ion_fracs_new[4] * 8.47 * EV_2_ERG; // H + O++++ -> O+++ + H+
+        // Oxygen
+        {true,  0,  8,  -0.02}, // H+ + O -> O+ + H
+        {false, 1,  8,   0.02}, // H + O+ -> O + H+
+        {false, 2,  8,   6.65}, // H + O++ -> O+ + H+
+        {false, 3,  8,   5.00}, // H + O+++ -> O++ + H+
+        {false, 4,  8,   8.47}, // H + O++++ -> O+++ + H+
 
-    // Neon
-    ct_hc_rate += charge_transfer_recombination(3, 10, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[10] * n_and_ion_fracs[10].ion_fracs_new[3] * 5.82 * EV_2_ERG; // H + Ne+++ -> Ne++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 10, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[10] * n_and_ion_fracs[10].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + Ne++++ -> Ne+++ + H+
+        // Neon
+        {false, 3, 10,   5.82}, // H + Ne+++ -> Ne++ + H+
+        {false, 4, 10,   8.60}, // H + Ne++++ -> Ne+++ + H+
 
-    // Magnesium
-    ct_hc_rate += charge_transfer_ionization(0, 12, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[0] * 1.52 * EV_2_ERG; // H+ + Mg -> Mg+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 12, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[1] * (-1.44) * EV_2_ERG; // H+ + Mg+ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[2] * 1.44 * EV_2_ERG; // H + Mg++ -> Mg+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + Mg+++ -> Mg++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 12, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[12] * n_and_ion_fracs[12].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + Mg++++ -> Mg+++ + H+
+        // Magnesium
+        {true,  0, 12,   1.52}, // H+ + Mg -> Mg+ + H
+        {true,  1, 12,  -1.44}, // H+ + Mg+ -> Mg++ + H+
+        {false, 2, 12,   1.44}, // H + Mg++ -> Mg+ + H+
+        {false, 3, 12,   5.73}, // H + Mg+++ -> Mg++ + H+
+        {false, 4, 12,   8.60}, // H + Mg++++ -> Mg+++ + H+
 
-    // Silicon
-    ct_hc_rate += charge_transfer_ionization(0, 14, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[0] * 0.12 * EV_2_ERG; // H+ + Si -> Si+ + H
-    ct_hc_rate += charge_transfer_ionization(1, 14, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[1] * (-2.72) * EV_2_ERG; // H+ + Si+ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[2] * 2.72 * EV_2_ERG; // H + Si++ -> Si+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[3] * 4.23 * EV_2_ERG; // H + Si+++ -> Si++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 14, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[14] * n_and_ion_fracs[14].ion_fracs_new[4] * 7.49 * EV_2_ERG; // H + Si++++ -> Si+++ + H+
+        // Silicon
+        {true,  0, 14,   0.12}, // H+ + Si -> Si+ + H
+        {true,  1, 14,  -2.72}, // H+ + Si+ -> Si++ + H+
+        {false, 2, 14,   2.72}, // H + Si++ -> Si+ + H+
+        {false, 3, 14,   4.23}, // H + Si+++ -> Si++ + H+
+        {false, 4, 14,   7.49}, // H + Si++++ -> Si+++ + H+
 
-    // Sulfur
-    ct_hc_rate += charge_transfer_recombination(1, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[1] * (-3.24) * EV_2_ERG; // H + S+ -> S + H+
-    ct_hc_rate += charge_transfer_recombination(3, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[3] * 5.73 * EV_2_ERG; // H + S+++ -> S++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 16, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[16] * n_and_ion_fracs[16].ion_fracs_new[4] * 8.60 * EV_2_ERG; // H + S++++ -> S+++ + H+
+        // Sulfur
+        {false, 1, 16,  -3.24}, // H + S+ -> S + H+
+        {false, 3, 16,   5.73}, // H + S+++ -> S++ + H+
+        {false, 4, 16,   8.60}, // H + S++++ -> S+++ + H+
 
-    // Iron
-    // Silicon
-    ct_hc_rate += charge_transfer_ionization(1, 26, T, tabData) * loc_nHII * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[1] * (-2.56) * EV_2_ERG; // H+ + Fe+ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(2, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[2] * 2.56 * EV_2_ERG; // H + Fe++ -> Fe+ + H+
-    ct_hc_rate += charge_transfer_recombination(3, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[3] * 6.30 * EV_2_ERG; // H + Fe+++ -> Fe++ + H+
-    ct_hc_rate += charge_transfer_recombination(4, 26, T, tabData) * loc_nHI * n_and_ion_fracs.n_element_new[26] * n_and_ion_fracs[26].ion_fracs_new[4] * 10.0 * EV_2_ERG; // H + Fe++++ -> Fe+++ + H+
+        // Iron
+        {true,  1, 26,  -2.56}, // H+ + Fe+ -> Fe++ + H+
+        {false, 2, 26,   2.56}, // H + Fe++ -> Fe+ + H+
+        {false, 3, 26,   6.30}, // H + Fe+++ -> Fe++ + H+
+        {false, 4, 26,  10.0 }, // H + Fe++++ -> Fe+++ + H+
+    };
+
+    // Don't unroll to save on instructions (saves ~30% of SASS instructions for cooling kernel)
+#pragma unroll 1
+    for (const CTReaction& r : ct_reactions) {
+        double ct_rate = r.is_ionization ? charge_transfer_ionization(r.stage, r.Z, T, tabData)
+                                         : charge_transfer_recombination(r.stage, r.Z, T, tabData);
+        double n_H_partner = r.is_ionization ? loc_nHII : loc_nHI;
+
+        ct_hc_rate += ct_rate * n_H_partner * n_and_ion_fracs.n_element_new[r.Z] * n_and_ion_fracs[r.Z].ion_fracs_new[r.stage] * r.dE * EV_2_ERG;
+    }
 
     return ct_hc_rate;
 }

@@ -411,9 +411,7 @@ double get_high_t_cooling_rates(double T, double ne,
     }
 
     // Still cool above 10^9 K but set a bound
-    if (log_T > t_max){
-        log_T = t_max;
-    }
+    log_T = fmin(log_T, t_max);
 
     // Prepare for 1D interpolation
     int idx_low = (int)floor((log_T - t_min)/dt);
@@ -422,12 +420,12 @@ double get_high_t_cooling_rates(double T, double ne,
     double frac_high = (log_T - (t_min + idx_low * dt)) / dt;
     double frac_low = 1.0 - frac_high;
 
-    // Loop over all ions -- not including H and He
-    for (int i = 3; i < 27; i++) {
+    // Loop over the tabulated elements -- not including H and He (rows 0 and 1)
+    for (int ei = 2; ei < N_TAB_ELEMENTS; ei++) {
+        const int i = row_elem(ei);
         if (n_and_ion_fracs.n_element_new[i] > MIN_METAL_COOL_DENS){
             // Get the element number density
             double n_element = n_and_ion_fracs.n_element_new[i];
-            const int ei = elem_row(i);
             for (int j = 0; j < (elements[i].n_ions + elements[i].n_mol); j++) {
                 // Get the element ion fraction
                 double n_ion = n_and_ion_fracs[i].ion_fracs_new[j];
@@ -1102,12 +1100,12 @@ double cosmic_ray_heating(double xe, double n_HI, double n_HeI, double n_H2,
     // Cosmic ray heating on metals
     // --> Here we skip H and He as it's done separately above
     double induced_UV_heat_scale_fac = H2_cosmic_ray_ionization_rate_primary / 1E-16;
-    for (int i = 3; i < 27; i++) {
+    for (int ei = 2; ei < N_TAB_ELEMENTS; ei++) { // Tabulated elements from row 2 on: H and He are rows 0 and 1
+        const int i = row_elem(ei);
         double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
-        const int ei = elem_row(i);
 
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
             double x_ion = n_and_ion_fracs[i].ion_fracs_new[j];
@@ -1137,13 +1135,13 @@ double photoheating_UVB(const CompactIonData& n_and_ion_fracs,
 
     double heating_rate = 0.0;
 
-    // Loop over all elements
-    for (int i = 1; i < 27; i++) {
+    // Loop over the tabulated elements
+    for (int ei = 0; ei < N_TAB_ELEMENTS; ei++) {
+        const int i = row_elem(ei);
         double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
-        const int ei = elem_row(i);
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
             heating_rate += (n_element * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.HM12_UVB_z(ei, j, 1)); // erg/s/cm^3
         }
@@ -1161,12 +1159,13 @@ double photoheating_UVB_G0(double G0,
 
     double heating_rate = 0.0;
 
-    // Loop over all elements (no need for H and He here)
-    for (int i = 3; i < 27; i++) {
+    // Loop over the tabulated elements (row 2 onwards: no need for H and He here)
+    for (int ei = 2; ei < N_TAB_ELEMENTS; ei++) {
+        const int i = row_elem(ei);
         double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
-        heating_rate += n_element * n_and_ion_fracs[i].ion_fracs_new[0] * tabData.G0_heating_rates(elem_row(i)) * G0; // erg/s/cm^3
+        heating_rate += n_element * n_and_ion_fracs[i].ion_fracs_new[0] * tabData.G0_heating_rates(ei) * G0; // erg/s/cm^3
     }
 
     return heating_rate;
@@ -1320,23 +1319,26 @@ double local_photoheating(std::array<double, N_GROUPS>& dNp,
                           const TabulatedData& tabData) {
     // Heading due to the local radiation field
 
-    double heating_rate = 0.0; 
+    double heating_rate = 0.0;
 
-    for (int i = 1; i < 27; i++) { // Loop over elements
+    // looping over number of elements being used (active species)
+    // refactor: remove if-statement
+
+    for (int ei = 0; ei < N_TAB_ELEMENTS; ei++) { // Loop over tabulated elements
+        const int i = row_elem(ei);
         double n_element = n_and_ion_fracs.n_element_new[i];
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
-        const int ei = elem_row(i);
 
         for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
-
+            double n_ion = n_element * n_and_ion_fracs[i].ion_fracs_new[j];
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                heating_rate += (dNp[k] * n_and_ion_fracs.n_element_new[i] * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(ei, j, k, 2));
+                heating_rate += (dNp[k] * n_ion * tabData.cs_ph(ei, j, k, 2));
             } // End loop over photon groups
         } // End loop over ions
     } // End loop over elements
-    return fmax(heating_rate,1e-100);
+    return fmax(heating_rate, 1e-100);
 }
 
 KOKKOS_INLINE_FUNCTION

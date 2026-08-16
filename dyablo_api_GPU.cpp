@@ -1430,8 +1430,11 @@ void HandHe_ions_step(
 // result but update independently of each other. The electron-density residual
 // is computed once from the summed new fractions. ne/xe/mu/TK are not written
 // back: the driver recomputes them from committed fractions on commit/prep.
-// Must be called after HandHe_ions_step. Scratch level 0 must provide
-// MAX_TOTAL_IONS * sizeof(CompactIonData::xion_t) bytes per team.
+// Must be called after HandHe_ions_step. x_snap must point to a team-shared
+// buffer of MAX_TOTAL_IONS ion fractions (level-0 scratch), allocated by the
+// caller once per kernel invocation: team scratch is a bump allocator that is
+// never freed, so a get_shmem here would exhaust the pad and return nullptr
+// on the second call when the fused tail kernel loops over subcycle iterations.
 template <
     bool constant_temperature,
     bool include_H2,
@@ -1455,6 +1458,7 @@ void metal_ions_step(
     const std::array<double, N_GROUPS>& N_phot_new,
     const uint16_t* ion_map,
     const int n_ion_work,
+    CompactIonData::xion_t* const x_snap,
     SubcycleState& state)
 {
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
@@ -1466,7 +1470,6 @@ void metal_ions_step(
     // its own element's stages from here while writing updates to ion_fracs_new
     // (metals are untouched by the H/He phase, so the snapshot holds their
     // post-molecular values)
-    xion_t* x_snap = (xion_t*) team.team_scratch(0).get_shmem(MAX_TOTAL_IONS * sizeof(xion_t));
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, MAX_TOTAL_IONS), [&](const int t) {
         x_snap[t] = n_and_ion_fracs.ion_fracs_new_flat[t];
     });

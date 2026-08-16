@@ -65,7 +65,10 @@ public:
         int conv_its,
         int max_its,
         int& total_iter_reached,
-        PhysicsFlags flags
+        PhysicsFlags flags,
+        const bool rt_smooth,
+        const std::array<double, N_GROUPS>& dNpdt,
+        const Array2D_RT& dFpdt
     ) const;
 
     // Constant element data (lives on device, shared across threads)

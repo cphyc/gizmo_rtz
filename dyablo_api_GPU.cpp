@@ -512,9 +512,10 @@ void radiation_step(
     // optically thick cells its exponential decay would otherwise pin the
     // subcycle timestep at ddt*kappa ~ 0.07 for thousands of iterations.
     // Such groups still deplete normally but stop gating the controller.
-    // rad_residual_floor = 0 (default) reproduces the historical behavior.
-    const double rad_residual_floor = 0.0,
-    const std::array<double, N_GROUPS>* N_phot_start = nullptr)
+    const double rad_residual_floor,
+    const std::array<double, N_GROUPS>* N_phot_start,
+    const bool rt_smooth,
+    const std::array<double, N_GROUPS>& dNpdt)
 {
     // Self-shielding factors
     state.f_shd_H2 = 1.0;
@@ -576,6 +577,8 @@ void radiation_step(
             // Next deplete the photons from the group
             phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
             N_phot_new[k] = N_PHOT[k] * phot_att[k];
+            if (rt_smooth)
+                N_phot_new[k] = fmax(1e-30, (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
 
             // Measure the redisual
             double residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
@@ -1811,7 +1814,9 @@ bool subcycle_commit_and_control(
     const std::array<double, N_GROUPS> &phot_att,
     double &ddt,
     double &total_time,
-    SubcycleState &state)
+    SubcycleState &state,
+    const bool rt_smooth,
+    const Array2D_RT& dFpdt)
 {
     const bool committed = state.x_percent_rule;
 
@@ -1848,6 +1853,8 @@ bool subcycle_commit_and_control(
                 // Update flux for all dimensions
                 double fred = 0.0;
                 for (int dim = 0; dim < N_DIM; dim++) {
+                    if (rt_smooth)
+                        F_PHOT[k][dim] += ddt * dFpdt[k][dim];
                     F_PHOT[k][dim] *= phot_att[k];
                     fred += F_PHOT[k][dim] * F_PHOT[k][dim];
                 }

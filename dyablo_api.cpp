@@ -448,7 +448,10 @@ double subcycle_chemistry(
                       const TabulatedData& tabData,
                       const PhysicsFlags& flags,
                       std::array<double, N_GROUPS> &N_PHOT,
-                      Array2D_RT &F_PHOT) {
+                      Array2D_RT &F_PHOT,
+                      const bool rt_smooth,
+                      const std::array<double, N_GROUPS>& dNpdt,
+                      const Array2D_RT& dFpdt) {
     /*
     Computes chemical equilibrium
 
@@ -624,6 +627,8 @@ double subcycle_chemistry(
                 // Next deplete the photons from the group
                 phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
                 N_phot_new[k] = N_PHOT[k] * phot_att[k];
+                if (rt_smooth)
+                    N_phot_new[k] = fmax(1e-30, (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
 
                 // Measure the redisual
                 residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
@@ -1191,6 +1196,8 @@ double subcycle_chemistry(
                     // Update flux for all dimensions
                     double fred = 0.0;
                     for (int dim = 0; dim < N_DIM; dim++) {
+                        if (rt_smooth)
+                            F_PHOT[k][dim] += ddt * dFpdt[k][dim];
                         F_PHOT[k][dim] *= phot_att[k];
                         fred += F_PHOT[k][dim] * F_PHOT[k][dim];
                     }
@@ -1392,7 +1399,10 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     int conv_its,
     int max_its,
     int& total_iter_reached,
-    PhysicsFlags flags) const
+    PhysicsFlags flags,
+    const bool rt_smooth,
+    const std::array<double, N_GROUPS>& dNpdt,
+    const Array2D_RT& dFpdt) const
 {
 
         const Element* elements = elements_d.data();
@@ -1416,7 +1426,8 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
             conv_its, max_its, total_iter_reached,
             tabData,
             flags,
-            N_PHOT_loc, F_PHOT_loc
+            N_PHOT_loc, F_PHOT_loc,
+            rt_smooth, dNpdt, dFpdt
         );
 
         {

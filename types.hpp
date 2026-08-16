@@ -26,6 +26,25 @@ constexpr int elem_row(int Z) {
         default: return -1;
     }
 }
+ // Maps a row in the element-compacted tables to its atomic number
+KOKKOS_INLINE_FUNCTION
+constexpr int row_elem(int row) {
+    switch (row) {
+        case 0: return  1; // H
+        case 1: return  2; // He
+        case 2: return  6; // C
+        case 3: return  7; // N
+        case 4: return  8; // O
+        case 5: return 10; // Ne
+        case 6: return 12; // Mg
+        case 7: return 14; // Si
+        case 8: return 16; // S
+        case 9: return 26; // Fe
+        default: return -1;
+    }
+}
+
+
 #define N_GROUPS 6
 #define N_DIM 3
 #define N_DUST_WAV 1000

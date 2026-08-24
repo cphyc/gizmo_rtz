@@ -7,6 +7,15 @@
 #include "types.hpp"
 #include "molecules.hpp"
 
+// nvcc never constant-folds pow(), even for a literal integer exponent and a
+// compile-time-constant base: every call emits __internal_accurate_pow (a ~194
+// instruction subroutine). Writing the small integer powers as multiplications
+// removes the call and, where the base is built from literal species constants,
+// lets the whole expression fold to a literal at compile time.
+#define SQR(x)  ((x)*(x))
+#define CUBE(x) ((x)*(x)*(x))
+
+
 // Constants
 const double MIN_METAL_COOL_DENS = 1E-10; //minimum number density to calc cooling
 const double MIN_COOL_ION = 1.E-10; //minimum number density to calculate cooling for a particular ion
@@ -164,7 +173,7 @@ double compton_cooling(double T, double a){
 
     // Haiman+ 1996
     double term_1 = 1.017E-37;
-    double term_2 = pow(Tcmb_over_a, 4);
+    double term_2 = SQR(SQR(Tcmb_over_a));
     double term_3 = T - Tcmb_over_a;
     double cooling_rate = term_1 * term_2 * term_3;
     return cooling_rate;
@@ -542,18 +551,18 @@ double three_level(double g_0, double g_1, double g_2,
     double E_20 = (H_PLANCK * C_CGS / lam_20_minus4) / KB; //! E/K (K)
     double E_21 = (H_PLANCK * C_CGS / lam_21_minus4) / KB; //! E/K (K)
 
-    double B_01 = A_10 * (pow(lam_10_minus4, 3)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
-    double B_02 = A_20 * (pow(lam_20_minus4, 3)) * (g_2 / g_0) / (2.0 * H_PLANCK * C_CGS);
-    double B_12 = A_21 * (pow(lam_21_minus4, 3)) * (g_2 / g_1) / (2.0 * H_PLANCK * C_CGS);
+    double B_01 = A_10 * (CUBE(lam_10_minus4)) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_02 = A_20 * (CUBE(lam_20_minus4)) * (g_2 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_12 = A_21 * (CUBE(lam_21_minus4)) * (g_2 / g_1) / (2.0 * H_PLANCK * C_CGS);
 
     double B_10 = (g_0 / g_1) * B_01;
     double B_20 = (g_0 / g_2) * B_02;
     double B_21 = (g_1 / g_2) * B_12;
 
     //! CMB black body spectrum
-    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
-    double B_nu_20 = (2.0 * H_PLANCK * pow(nu_20, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_20 / (KB * T_cmb)) - 1.0);
-    double B_nu_21 = (2.0 * H_PLANCK * pow(nu_21, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_21 / (KB * T_cmb)) - 1.0);
+    double B_nu_10 = (2.0 * H_PLANCK * CUBE(nu_10) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+    double B_nu_20 = (2.0 * H_PLANCK * CUBE(nu_20) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_20 / (KB * T_cmb)) - 1.0);
+    double B_nu_21 = (2.0 * H_PLANCK * CUBE(nu_21) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_21 / (KB * T_cmb)) - 1.0);
 
     // ! Find temperature index.
     int itemp_low = (int)floor((logT - tmin)/delta_temp);
@@ -675,12 +684,12 @@ double two_level(double g_0, double g_1, double lam_10, double A_10,
 
     double E_10 = (H_PLANCK * C_CGS / lam_10_minus4) / KB; //! E/K (K)
 
-    double B_01 = A_10 * pow(lam_10_minus4, 3) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
+    double B_01 = A_10 * CUBE(lam_10_minus4) * (g_1 / g_0) / (2.0 * H_PLANCK * C_CGS);
 
     double B_10 = (g_0 / g_1) * B_01;
 
     //! CMB black body spectrum
-    double B_nu_10 = (2.0 * H_PLANCK * pow(nu_10, 3) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
+    double B_nu_10 = (2.0 * H_PLANCK * CUBE(nu_10) / (C_CGS*C_CGS)) / (exp(H_PLANCK * nu_10 / (KB * T_cmb)) - 1.0);
 
     // ! Find temperature index.
     int itemp_low = (int)floor((logT - tmin)/delta_temp);
@@ -1349,7 +1358,7 @@ double CO_cooling_koyama_00(double nH, double nH2, double nHI, double nCO, doubl
     double term_a = (3.3e6 * pow(T / 1.0e3, 0.75)) / nH;
 
     // CO Rotational cooling
-    double rot_numerator = nCO * 4.0 * pow(KB * T, 2) * 9.7e-8;
+    double rot_numerator = nCO * 4.0 * SQR(KB * T) * 9.7e-8;
     double rot_denominator = 2.76 * KB * (1.0 + term_a + 1.5 * sqrt(term_a));
     rate += rot_numerator / rot_denominator;
 

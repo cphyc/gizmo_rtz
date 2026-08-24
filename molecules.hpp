@@ -16,10 +16,10 @@ double alpha_H2_prim(double T, double xe, double H2_cosmic_ray_ionization_rate, 
     // ! H + e- -> H- + gamma
     double k1;
     if (T < 6000.0) {
-        k1 = pow(10.0, -17.845 + logT * (0.762 + logT * (0.1523 - 0.03274 * logT)));
+        k1 = exp10(-17.845 + logT * (0.762 + logT * (0.1523 - 0.03274 * logT)));
     } else {
         double logT2 = logT * logT;
-        k1 = pow(10.0, -16.420 + logT2 * (0.1998 + logT2 * (-5.447E-3 + 4.0415E-5 * logT2)));
+        k1 = exp10(-16.420 + logT2 * (0.1998 + logT2 * (-5.447E-3 + 4.0415E-5 * logT2)));
     }
 
     // ! H- + H -> H2 + e
@@ -107,7 +107,7 @@ double beta_H2_krome(double T, double nH, double ne, double nH2, double nHe){
     destruction_rate += (4.38E-10 * pow(T,0.35) * exp(-102000.0/T) * ne);
 
     // H2 + He --> H + H + He
-    destruction_rate += (pow(10.0,-27.029 + (3.801 * log10(T)) - (29487.0/T)) * nHe);
+    destruction_rate += (exp10(-27.029 + (3.801 * log10(T)) - (29487.0/T)) * nHe);
 
     return destruction_rate;
 }
@@ -246,7 +246,7 @@ double comp_SCO(const TabulatedData& tabData, double nco_mol, double nh2, double
                         * (logeffcNCO - log10(tabData.sco_col1(idxCO)))
                         / (log10(tabData.sco_col1(idxCO+1)) - log10(tabData.sco_col1(idxCO)));
 
-        ss_factor *= pow(10.0,logsCO);
+        ss_factor *= exp10(logsCO);
     }
 
     // H2 shielding of CO
@@ -268,7 +268,7 @@ double comp_SCO(const TabulatedData& tabData, double nco_mol, double nh2, double
                         * (logeffcNH2 - log10(tabData.sh2_col1(idxH2)))
                         / (log10(tabData.sh2_col1(idxH2+1)) - log10(tabData.sh2_col1(idxH2)));
 
-        ss_factor *= pow(10.0,logsH2);
+        ss_factor *= exp10(logsH2);
     }
 
     return ss_factor;

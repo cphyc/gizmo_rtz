@@ -204,8 +204,8 @@ double get_dust_mass_and_depletion(
     else
         y = b + aL * (xs - x);
 
-    double G2D = pow(10.0, y);
-    double G2D_sol = pow(10.0, a);
+    double G2D = exp10(y);
+    double G2D_sol = exp10(a);
 
     double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
 
@@ -1048,6 +1048,25 @@ void ions_gs_element(
         int n_ions = elements[i].n_ions;
         const int ei = elem_row(i);
 
+        // Hydrogen's charge-exchange partners: both H stages need the same two
+        // sums over every metal stage, since this routine only writes H and the
+        // metal fractions cannot change between them. Computing them once here
+        // instead of once per stage halves the charge-transfer work for H --
+        // each term costs a pow plus one or two exp, and for the H/He/C/O
+        // network the loop covers 19 stages.
+        double ct_ion_sum = 0.0, ct_rec_sum = 0.0;
+        if (flags.include_charge_exchange && i == 1) {
+            for (int ii = 2; ii < MAX_ELEMENTS; ii++){
+                if (n_and_ion_fracs.n_element[ii] == 0.0) continue;
+                for (int jj = 0; jj < elements[ii].n_ions; jj++) {
+                    const double paired_ion_number_density =
+                        n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element_new;
+                    ct_ion_sum += charge_transfer_ionization(jj,ii,state.TK, tabData) * paired_ion_number_density;
+                    ct_rec_sum += charge_transfer_recombination(jj,ii,state.TK, tabData) * paired_ion_number_density;
+                }
+            }
+        }
+
         // Loop over the number of ions
         for (int j = 0; j < n_ions; j++) {
 
@@ -1162,22 +1181,16 @@ void ions_gs_element(
             // Charge exchange
             if (flags.include_charge_exchange) {
                 if (i == 1) {  // If element is hydrogen
-                    // Loop over all other elements
-                    for (int ii = 2; ii < MAX_ELEMENTS; ii++){
-                        if (n_and_ion_fracs.n_element[ii] == 0.0) continue;
-
-                        // Loop over all other ionization states
-                        for (int jj = 0; jj < elements[ii].n_ions; jj++) {
-                            double paired_ion_number_density = n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element_new;
-                            if (j == 0) { // H
-                                cr += charge_transfer_ionization(jj,ii,state.TK, tabData) * n_and_ion_fracs[i].ion_fracs_new[j+1] * paired_ion_number_density; //! Example:  O + H+ => O+ + H
-                                de += charge_transfer_recombination(jj,ii,state.TK, tabData) * paired_ion_number_density; //! Example:  O+ + H => O + H+
-                            } else { // H+
-                                de += charge_transfer_ionization(jj,ii,state.TK, tabData) * paired_ion_number_density; //! Example:  O + H+ => O+ + H
-                                cr += charge_transfer_recombination(jj,ii,state.TK, tabData) * n_and_ion_fracs[i].ion_fracs_new[j-1] * paired_ion_number_density; //! Example:  O+ + H => O + H+
-                            }
-                        } // end loop over ionization states
-                    } // end loop over other elements
+                    // The H fraction factors stay at their point of use: this is
+                    // a Gauss-Seidel sweep, so stage 1 must see the ion_fracs_new[0]
+                    // that stage 0 just wrote.
+                    if (j == 0) { // H
+                        cr += ct_ion_sum * n_and_ion_fracs[i].ion_fracs_new[j+1]; //! Example:  O + H+ => O+ + H
+                        de += ct_rec_sum;                                          //! Example:  O+ + H => O + H+
+                    } else { // H+
+                        de += ct_ion_sum;                                          //! Example:  O + H+ => O+ + H
+                        cr += ct_rec_sum * n_and_ion_fracs[i].ion_fracs_new[j-1];  //! Example:  O+ + H => O + H+
+                    }
                 } else { // All other elements
                     double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new;
                     double HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element_new;
@@ -1375,6 +1388,206 @@ void HandHe_ions_step(
             primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new, state);
     });
     team.team_barrier();
+}
+
+
+// Serial (single-thread-per-cell) variant of metal_ions_step, for the
+// RangePolicy tail driver. Semantically identical to the team version: the
+// Jacobi sweep still reads a frozen snapshot of the post-H/He fractions while
+// writing ion_fracs_new. The snapshot is taken per element instead of over the
+// whole flat array, which is exactly equivalent because every stage reads only
+// its own element's frozen stages (j-1, j, j+1); the only cross-element read is
+// the *live* hydrogen fraction used for charge exchange, which metals never
+// write. Reductions are sequential rather than tree-order, so results may
+// differ from the team version by a few ulp.
+template <
+    bool constant_temperature,
+    bool include_H2,
+    bool include_CO,
+    bool rt_advect,
+    bool include_self_shielding
+>
+KOKKOS_INLINE_FUNCTION
+void metal_ions_step(
+    const double ddt,
+    const Element* elements,
+    CompactIonData& n_and_ion_fracs,
+    const TabulatedData& tabData,
+    const PhysicsFlags& flags,
+    const double dust_to_gas_mass_ratio_over_mw,
+    const double UV_background_G0,
+    const double primary_cosmic_ray_ionization_rate,
+    const double ss_factor,
+    const std::array<double, N_GROUPS>& N_phot_new,
+    SubcycleState& state)
+{
+    // Skip if an earlier step (or the H/He phase) already broke the X% rule
+    if (!state.compute_atoms || !state.x_percent_rule) return;
+
+    using xion_t = CompactIonData::xion_t;
+
+    // See the TODO(code) note in ions_step
+    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+
+    // Live H fractions (updated in place by HandHe_ions_step) for metal charge exchange
+    const xion_t* x_H = n_and_ion_fracs.ion_fracs_new_flat + n_and_ion_fracs.offsets[1];
+    const double HI_number_density  = x_H[0] * n_and_ion_fracs[1].n_element_new;
+    const double HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+
+    double max_stage_residual = -999.;
+    int    violated  = 0;
+    double delta_ne  = 0.0;
+
+    for (int i = 3; i < MAX_ELEMENTS; i++) {
+        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+
+        const int n_ions = elements[i].n_ions;
+        const int ei = elem_row(i);
+        const int size = n_ions + elements[i].n_mol;
+
+        // Rolling 3-element window over the frozen snapshot. Stage j reads only
+        // snapshot entries j-1, j and j+1, and we overwrite entry j only after
+        // saving it, so keeping (j-1, j, j+1) in registers is exactly equivalent
+        // to snapshotting the whole element and costs no local memory.
+        xion_t s_m1 = xion_t(0);
+        xion_t s_0  = n_and_ion_fracs[i].ion_fracs_new[0];
+
+        for (int j = 0; j < n_ions; j++) {
+            const xion_t s_p1 = (j + 1 < size) ? n_and_ion_fracs[i].ion_fracs_new[j+1] : xion_t(0);
+            const xion_t xi_snap[3] = { s_m1, s_0, s_p1 };
+            #define XS(k) xi_snap[(k) - j + 1]
+            /////////////////////////
+            //       Creation      //
+            /////////////////////////
+            double cr = 0.E0;
+
+            if (j < (n_ions - 1)) cr += recombination(state.TK, j+1, i, tabData) * state.ne * XS(j+1);
+
+            if (flags.include_collisional_ionization) {
+                if (j > 0) cr += collisional_ionization(state.TK, j-1, i, tabData) * state.ne * XS(j-1);
+            }
+
+            if (flags.include_HM12_UVB) {
+                if (j > 0) cr += tabData.HM12_UVB_z(ei, j-1, 0) * ss_factor * XS(j-1);
+            }
+
+            if (flags.include_photoionization) {
+                if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * XS(j-1);
+            }
+
+            if (flags.include_cosmic_ray_ionization) {
+                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(ei, j-1) * state.total_cosmic_ray_ionization_rate * XS(j-1);
+                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor * XS(j-1);
+            }
+
+            if (flags.include_dust_recombination) {
+                if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * XS(j+1);
+            }
+
+            if (rt_advect) {
+                if (j > 0) {
+                    for (int k = 0; k < N_GROUPS; k++) {
+                        cr += N_phot_new[k] * tabData.cs_ph(ei, j-1, k, 0) * XS(j-1);
+                    }
+                }
+            }
+
+            /////////////////////////
+            //     Destruction     //
+            /////////////////////////
+            double de = 0.E0;
+
+            if (flags.include_collisional_ionization) {
+                if (j < (n_ions - 1)) de += collisional_ionization(state.TK, j, i, tabData) * state.ne;
+            }
+
+            if (flags.include_HM12_UVB) {
+                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(ei, j, 0) * ss_factor;
+            }
+
+            if (flags.include_photoionization) {
+                if (j == 0) de += UV_background_G0 * elements[i].G0_photo_rate;
+            }
+
+            if (j > 0) de += recombination(state.TK, j, i, tabData) * state.ne;
+
+            if (flags.include_cosmic_ray_ionization) {
+                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(ei, j) * state.total_cosmic_ray_ionization_rate;
+                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor;
+            }
+
+            if (flags.include_dust_recombination) {
+                if (j > 0) de += dust_recombination_rates(j, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density;
+            }
+
+            if (rt_advect) {
+                if (j < (n_ions - 1)) {
+                    for (int k = 0; k < N_GROUPS; k++) {
+                        de += N_phot_new[k] * tabData.cs_ph(ei, j, k, 0);
+                    }
+                }
+            }
+
+            /////////////////////////
+            //   Charge Transfer   //
+            /////////////////////////
+            if (flags.include_charge_exchange) {
+                if (j > 0) {
+                    cr += charge_transfer_ionization(j-1,i,state.TK, tabData) * XS(j-1) * HII_number_density;
+                    de += charge_transfer_recombination(j,i,state.TK, tabData) * HI_number_density;
+                }
+                if (j < (n_ions - 1)) {
+                    de += charge_transfer_ionization(j,i,state.TK, tabData) * HII_number_density;
+                    cr += charge_transfer_recombination(j+1,i,state.TK, tabData) * XS(j+1) * HI_number_density;
+                }
+            }
+
+            /////////////////////////
+            //       Update        //
+            /////////////////////////
+            double x_new = (cr*ddt + XS(j))/(1.0 + de*ddt);
+            n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(x_new,MIN_XION),1.0);
+
+            s_m1 = s_0;
+            s_0  = s_p1;
+            #undef XS
+        }
+
+        /////////////////////////
+        //     Convergence     //
+        /////////////////////////
+        for (int j = 0; j < n_ions; j++) {
+            const double x_old = n_and_ion_fracs[i].ion_fracs[j];
+            const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
+            const double residual = fabs(x_new - x_old) / (x_old + X_FM);
+            max_stage_residual = fmax(max_stage_residual, residual);
+            if (x_old > 1E-10 && residual > X_PCT_RULE) violated = 1;
+            delta_ne += ((n_and_ion_fracs[i].n_element_new * x_new)
+                       - (n_and_ion_fracs[i].n_element * x_old)) * (double)j;
+        }
+    }
+
+    const double ne_new = state.ne + delta_ne;
+    const double ne_residual = fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
+
+    state.max_residual_all = fmax(state.max_residual_all, fmax(max_stage_residual, ne_residual));
+    if (violated > 0 || ne_residual > X_PCT_RULE) {
+        state.success_counter = 0;
+        state.x_percent_rule = false;
+    }
+
+    // REDUCE SO THAT THE METAL IONIZATION FRACTIONS SUM TO 1
+    if (state.x_percent_rule) {
+        for (int i = 3; i < MAX_ELEMENTS; i++) {
+            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+            int size = elements[i].n_ions + elements[i].n_mol;
+            double current_mass_frac = 0.0;
+            for (int i_tmp = 0; i_tmp < size; i_tmp++)
+                current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
+            for (int i_tmp = 0; i_tmp < size; i_tmp++)
+                n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
+        }
+    }
 }
 
 
@@ -1747,8 +1960,9 @@ void subcycle_timestep_control(
     }
     // TODO(code): Make this a parameter for the timestep limiter
     // double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
-    double tlimit = 20.0;
-    ddt = fmin(ddt,pow(10.0,tlimit));
+    // pow(10, 20) is a compile-time constant that nvcc will not fold
+    constexpr double tlimit = 1E20;
+    ddt = fmin(ddt,tlimit);
 }
 
 

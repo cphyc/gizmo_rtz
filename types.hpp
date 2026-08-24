@@ -5,7 +5,17 @@
 #define MAX_ELEMENTS 27
 // Maximum total ion+molecule states across all elements:
 // H(3) + He(3) + C(7) + N(8) + O(9) + Ne(11) + Mg(13) + Si(15) + S(17) + Fe(27) = 113
+//
+// This is the bound on CompactIonData's two flat ion-fraction arrays, and it is
+// storage that every cell carries whether or not the configured network uses it.
+// A run with only H, He, C and O needs 22 of the 113 slots, so the default wastes
+// ~0.7 kB per cell of bandwidth in every kernel that touches the solver state.
+// Override it at configure time to match the network actually being run
+// (-DDYABLO_PRISM_MAX_TOTAL_IONS=24); CoolingUpdate_PRISM_GPU checks the
+// configured network against it at startup and aborts if it would not fit.
+#ifndef MAX_TOTAL_IONS
 #define MAX_TOTAL_IONS 113
+#endif
 // Number of elements with tabulated data (see initialize_elements)
 #define N_TAB_ELEMENTS 10
 
@@ -126,8 +136,12 @@ struct CompactIonData {
                 ion_fracs_new_flat + offsets[i]};
     }
 
+    // `in_network`, when given, is a per-element map with -1 for elements the
+    // run's ion network does not include (dyablo's ions2passive). Without it
+    // every element initialize_elements knows about reserves its full
+    // ionization ladder, which is 113 slots whatever the .ini actually lists.
     KOKKOS_INLINE_FUNCTION
-    void init_offsets(const Element* elements) {
+    void init_offsets(const Element* elements, const int* in_network = nullptr) {
         for (int i = 0; i < MAX_ELEMENTS; i++) {
             n_element[i] = ndens_t(0);
             n_element_new[i] = ndens_t(0);
@@ -140,6 +154,7 @@ struct CompactIonData {
         int offset = 0;
         for (int i = 1; i < MAX_ELEMENTS; i++) {
             if (elements[i].atomic_number < 1) continue;
+            if (in_network && in_network[i] == -1) continue;
             offsets[i] = offset;
             offset += elements[i].n_ions + elements[i].n_mol;
         }

@@ -674,23 +674,23 @@ double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
     double tt;
     double rate;
 
-    const int ez = elem_row(iz);
+    const int erow = elem_row(iz);
 
     if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
         (iz == 26 && in_ > 11)) {
-        tt = sqrt(t / tabData.rnew(in_ - 1, ez, 2));
-        rate = tabData.rnew(in_ - 1, ez, 0) /
-               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, ez, 1)) *
-                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, ez, 3)),
-                    1.0 + tabData.rnew(in_ - 1, ez, 1)));
+        tt = sqrt(t / tabData.rnew(in_ - 1, erow, 2));
+        rate = tabData.rnew(in_ - 1, erow, 0) /
+               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, erow, 1)) *
+                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, erow, 3)),
+                    1.0 + tabData.rnew(in_ - 1, erow, 1)));
     } else {
         tt = t * 1.0e-04;
         if (iz == 26 && in_ <= 13) {
             rate = tabData.fe(in_ - 1, 0) /
                    pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
         } else {
-            rate = tabData.rrec(in_ - 1, ez, 0) /
-                   pow(tt, tabData.rrec(in_ - 1, ez, 1));
+            rate = tabData.rrec(in_ - 1, erow, 0) /
+                   pow(tt, tabData.rrec(in_ - 1, erow, 1));
         }
     }
 

@@ -575,10 +575,11 @@ void radiation_step(
 
                 // Get the number of ions
                 int n_ions = elements[i].n_ions;
-                const int ei = elem_row(i);
+                const int erow = elem_row(i);
+                if (erow < 0) continue;   // not a tabulated element: no rates exist for it
 
                 for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
-                    phAbs += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(ei,j,k,0);
+                    phAbs += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(erow,j,k,0);
                 } // End loop over ions
             } // End loop over elements
 
@@ -1068,7 +1069,7 @@ void ions_gs_element(
 
         // Get the number of ions
         int n_ions = elements[i].n_ions;
-        const int ei = elem_row(i);
+        const int erow = elem_row(i);
 
         // Hydrogen's charge-exchange partners: both H stages need the same two
         // sums over every metal stage, since this routine only writes H and the
@@ -1113,7 +1114,7 @@ void ions_gs_element(
 
             // Photoionization of the less excited state
             if (flags.include_HM12_UVB) {
-                if (j > 0) cr += tabData.HM12_UVB_z(ei, j-1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
             }
 
             // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1123,10 +1124,10 @@ void ions_gs_element(
 
             // Cosmic ray ionization of the less excited state
             if (flags.include_cosmic_ray_ionization) {
-                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(ei, j-1) * state.total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
 
                 // Cosmic ray ionization of the less excited state from induced UV
-                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
             }
 
             // Recombination on dust for the more excited state
@@ -1139,7 +1140,7 @@ void ions_gs_element(
             if (rt_advect) {
                 if (j > 0) {
                     for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                        cr += N_phot_new[k] * tabData.cs_ph(ei, j-1, k, 0) * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * n_and_ion_fracs[i].ion_fracs_new[j-1];
                     } // End loop over photon groups
                 }
             }
@@ -1161,7 +1162,7 @@ void ions_gs_element(
 
             // Photoionization
             if (flags.include_HM12_UVB) {
-                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(ei, j, 0) * ss_factor;
+                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
             }
 
             // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1174,10 +1175,10 @@ void ions_gs_element(
 
             // Cosmic ray ionization
             if (flags.include_cosmic_ray_ionization) {
-                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(ei, j) * state.total_cosmic_ray_ionization_rate;
+                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
 
                 // Cosmic ray ionization from induced UV
-                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor;
+                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor;
             }
 
             // Recombination on dust
@@ -1190,7 +1191,7 @@ void ions_gs_element(
             if (rt_advect) {
                 if (j < (n_ions - 1)) {
                     for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                        de += N_phot_new[k] * tabData.cs_ph(ei, j, k, 0);
+                        de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
                     } // End loop over photon groups
                 }
             }
@@ -1464,7 +1465,8 @@ void metal_ions_step(
         if (n_and_ion_fracs.n_element[i] == 0.0) continue;
 
         const int n_ions = elements[i].n_ions;
-        const int ei = elem_row(i);
+        const int erow = elem_row(i);
+        if (erow < 0) continue;   // not a tabulated element: no rates exist for it
         const int size = n_ions + elements[i].n_mol;
 
         // Rolling 3-element window over the frozen snapshot. Stage j reads only
@@ -1490,7 +1492,7 @@ void metal_ions_step(
             }
 
             if (flags.include_HM12_UVB) {
-                if (j > 0) cr += tabData.HM12_UVB_z(ei, j-1, 0) * ss_factor * XS(j-1);
+                if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * XS(j-1);
             }
 
             if (flags.include_photoionization) {
@@ -1498,8 +1500,8 @@ void metal_ions_step(
             }
 
             if (flags.include_cosmic_ray_ionization) {
-                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(ei, j-1) * state.total_cosmic_ray_ionization_rate * XS(j-1);
-                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor * XS(j-1);
+                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * XS(j-1);
+                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * XS(j-1);
             }
 
             if (flags.include_dust_recombination) {
@@ -1509,7 +1511,7 @@ void metal_ions_step(
             if (rt_advect) {
                 if (j > 0) {
                     for (int k = 0; k < N_GROUPS; k++) {
-                        cr += N_phot_new[k] * tabData.cs_ph(ei, j-1, k, 0) * XS(j-1);
+                        cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * XS(j-1);
                     }
                 }
             }
@@ -1524,7 +1526,7 @@ void metal_ions_step(
             }
 
             if (flags.include_HM12_UVB) {
-                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(ei, j, 0) * ss_factor;
+                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
             }
 
             if (flags.include_photoionization) {
@@ -1534,8 +1536,8 @@ void metal_ions_step(
             if (j > 0) de += recombination(state.TK, j, i, tabData) * state.ne;
 
             if (flags.include_cosmic_ray_ionization) {
-                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(ei, j) * state.total_cosmic_ray_ionization_rate;
-                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor;
+                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
+                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor;
             }
 
             if (flags.include_dust_recombination) {
@@ -1545,7 +1547,7 @@ void metal_ions_step(
             if (rt_advect) {
                 if (j < (n_ions - 1)) {
                     for (int k = 0; k < N_GROUPS; k++) {
-                        de += N_phot_new[k] * tabData.cs_ph(ei, j, k, 0);
+                        de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
                     }
                 }
             }
@@ -1678,7 +1680,8 @@ void metal_ions_step(
         if (n_and_ion_fracs.n_element[i] == 0.0) return;
 
         const int n_ions = elements[i].n_ions;
-        const int ei = elem_row(i);
+        const int erow = elem_row(i);
+        if (erow < 0) return;     // not a tabulated element: no rates exist for it
         const xion_t* xi_snap = x_snap + n_and_ion_fracs.offsets[i];
 
         /////////////////////////
@@ -1696,7 +1699,7 @@ void metal_ions_step(
 
         // Photoionization of the less excited state
         if (flags.include_HM12_UVB) {
-            if (j > 0) cr += tabData.HM12_UVB_z(ei, j-1, 0) * ss_factor * xi_snap[j-1];
+            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap[j-1];
         }
 
         // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1706,10 +1709,10 @@ void metal_ions_step(
 
         // Cosmic ray ionization of the less excited state
         if (flags.include_cosmic_ray_ionization) {
-            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(ei, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap[j-1];
+            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap[j-1];
 
             // Cosmic ray ionization of the less excited state from induced UV
-            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor * xi_snap[j-1];
+            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap[j-1];
         }
 
         // Recombination on dust for the more excited state
@@ -1721,7 +1724,7 @@ void metal_ions_step(
         if (rt_advect) {
             if (j > 0) {
                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                    cr += N_phot_new[k] * tabData.cs_ph(ei, j-1, k, 0) * xi_snap[j-1];
+                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap[j-1];
                 } // End loop over photon groups
             }
         }
@@ -1738,7 +1741,7 @@ void metal_ions_step(
 
         // Photoionization
         if (flags.include_HM12_UVB) {
-            if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(ei, j, 0) * ss_factor;
+            if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
         }
 
         // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1751,10 +1754,10 @@ void metal_ions_step(
 
         // Cosmic ray ionization
         if (flags.include_cosmic_ray_ionization) {
-            if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(ei, j) * state.total_cosmic_ray_ionization_rate;
+            if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
 
             // Cosmic ray ionization from induced UV
-            if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * state.cosmic_ray_scale_factor;
+            if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor;
         }
 
         // Recombination on dust
@@ -1766,7 +1769,7 @@ void metal_ions_step(
         if (rt_advect) {
             if (j < (n_ions - 1)) {
                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                    de += N_phot_new[k] * tabData.cs_ph(ei, j, k, 0);
+                    de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
                 } // End loop over photon groups
             }
         }

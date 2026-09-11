@@ -669,10 +669,11 @@ double subcycle_chemistry(
 
                     // Get the number of ions
                     n_ions = elements[i].n_ions;
-                    const int ei = elem_row(i);
+                    const int erow = elem_row(i);
+                    if (erow < 0) continue;   // not a tabulated element: no rates exist for it
 
                     for (int j = 0; j < n_ions - 1; j++) { // Loop over the number of ions --> no absorption by final ion
-                        phAbs += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(ei,j,k,0);
+                        phAbs += n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j] * tabData.cs_ph(erow,j,k,0);
                     } // End loop over ions
                 } // End loop over elements
 
@@ -964,7 +965,8 @@ double subcycle_chemistry(
 
                 // Get the number of ions
                 n_ions = elements[i].n_ions;
-                const int ei = elem_row(i);
+                const int erow = elem_row(i);
+                if (erow < 0) continue;   // not a tabulated element: no rates exist for it
 
                 // Loop over the number of ions
                 for (int j = 0; j < n_ions; j++) {
@@ -990,7 +992,7 @@ double subcycle_chemistry(
 
                     // Photoionization of the less excited state
                     if (flags.include_HM12_UVB) {
-                        if (j > 0) cr += tabData.HM12_UVB_z(ei, j-1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
                     }
                     
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1000,10 +1002,10 @@ double subcycle_chemistry(
 
                     // Cosmic ray ionization of the less excited state
                     if (flags.include_cosmic_ray_ionization) {
-                        if (j > 0) cr += tabData.cosmic_ray_ionization_rates(ei, j-1) * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * total_cosmic_ray_ionization_rate * n_and_ion_fracs[i].ion_fracs_new[j-1];
 
                         // Cosmic ray ionization of the less excited state from induced UV
-                        if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                        if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * cosmic_ray_scale_factor * n_and_ion_fracs[i].ion_fracs_new[j-1];
                     }
 
                     // Recombination on dust for the more excited state
@@ -1016,7 +1018,7 @@ double subcycle_chemistry(
                     if (rt_advect) {
                         if (j > 0) {
                             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                                cr += N_phot_new[k] * tabData.cs_ph(ei, j-1, k, 0) * n_and_ion_fracs[i].ion_fracs_new[j-1];
+                                cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * n_and_ion_fracs[i].ion_fracs_new[j-1];
                             } // End loop over photon groups
                         }
                     }
@@ -1038,7 +1040,7 @@ double subcycle_chemistry(
 
                     // Photoionization
                     if (flags.include_HM12_UVB) {
-                        if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(ei, j, 0) * ss_factor;
+                        if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
                     }
 
                     // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
@@ -1051,10 +1053,10 @@ double subcycle_chemistry(
 
                     // Cosmic ray ionization
                     if (flags.include_cosmic_ray_ionization) {
-                        if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(ei, j) * total_cosmic_ray_ionization_rate;
+                        if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * total_cosmic_ray_ionization_rate;
 
                         // Cosmic ray ionization from induced UV
-                        if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(ei) * cosmic_ray_scale_factor;
+                        if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * cosmic_ray_scale_factor;
                     }
 
                     // Recombination on dust
@@ -1067,7 +1069,7 @@ double subcycle_chemistry(
                     if (rt_advect) {
                         if (j < (n_ions - 1)) {
                             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                                de += N_phot_new[k] * tabData.cs_ph(ei, j, k, 0);
+                                de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
                             } // End loop over photon groups
                         }
                     }

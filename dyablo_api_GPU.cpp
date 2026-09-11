@@ -537,7 +537,8 @@ void radiation_step(
     const double rad_residual_floor,
     const std::array<double, N_GROUPS>* N_phot_start,
     const bool rt_smooth,
-    const std::array<double, N_GROUPS>& dNpdt)
+    const std::array<double, N_GROUPS>& dNpdt,
+    const bool static_field_test = false)
 {
     // Self-shielding factors
     state.f_shd_H2 = 1.0;
@@ -598,10 +599,17 @@ void radiation_step(
             }
 
             // Next deplete the photons from the group
-            phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
-            N_phot_new[k] = N_PHOT[k] * phot_att[k];
-            if (rt_smooth)
-                N_phot_new[k] = fmax(1e-30, (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
+            if (static_field_test) {
+                // Not depleted: phot_att stays 1 so the commit leaves F_PHOT
+                // alone too, and the residual below is identically zero.
+                phot_att[k] = 1.0;
+                N_phot_new[k] = N_PHOT[k];
+            } else {
+                phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
+                N_phot_new[k] = N_PHOT[k] * phot_att[k];
+                if (rt_smooth)
+                    N_phot_new[k] = fmax(1e-30, (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
+            }
 
             // Measure the redisual
             double residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));

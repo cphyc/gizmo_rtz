@@ -1053,7 +1053,6 @@ void ions_gs_element(
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double dust_to_gas_mass_ratio_over_mw,
     const double UV_background_G0,
     const double primary_cosmic_ray_ionization_rate,
     const double ss_factor,
@@ -1367,7 +1366,7 @@ void HandHe_ions_step(
 
         ions_gs_element<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             i, ddt, elements, n_and_ion_fracs, tabData, flags,
-            dust_to_gas_mass_ratio_over_mw, UV_background_G0,
+            UV_background_G0,
             primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new,
             dust_effective_number_density, state);
 
@@ -1439,7 +1438,7 @@ void metal_ions_step(
     const PhysicsFlags& flags,
     const double dust_to_gas_mass_ratio_over_mw,
     const double UV_background_G0,
-    const double primary_cosmic_ray_ionization_rate,
+    [[maybe_unused]] const double primary_cosmic_ray_ionization_rate,
     const double ss_factor,
     const std::array<double, N_GROUPS>& N_phot_new,
     SubcycleState& state)

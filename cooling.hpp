@@ -1192,7 +1192,7 @@ double Epump(double nH, double T, double xH2, double xHI){
 }
 
 KOKKOS_INLINE_FUNCTION
-double H2_heating_bialy(double G0, double nH2, double nH, double T, double xH2, double xHI,
+double H2_heating_bialy(double G0, double nH2, double nH, double T, double xHI,
                         double xHII, double xe, double f_dg, double xi_h2_cr){
 
     // Heating from H2 formation and destruction following Bialy 2018
@@ -1529,7 +1529,7 @@ double all_cooling(double T, double ne, double aexp, const CompactIonData& n_and
 
     // Heating from H2 formation and destruction
     if (elements[1].n_mol > 0)
-        net_cooling += H2_heating_bialy(G0_local*f_shd_H2 + UV_background_G0, nH2, nH, T, xH2, xHI, xHII, xe, f_dg, xi_h2_cr);
+        net_cooling += H2_heating_bialy(G0_local*f_shd_H2 + UV_background_G0, nH2, nH, T, xHI, xHII, xe, f_dg, xi_h2_cr);
 
     // Heating and cooling from charge transfer reactions
     if (flags.include_charge_exchange)

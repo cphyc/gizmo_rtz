@@ -1308,7 +1308,11 @@ double CT_heat_cool(double T, const CompactIonData& n_and_ion_fracs,
     };
 
     // Don't unroll to save on instructions (saves ~30% of SASS instructions for cooling kernel)
+#if defined(__clang__)      // clang: HIP/ROCm, SYCL, clang-CUDA (host and device)
+#pragma clang loop unroll(disable)
+#elif defined(__CUDA_ARCH__)  // nvcc device pass; its host pass accepts neither spelling
 #pragma unroll 1
+#endif
     for (const CTReaction& r : ct_reactions) {
         double ct_rate = r.is_ionization ? charge_transfer_ionization(r.stage, r.Z, T, tabData)
                                          : charge_transfer_recombination(r.stage, r.Z, T, tabData);

@@ -62,17 +62,23 @@ endif()
 # Standalone executable and tests (only when building standalone)
 ###################################################################
 if(GIZMO_RTZ_STANDALONE)
+    # rtz_main.cpp #includes dyablo_api_GPU.cpp directly (the same single
+    # translation unit trick dyablo uses to embed PRISM), so it must NOT also
+    # link gizmo_rtz -- that library is the reference dyablo_api.cpp build and
+    # nothing in the executable references it any more.
     add_executable(gizmo rtz_main.cpp)
-    target_link_libraries(gizmo PRIVATE gizmo_rtz)
+    target_include_directories(gizmo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(gizmo PRIVATE Kokkos::kokkos)
+    if(GIZMO_RTZ_REDUCED_PRECISION)
+        target_compile_definitions(gizmo PRIVATE RTZ_REDUCED_PRECISION)
+    endif()
     set_target_properties(gizmo PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
     )
 
     if(Kokkos_ENABLE_CUDA)
-        target_compile_options(gizmo PRIVATE --expt-extended-lambda --expt-relaxed-constexpr -rdc=true)
-        target_compile_definitions(gizmo PRIVATE DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION)
-        target_link_options(gizmo PRIVATE -rdc=true)
+        target_compile_options(gizmo PRIVATE --expt-extended-lambda --expt-relaxed-constexpr)
     endif()
 
     target_compile_options(gizmo PRIVATE -Wall -Wextra ${GIZMO_RTZ_PERF_FLAGS})

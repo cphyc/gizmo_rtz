@@ -13,6 +13,7 @@
 #include "cooling.hpp"
 #include "dyablo_api.hpp"
 #include "cross_sections.hpp"
+#include "table_verify.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -1405,6 +1406,10 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
             copy_data_1D(sh2_col1, tabData.sh2_col1);
             copy_data_1D(sh2_col2, tabData.sh2_col2);
         }
+
+        // Every element-compacted table is now populated: check each row really
+        // holds its own element's data before any of it reaches the solver.
+        verify_compacted_tables(tabData);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

@@ -397,50 +397,6 @@ double get_mu(double ne,
     return mu;
 }
 
-KOKKOS_INLINE_FUNCTION
-void reduce_xion(std::array<double, MAX_ELEMENTS>& ion_fracs, const int size)
-{
-    /*
-    Makes sure that the ion fractions sum to one
-    */
-    double total_ion_frac = 0.0;
-
-    // Loop over all ions and get the total
-    for (int i = 0; i < size; i++) {
-        total_ion_frac += ion_fracs[i];
-    }
-    // Loop again to normalize
-    for (int i = 0; i < size; i++) {
-        ion_fracs[i] *= (1.0 / total_ion_frac);
-    }
-}
-
-KOKKOS_INLINE_FUNCTION
-void reduce_xion_max(std::array<double, MAX_ELEMENTS>& ion_fracs, int size)
-{
-    /*
-    Makes sure that the ion fractions sum to one and that
-    the ion fractions don't go below some minimum value
-    */
-    double total_ion_frac = 0.0;
-
-    int max_idx = 0;
-    double max_frac = 0.0;
-
-    // Loop over all ions and get the total
-    for (int i = 0; i < size; i++) {
-        ion_fracs[i] = fmax(ion_fracs[i], MIN_XION);
-        total_ion_frac += ion_fracs[i];
-        if (ion_fracs[i] > max_frac) {
-            max_frac = ion_fracs[i];
-            max_idx = i;
-        }
-    }
-
-    // Now reset to 1
-    ion_fracs[max_idx] -= (total_ion_frac - 1.0);
-}
-
 
 // Per-cell solver state shared between the step functions of subcycle_chemistry.
 // The driver resets the per-iteration fields at the top of every outer

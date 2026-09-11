@@ -59,6 +59,71 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
+// The tables below are loaded on the host indexed by atomic number, but TabulatedData
+// stores them element-compacted (row = elem_row(Z), N_TAB_ELEMENTS rows). These copies
+// apply that mapping; a plain copy_data_* would silently give row erow the data of Z = erow.
+template<typename T, typename V>
+void copy_data_1D_elem(T& src, V &dst) {
+    auto dst_h = Kokkos::create_mirror_view(dst);
+    for (uint erow = 0; erow < dst.extent(0); erow++) {
+        dst_h(erow) = src[row_elem(erow)];
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+template<typename T, typename V>
+void copy_data_2D_elem(T& src, V &dst) {
+    auto dst_h = Kokkos::create_mirror_view(dst);
+    for (uint erow = 0; erow < dst.extent(0); erow++) {
+        for (uint j = 0; j < dst.extent(1); j++) {
+            dst_h(erow, j) = src[row_elem(erow)][j];
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+// Element index in the middle dimension: src[i][Z][k] -> dst[i][erow][k]
+template<typename T, typename V>
+void copy_data_3D_elem1(T& src, V &dst) {
+    auto dst_h = Kokkos::create_mirror_view(dst);
+    for (uint i = 0; i < dst.extent(0); i++) {
+        for (uint erow = 0; erow < dst.extent(1); erow++) {
+            for (uint k = 0; k < dst.extent(2); k++) {
+                dst_h(i, erow, k) = src[i][row_elem(erow)][k];
+            }
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+// Element index in the leading dimension: src[Z][j][k] -> dst[erow][j][k]
+template<typename T, typename V>
+void copy_data_3D_elem0(T& src, V &dst) {
+    auto dst_h = Kokkos::create_mirror_view(dst);
+    for (uint erow = 0; erow < dst.extent(0); erow++) {
+        for (uint j = 0; j < dst.extent(1); j++) {
+            for (uint k = 0; k < dst.extent(2); k++) {
+                dst_h(erow, j, k) = src[row_elem(erow)][j][k];
+            }
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
+// Element index in the trailing dimension: src[i][j][Z] -> dst[i][j][erow]
+template<typename T, typename V>
+void copy_data_3D_elem2(T& src, V &dst) {
+    auto dst_h = Kokkos::create_mirror_view(dst);
+    for (uint i = 0; i < dst.extent(0); i++) {
+        for (uint j = 0; j < dst.extent(1); j++) {
+            for (uint erow = 0; erow < dst.extent(2); erow++) {
+                dst_h(i, j, erow) = src[i][j][row_elem(erow)];
+            }
+        }
+    }
+    Kokkos::deep_copy(dst, dst_h);
+};
+
 
 // Depletion array for the elements, initialized to 1.0 (no depletion) but then modified based on the RR14 dust-to-gas mass ratio
 
@@ -1307,25 +1372,25 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
         printf("Using a G0 UV background of %f\nUsing a CR ionization rate of %f\n", UV_background_G0, generic_cosmic_ray_ionization_rate);
 
         // HM-related data
-        copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
-        copy_data_1D(G0_heating_rates, tabData.G0_heating_rates);
+        copy_data_3D_elem0(HM12_UVB_z, tabData.HM12_UVB_z);
+        copy_data_1D_elem(G0_heating_rates, tabData.G0_heating_rates);
 
         // Cosmic ray and dust-related data
-        copy_data_2D(cosmic_ray_ionization_rates, tabData.cosmic_ray_ionization_rates);
-        copy_data_1D(cosmic_ray_ionization_rates_induced_UV, tabData.cosmic_ray_ionization_rates_induced_UV);
-        copy_data_1D(cosmic_ray_ionization_rates_induced_UV_heat, tabData.cosmic_ray_ionization_rates_induced_UV_heat);
-        copy_data_2D(dust_rec_coefs, tabData.dust_rec_coefs);
+        copy_data_2D_elem(cosmic_ray_ionization_rates, tabData.cosmic_ray_ionization_rates);
+        copy_data_1D_elem(cosmic_ray_ionization_rates_induced_UV, tabData.cosmic_ray_ionization_rates_induced_UV);
+        copy_data_1D_elem(cosmic_ray_ionization_rates_induced_UV_heat, tabData.cosmic_ray_ionization_rates_induced_UV_heat);
+        copy_data_2D_elem(dust_rec_coefs, tabData.dust_rec_coefs);
 
         // Charge transfer
-        copy_data_3D(CTRecomb, tabData.CTRecomb);
-        copy_data_3D(CTIon, tabData.CTIon);
+        copy_data_3D_elem2(CTRecomb, tabData.CTRecomb);
+        copy_data_3D_elem2(CTIon, tabData.CTIon);
 
         // Fine structure cooling
         copy_data_3D(fs_cool_tab, tabData.fs_cool_tab);
 
         // High-T cooling rates
-        copy_data_3D(high_t_cooling_rates, tabData.high_t_cooling_rates);
-        copy_data_2D(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
+        copy_data_3D_elem1(high_t_cooling_rates, tabData.high_t_cooling_rates);
+        copy_data_2D_elem(high_t_cooling_rates_tflag, tabData.high_t_cooling_rates_tflag);
 
         init_recombination_rates(tabData);
         init_cloudy_rad_rec_data(path_to_data, tabData);
@@ -1348,7 +1413,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     update_UVB(redshift);
 
     // Re-copy updated global array into tabData Kokkos view
-    copy_data_3D(HM12_UVB_z, tabData.HM12_UVB_z);
+    copy_data_3D_elem0(HM12_UVB_z, tabData.HM12_UVB_z);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

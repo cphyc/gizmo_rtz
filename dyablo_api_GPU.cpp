@@ -1483,6 +1483,19 @@ void metal_ions_step(
         xion_t s_m1 = xion_t(0);
         xion_t s_0  = n_and_ion_fracs[i].ion_fracs_new[0];
 
+        // Rolling rate cache. Every rate below is a pure function of its stage
+        // index and the frozen (TK, ne, cosmic-ray rates), and each is needed at
+        // two consecutive stages -- the creation term of one and the destruction
+        // term of its neighbour. Carrying the value in a register halves the rate
+        // evaluations, which dominate this loop: each costs a pow and one or two
+        // exp. Bitwise identical (same function, same arguments), and the saving
+        // grows with the ionization ladder, so it scales with the network size.
+        double rec_carry    = 0.0; // recombination(TK, j, i)             , j>0
+        double ci_carry     = 0.0; // collisional_ionization(TK, j-1, i)  , j>0
+        double dust_carry   = 0.0; // dust_recombination_rates(j, i, ...) , j>0
+        double ct_ion_carry = 0.0; // charge_transfer_ionization(j-1, i)  , j>0
+        double ct_rec_carry = 0.0; // charge_transfer_recombination(j, i) , j>0
+
         for (int j = 0; j < n_ions; j++) {
             const xion_t s_p1 = (j + 1 < size) ? n_and_ion_fracs[i].ion_fracs_new[j+1] : xion_t(0);
             const xion_t xi_snap[3] = { s_m1, s_0, s_p1 };
@@ -1492,10 +1505,16 @@ void metal_ions_step(
             /////////////////////////
             double cr = 0.E0;
 
-            if (j < (n_ions - 1)) cr += recombination(state.TK, j+1, i, tabData) * state.ne * XS(j+1);
+            double rec_next    = 0.0, ci_next     = 0.0, dust_next = 0.0;
+            double ct_ion_next = 0.0, ct_rec_next = 0.0;
+
+            if (j < (n_ions - 1)) {
+                rec_next = recombination(state.TK, j+1, i, tabData);
+                cr += rec_next * state.ne * XS(j+1);
+            }
 
             if (flags.include_collisional_ionization) {
-                if (j > 0) cr += collisional_ionization(state.TK, j-1, i, tabData) * state.ne * XS(j-1);
+                if (j > 0) cr += ci_carry * state.ne * XS(j-1);
             }
 
             if (flags.include_HM12_UVB) {
@@ -1512,7 +1531,10 @@ void metal_ions_step(
             }
 
             if (flags.include_dust_recombination) {
-                if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * XS(j+1);
+                if (j < (n_ions - 1)) {
+                    dust_next = dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs);
+                    cr += dust_next * dust_effective_number_density * XS(j+1);
+                }
             }
 
             if (rt_advect) {
@@ -1529,7 +1551,10 @@ void metal_ions_step(
             double de = 0.E0;
 
             if (flags.include_collisional_ionization) {
-                if (j < (n_ions - 1)) de += collisional_ionization(state.TK, j, i, tabData) * state.ne;
+                if (j < (n_ions - 1)) {
+                    ci_next = collisional_ionization(state.TK, j, i, tabData);
+                    de += ci_next * state.ne;
+                }
             }
 
             if (flags.include_HM12_UVB) {
@@ -1540,7 +1565,7 @@ void metal_ions_step(
                 if (j == 0) de += UV_background_G0 * elements[i].G0_photo_rate;
             }
 
-            if (j > 0) de += recombination(state.TK, j, i, tabData) * state.ne;
+            if (j > 0) de += rec_carry * state.ne;
 
             if (flags.include_cosmic_ray_ionization) {
                 if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
@@ -1548,7 +1573,7 @@ void metal_ions_step(
             }
 
             if (flags.include_dust_recombination) {
-                if (j > 0) de += dust_recombination_rates(j, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density;
+                if (j > 0) de += dust_carry * dust_effective_number_density;
             }
 
             if (rt_advect) {
@@ -1564,12 +1589,14 @@ void metal_ions_step(
             /////////////////////////
             if (flags.include_charge_exchange) {
                 if (j > 0) {
-                    cr += charge_transfer_ionization(j-1,i,state.TK, tabData) * XS(j-1) * HII_number_density;
-                    de += charge_transfer_recombination(j,i,state.TK, tabData) * HI_number_density;
+                    cr += ct_ion_carry * XS(j-1) * HII_number_density;
+                    de += ct_rec_carry * HI_number_density;
                 }
                 if (j < (n_ions - 1)) {
-                    de += charge_transfer_ionization(j,i,state.TK, tabData) * HII_number_density;
-                    cr += charge_transfer_recombination(j+1,i,state.TK, tabData) * XS(j+1) * HI_number_density;
+                    ct_ion_next = charge_transfer_ionization(j,i,state.TK, tabData);
+                    de += ct_ion_next * HII_number_density;
+                    ct_rec_next = charge_transfer_recombination(j+1,i,state.TK, tabData);
+                    cr += ct_rec_next * XS(j+1) * HI_number_density;
                 }
             }
 
@@ -1581,6 +1608,12 @@ void metal_ions_step(
 
             s_m1 = s_0;
             s_0  = s_p1;
+
+            rec_carry    = rec_next;
+            ci_carry     = ci_next;
+            dust_carry   = dust_next;
+            ct_ion_carry = ct_ion_next;
+            ct_rec_carry = ct_rec_next;
             #undef XS
         }
 

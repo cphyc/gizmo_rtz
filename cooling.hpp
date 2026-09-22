@@ -971,8 +971,8 @@ double FeI_fine_structure(double T, double n_ion, double nH, double nHp,
     double A_21 = 1.560E-3;
 
     /* Wavelengths (microns) */
-    double lam_10 = 24.0358;
-    double lam_20 = 14.2005;
+    double lam_10 = 14.2005;
+    double lam_20 = 24.0358;
     double lam_21 = 34.7038;
 
     /* Call three_level function */
@@ -1027,8 +1027,8 @@ double SI_fine_structure(double T, double n_ion, double nH, double nHp,
     double A_21 = 3.020E-4;
 
     /* Wavelengths (microns) */
-    double lam_10 = 25.2421;
-    double lam_20 = 17.4278;
+    double lam_10 = 17.4278;
+    double lam_20 = 25.2421;
     double lam_21 = 56.2957;
 
     /* Call three_level function */

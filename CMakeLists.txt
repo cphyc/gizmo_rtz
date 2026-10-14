@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
+option(GIZMO_RTZ_BUILD_PYTHON "Build the nanobind Python extension" OFF)
+if(GIZMO_RTZ_BUILD_PYTHON)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR
    AND NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -9,8 +13,18 @@ endif()
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(gizmo LANGUAGES CXX)
     set(GIZMO_RTZ_STANDALONE ON)
-    # Include Kokkos from the submodule when building standalone
-    add_subdirectory(extern/kokkos)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/kokkos/CMakeLists.txt")
+        add_subdirectory(extern/kokkos)
+    else()
+        include(FetchContent)
+        FetchContent_Declare(
+            Kokkos
+            GIT_REPOSITORY https://github.com/kokkos/kokkos.git
+            GIT_TAG 5.0.2
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(Kokkos)
+    endif()
 else()
     set(GIZMO_RTZ_STANDALONE OFF)
 endif()
@@ -29,6 +43,7 @@ if(GIZMO_RTZ_STANDALONE)
     set_target_properties(gizmo_rtz PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
+        POSITION_INDEPENDENT_CODE ON
     )
     if(Kokkos_ENABLE_CUDA)
         target_compile_options(gizmo_rtz PRIVATE --expt-extended-lambda --expt-relaxed-constexpr -rdc=true)
@@ -82,6 +97,49 @@ if(GIZMO_RTZ_STANDALONE)
     endif()
 
     target_compile_options(gizmo PRIVATE -Wall -Wextra ${GIZMO_RTZ_PERF_FLAGS})
+
+    if(GIZMO_RTZ_BUILD_PYTHON)
+        find_package(Python COMPONENTS Interpreter Development REQUIRED)
+        execute_process(
+            COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+            OUTPUT_VARIABLE nanobind_ROOT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE nanobind_result
+        )
+        if(NOT nanobind_result EQUAL 0)
+            message(FATAL_ERROR
+                "nanobind is required for GIZMO_RTZ_BUILD_PYTHON. "
+                "Install it with: ${Python_EXECUTABLE} -m pip install nanobind"
+            )
+        endif()
+        find_package(nanobind CONFIG REQUIRED)
+        if(Kokkos_ENABLE_CUDA)
+            nanobind_add_module(_rtz NOMINSIZE rtz_bindings.cpp)
+        else()
+            nanobind_add_module(_rtz rtz_bindings.cpp)
+        endif()
+        target_link_libraries(_rtz PRIVATE gizmo_rtz Kokkos::kokkos)
+        target_compile_definitions(_rtz PRIVATE
+            GIZMO_RTZ_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+        )
+        target_compile_options(_rtz PRIVATE -Wall -Wextra ${GIZMO_RTZ_PERF_FLAGS})
+        set_target_properties(_rtz PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED ON
+        )
+        if(Kokkos_ENABLE_CUDA)
+            target_compile_options(_rtz PRIVATE
+                --expt-extended-lambda --expt-relaxed-constexpr -rdc=true
+            )
+            target_compile_definitions(_rtz PRIVATE
+                DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION
+            )
+            target_link_options(_rtz PRIVATE -rdc=true)
+        endif()
+        install(TARGETS _rtz LIBRARY DESTINATION rtz RUNTIME DESTINATION rtz)
+        install(FILES python/rtz/__init__.py DESTINATION rtz)
+        install(DIRECTORY data/ DESTINATION rtz/data)
+    endif()
 
     # --- Testing ---
     enable_testing()

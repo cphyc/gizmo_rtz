@@ -20,6 +20,23 @@ void initialize_ion_fracs(
     int itype
 );
 
+KOKKOS_FUNCTION
+double get_ne(
+    const Element* elements,
+    const CompactIonData& n_and_ion_fracs,
+    bool use_new
+);
+
+KOKKOS_FUNCTION
+double get_mu(
+    double ne,
+    const Element* elements,
+    const CompactIonData& n_and_ion_fracs,
+    bool use_new,
+    bool include_H2,
+    double nCO
+);
+
 
 template <bool constant_temperature,
           bool include_H2,

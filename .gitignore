@@ -3,4 +3,6 @@ rtz_main
 .vscode
 rtz_main.dSYM
 *.o
-build/*
+build*/*
+notebooks/
+out/

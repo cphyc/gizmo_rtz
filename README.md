@@ -56,8 +56,10 @@ lists. Element names must be lowercase full names; both `"hydrogen"` and
 nitrogen, oxygen, neon, magnesium, silicon, sulfur, and iron. Ions must be
 `(element_name, stage)` tuples with a 1-based integer stage (`1` is neutral,
 `2` is singly ionized). Every element needs at least one ion fraction, and each
-element's supplied fractions must sum to one. All unlisted ion stages start at
-zero.
+element's supplied fractions must sum to one. When `include_H2=True`, the
+hydrogen fractions may instead sum to less than one; the residual is
+interpreted as the initial H2 fraction, allowing molecular hydrogen to be
+carried between solves. All unlisted atomic ion stages start at zero.
 
 The solver supports up to six photon bands, each supplied as a tuple
 `(lower_eV, upper_eV)`. If fewer are supplied, the final band's energy bounds
@@ -78,11 +80,25 @@ Optional keyword arguments configure the physics:
 | Option | Default | Effect |
 |---|---:|---|
 | `redshift` | `0.0` | Redshift used to update the HM12 UV background. |
+| `uv_g0` | `0.0070977` | Dimensionless local UV field strength used by the chemistry network. |
 | `constant_temperature` | `False` | Hold the input temperature fixed while evolving chemistry. |
-| `include_h2` | `False` | Enable molecular hydrogen chemistry. Its abundance is internal and is not a separate state column. |
-| `include_co` | `False` | Enable CO chemistry; requires carbon and oxygen in `element_list`. CO abundance is internal. |
+| `include_H2` | `False` | Enable molecular hydrogen chemistry. Its abundance is internal and is not a separate state column. |
+| `include_CO` | `False` | Enable CO chemistry; requires carbon and oxygen in `element_list`. CO abundance is internal. |
 | `include_self_shielding` | `False` | Enable H2/CO self-shielding factors. |
 | `fixed_radiation` | `False` | Hold the supplied photon number densities fixed. Radiation still affects chemistry; when false, absorption depletes the photon field. |
+| `rt_advect` | `True` | Select the RT-enabled or RT-disabled solver template. |
+| `equilibrium` | `False` | Evolve to convergence instead of to the requested elapsed time. |
+| `conv_its` | `20000` | In equilibrium mode, stop after the convergence counter exceeds this threshold. |
+| `max_iterations` | `100000` | Maximum iterations per interval before raising an error. |
+| `T_blackbody` | `1e4` | Blackbody temperature used to calculate radiation cross-sections, in K. |
+| `temperature_is_Tmu` | `False` | Interpret the initial temperature column as the solver's `T/mu` value rather than physical temperature. |
+| `use_default_depletion` | `True` | Apply the built-in per-element depletion factors. |
+| `include_collisional_ionization` | `True` | Enable collisional ionization. |
+| `include_photoionization` | `True` | Enable photoionization. |
+| `include_cosmic_ray_ionization` | `True` | Enable cosmic-ray ionization. |
+| `include_HM12_UVB` | `True` | Enable the HM12 UV background. |
+| `include_dust_recombination` | `True` | Enable dust recombination. |
+| `include_charge_exchange` | `True` | Enable charge exchange. |
 
 Example:
 
@@ -104,14 +120,34 @@ history = rtz.solve(
     ions,
     bands,
     redshift=0.0,
-    include_h2=True,
+    uv_g0=1.0,
+    include_H2=True,
     fixed_radiation=True,
 )
 final_state = history[-1]
 ```
 
-The binding uses `aexp=1`, `T_blackbody=1e4 K`, and a cell size of 4.4 pc. It
+The binding uses `aexp=1` and a cell size of 4.4 pc. It
 evolves each row independently with Kokkos, launching the solver's
 per-iteration stages as separate kernels in the same order as the PRISM update
 path. It does not use a straggler-tail path, and preserves the input column
 layout in the result.
+
+The Python tests include a 1 Gyr constant-temperature H/He equilibrium sweep
+from 100 K to 1e8 K, using solar He/H, `n_H=1 cm^-3`, `redshift=0`, `uv_g0=1`,
+and zero fixed RT photon densities. Golden fractions and a plot resembling
+`abundances.pdf` are in `tests/golden/hhe_equilibrium.{txt,pdf}`. To regenerate
+the plot, install the plot extra and run:
+
+```bash
+python -m pip install -e '.[plot]'
+python tests/plot_hhe_equilibrium.py
+```
+
+`tests/test_python_bindings.py` also reproduces the default `gizmo CIE`,
+`gizmo ISM`, and `gizmo PHOTOHEAT` driver setups and compares the Python-visible
+results with the C++ stdout goldens in `tests/golden/gizmo_*.txt`. These driver
+cases use `equilibrium=True` for CIE and ISM; PHOTOHEAT is advanced through the
+same 1000 fixed-duration steps as the C++ driver. The C++ driver's internal
+H2 and CO abundances are not separate Python state columns, so parity checks
+cover temperature, density and exposed atomic ion fractions.

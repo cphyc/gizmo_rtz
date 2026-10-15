@@ -1,0 +1,30 @@
+name: Python tests (OpenMP)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ninja-build
+      - name: Install package and test dependencies
+        run: python -m pip install --editable ".[test]"
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
+      - name: Run Python tests
+        run: python -m pytest -q
+        env:
+          OMP_NUM_THREADS: 2
+          OMP_PROC_BIND: false

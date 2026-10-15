@@ -1,0 +1,37 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.10.7,<0.12",
+    "nanobind==3.1.0",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "gizmo-rtz"
+version = "0.1.0"
+description = "Kokkos-backed chemistry and radiative-cooling solver"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.23"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[tool.scikit-build]
+cmake.version = ">=3.16"
+wheel.packages = ["python/rtz"]
+build-dir = "build/{wheel_tag}"
+sdist.include = [
+    "CMakeLists.txt",
+    "*.cpp",
+    "*.hpp",
+    "data/**",
+    "python/**",
+    "tests/**",
+    "README.md",
+    "LICENSE",
+]
+
+[tool.scikit-build.cmake.define]
+GIZMO_RTZ_BUILD_PYTHON = "ON"
+GIZMO_RTZ_FAST_MATH = "OFF"
+Kokkos_ENABLE_OPENMP = "ON"

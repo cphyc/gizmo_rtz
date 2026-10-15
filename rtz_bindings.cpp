@@ -1,58 +1,54 @@
-#include "dyablo_api.hpp"
-
+#include <cassert>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "dyablo_api_GPU.cpp"
+
 namespace nb = nanobind;
 
 namespace {
 
-using Solver = RTZ<false, false, false, true, false>;
+using namespace prism_gpu;
+using Solver = RTZ<false, true, true, true, true>;
 
 constexpr double kCellSizeCm = 4.4 * 3.086e18;
 constexpr double kBlackbodyTemperature = 1.0e4;
-constexpr int kConvergenceIterations = 20000;
 
-const std::unordered_map<std::string, int>& element_numbers() {
+const std::unordered_map<std::string, int> &element_numbers() {
     static const std::unordered_map<std::string, int> values{
-        {"h", 1}, {"hydrogen", 1},
-        {"he", 2}, {"helium", 2},
-        {"c", 6}, {"carbon", 6},
-        {"n", 7}, {"nitrogen", 7},
-        {"o", 8}, {"oxygen", 8},
-        {"ne", 10}, {"neon", 10},
-        {"mg", 12}, {"magnesium", 12},
-        {"si", 14}, {"silicon", 14},
-        {"s", 16}, {"sulfur", 16},
-        {"fe", 26}, {"iron", 26},
+        {"hydrogen", 1},
+        {"helium", 2},
+        {"carbon", 6},
+        {"nitrogen", 7},
+        {"oxygen", 8},
+        {"neon", 10},
+        {"magnesium", 12},
+        {"silicon", 14},
+        {"sulfur", 16},
+        {"iron", 26},
     };
     return values;
 }
 
-std::string lowercase(std::string value) {
-    for (char& character : value)
-        character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
-    return value;
-}
-
-int parse_element(const std::string& name) {
-    const auto found = element_numbers().find(lowercase(name));
+int parse_element(const std::string &name) {
+    const auto found = element_numbers().find(name);
     if (found == element_numbers().end())
         throw std::invalid_argument("unsupported element name: " + name);
     return found->second;
@@ -64,31 +60,13 @@ struct IonColumn {
 };
 
 IonColumn parse_ion(nb::handle value) {
-    if (nb::isinstance<nb::str>(value)) {
-        const std::string name = nb::cast<std::string>(value);
-        const auto separator = name.rfind('_');
-        if (separator == std::string::npos || separator == 0 || separator + 1 == name.size())
-            throw std::invalid_argument(
-                "ion strings must have the form '<element>_<stage>', e.g. 'hydrogen_01'");
-        const std::string stage_text = name.substr(separator + 1);
-        std::size_t parsed = 0;
-        int stage = 0;
-        try {
-            stage = std::stoi(stage_text, &parsed);
-        } catch (const std::exception&) {
-            throw std::invalid_argument("ion stage must be a positive integer: " + name);
-        }
-        if (parsed != stage_text.size())
-            throw std::invalid_argument("ion stage must be a positive integer: " + name);
-        return {parse_element(name.substr(0, separator)), stage};
-    }
-
     if (!nb::isinstance<nb::tuple>(value))
-        throw std::invalid_argument(
-            "each ion must be a '<element>_<stage>' string or an (element, stage) pair");
+        throw std::invalid_argument("each ion must be an (element, stage) tuple");
     const nb::tuple pair = nb::cast<nb::tuple>(value);
     if (pair.size() != 2)
         throw std::invalid_argument("ion pairs must contain exactly an element and a stage");
+    if (!nb::isinstance<nb::int_>(pair[1]) || nb::isinstance<nb::bool_>(pair[1]))
+        throw std::invalid_argument("ionization stage must be an integer");
     return {parse_element(nb::cast<std::string>(pair[0])), nb::cast<int>(pair[1])};
 }
 
@@ -98,9 +76,7 @@ struct Inputs {
     std::vector<std::pair<double, double>> photon_bands;
 };
 
-Inputs parse_inputs(nb::sequence element_list,
-                    nb::sequence ion_list,
-                    nb::sequence photon_bands) {
+Inputs parse_inputs(nb::sequence element_list, nb::sequence ion_list, nb::sequence photon_bands) {
     Inputs inputs;
     std::array<bool, MAX_ELEMENTS> active_elements{};
 
@@ -113,8 +89,8 @@ Inputs parse_inputs(nb::sequence element_list,
         inputs.element_numbers.push_back(atomic_number);
     }
 
-    if (!active_elements[1])
-        throw std::invalid_argument("element_list must include hydrogen");
+    if (!active_elements[1] || !active_elements[2])
+        throw std::invalid_argument("element_list must include hydrogen and helium");
 
     std::array<std::array<bool, MAX_ELEMENTS + 1>, MAX_ELEMENTS> seen_ions{};
     for (nb::handle value : ion_list) {
@@ -145,53 +121,41 @@ Inputs parse_inputs(nb::sequence element_list,
     if (band_count == 0 || band_count > N_GROUPS)
         throw std::invalid_argument("photon_bands must contain between 1 and 6 energy intervals");
     for (nb::handle value : photon_bands) {
-        if (!nb::isinstance<nb::sequence>(value))
+        if (!nb::isinstance<nb::tuple>(value))
             throw std::invalid_argument("each photon band must be a (lower_eV, upper_eV) pair");
-        const nb::sequence band = nb::cast<nb::sequence>(value);
-        if (nb::len(band) != 2)
+        const nb::tuple band = nb::cast<nb::tuple>(value);
+        if (band.size() != 2)
             throw std::invalid_argument("each photon band must have exactly two energy bounds");
         const double lower = nb::cast<double>(band[0]);
         const double upper = nb::cast<double>(band[1]);
         if (!std::isfinite(lower) || !std::isfinite(upper) || lower <= 0.0 || lower >= upper)
-            throw std::invalid_argument("photon bands must have finite positive lower < upper bounds");
+            throw std::invalid_argument(
+                "photon bands must have finite positive lower < upper bounds");
         inputs.photon_bands.emplace_back(lower, upper);
     }
     return inputs;
 }
 
-std::vector<double> parse_times(nb::handle times, bool& scalar_time) {
+std::vector<double> parse_times(nb::ndarray<nb::numpy, const double, nb::ndim<1>> times) {
     std::vector<double> result;
-    if (nb::ndarray_check(times)) {
-        const auto array =
-            nb::cast<nb::ndarray<nb::numpy, const double, nb::ndim<1>>>(times);
-        scalar_time = false;
-        result.reserve(array.shape(0));
-        for (std::size_t index = 0; index < array.shape(0); ++index)
-            result.push_back(array.data()[index * array.stride(0)]);
-    } else if (nb::isinstance<nb::sequence>(times)) {
-        scalar_time = false;
-        const nb::sequence sequence = nb::cast<nb::sequence>(times);
-        result.reserve(static_cast<std::size_t>(nb::len(sequence)));
-        for (nb::handle value : sequence)
-            result.push_back(nb::cast<double>(value));
-    } else {
-        scalar_time = true;
-        result.push_back(nb::cast<double>(times));
-    }
+    result.reserve(times.shape(0));
 
     double previous = -1.0;
-    for (double time : result) {
+    for (std::size_t index = 0; index < times.shape(0); ++index) {
+        const double time = times.data()[index * times.stride(0)];
         if (!std::isfinite(time) || time < 0.0 || time <= previous)
-            throw std::invalid_argument("times must be finite, nonnegative, and strictly increasing");
+            throw std::invalid_argument(
+                "times must be finite, nonnegative, and strictly increasing");
+        result.push_back(time);
         previous = time;
     }
     return result;
 }
 
-std::filesystem::path resolve_data_path(const std::string& requested_path) {
+std::filesystem::path resolve_data_path(const std::string &requested_path) {
     std::filesystem::path path = requested_path;
     if (path.empty()) {
-        if (const char* environment_path = std::getenv("RTZ_DATA_DIR"))
+        if (const char *environment_path = std::getenv("RTZ_DATA_DIR"))
             path = environment_path;
         else
             path = GIZMO_RTZ_DATA_DIR;
@@ -202,8 +166,8 @@ std::filesystem::path resolve_data_path(const std::string& requested_path) {
 }
 
 class Runtime {
-public:
-    explicit Runtime(const std::filesystem::path& data_path)
+  public:
+    explicit Runtime(const std::filesystem::path &data_path)
         : data_path_(data_path), owns_kokkos_(!Kokkos::is_initialized()) {
         if (owns_kokkos_)
             Kokkos::initialize();
@@ -211,7 +175,6 @@ public:
             solver_ = std::make_unique<Solver>(data_path_.string());
             solver_->set_reduced_speed_of_light_factor(1.0);
             solver_->set_UV_background_G0(0.0070977);
-            solver_->need_to_update_UVB(0.0);
         } catch (...) {
             solver_.reset();
             if (owns_kokkos_)
@@ -220,43 +183,58 @@ public:
         }
     }
 
-    ~Runtime() { solver_.reset(); }
-
-    Solver& solver() { return *solver_; }
-    const std::filesystem::path& data_path() const { return data_path_; }
-    bool owns_kokkos() const { return owns_kokkos_; }
-
-    void set_photon_bands(const std::vector<std::pair<double, double>>& bands) {
-        if (bands == configured_bands_)
-            return;
-        std::array<double, N_GROUPS> lower{};
-        std::array<double, N_GROUPS> upper{};
-        for (int group = 0; group < N_GROUPS; ++group) {
-            const auto& band = bands[std::min<std::size_t>(group, bands.size() - 1)];
-            lower[group] = band.first;
-            upper[group] = band.second;
-        }
-        solver_->set_photon_groups(lower, upper);
-        solver_->need_to_update_cross_sections(kBlackbodyTemperature);
-        configured_bands_ = bands;
+    ~Runtime() {
+        solver_.reset();
     }
 
-private:
+    Solver &solver() {
+        return *solver_;
+    }
+
+    const std::filesystem::path &data_path() const {
+        return data_path_;
+    }
+
+    bool owns_kokkos() const {
+        return owns_kokkos_;
+    }
+
+    void configure(double redshift, const std::vector<std::pair<double, double>> &bands) {
+        if (bands != configured_bands_) {
+            std::array<double, N_GROUPS> lower{};
+            std::array<double, N_GROUPS> upper{};
+            for (int group = 0; group < N_GROUPS; ++group) {
+                const auto &band = bands[std::min<std::size_t>(group, bands.size() - 1)];
+                lower[group] = band.first;
+                upper[group] = band.second;
+            }
+            solver_->set_photon_groups(lower, upper);
+            solver_->need_to_update_cross_sections(kBlackbodyTemperature);
+            configured_bands_ = bands;
+        }
+        if (!configured_redshift_ || *configured_redshift_ != redshift) {
+            solver_->need_to_update_UVB(redshift);
+            configured_redshift_ = redshift;
+        }
+    }
+
+  private:
     std::filesystem::path data_path_;
     bool owns_kokkos_;
     std::unique_ptr<Solver> solver_;
     std::vector<std::pair<double, double>> configured_bands_;
+    std::optional<double> configured_redshift_;
 };
 
-Runtime*& runtime_instance() {
-    static Runtime* runtime = nullptr;
+Runtime *&runtime_instance() {
+    static Runtime *runtime = nullptr;
     return runtime;
 }
 
-Runtime& get_runtime(const std::filesystem::path& data_path) {
+Runtime &get_runtime(const std::filesystem::path &data_path) {
     // Keep CUDA/Kokkos resources alive until process teardown. Destructing this
     // singleton from a DSO static destructor can occur after CUDA unloads.
-    Runtime*& runtime = runtime_instance();
+    Runtime *&runtime = runtime_instance();
     if (!runtime)
         runtime = new Runtime(data_path);
     else if (runtime->data_path() != data_path)
@@ -266,7 +244,7 @@ Runtime& get_runtime(const std::filesystem::path& data_path) {
 }
 
 void finalize_runtime() {
-    Runtime*& runtime = runtime_instance();
+    Runtime *&runtime = runtime_instance();
     if (!runtime)
         return;
     const bool owns_kokkos = runtime->owns_kokkos();
@@ -278,18 +256,28 @@ void finalize_runtime() {
 
 struct CellState {
     CompactIonData chemistry{};
+    SubcycleState subcycle{};
     double temperature = 0.0;
     double nCO = 0.0;
     double out_Tmu = 0.0;
     double out_mu = 0.0;
+    double dust_ratio = 0.0;
+    double loc_rho = 0.0;
+    double ss_factor = 1.0;
+    double ddt = 0.0;
+    double total_time = 0.0;
     int iterations = 0;
+    bool done = false;
     std::array<double, N_GROUPS> photons{};
+    std::array<double, N_GROUPS> photons_new{};
+    std::array<double, N_GROUPS> photon_attenuation{};
+    std::array<double, 2> cooling_rates{};
     Array2D_RT flux{};
 };
 
-void copy_state_to_matrix(const CellState& cell,
-                          double* row,
-                          const Inputs& inputs,
+void copy_state_to_matrix(const CellState &cell,
+                          double *row,
+                          const Inputs &inputs,
                           std::size_t density_offset,
                           std::size_t ion_offset,
                           std::size_t photon_offset) {
@@ -304,55 +292,90 @@ void copy_state_to_matrix(const CellState& cell,
         row[photon_offset + group] = cell.photons[group];
 }
 
-nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
-                 nb::handle times_arg,
-                 nb::sequence element_list,
-                 nb::sequence ion_list,
-                 nb::sequence photon_bands,
-                 const std::string& requested_data_path,
-                 int max_iterations) {
+struct SolveParameters {
+    Inputs inputs;
+    std::vector<double> times;
+    std::size_t n_cells;
+    std::size_t n_columns;
+    std::size_t density_offset;
+    std::size_t ion_offset;
+    std::size_t photon_offset;
+};
+
+template <bool include_CO>
+SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
+                                    nb::ndarray<nb::numpy, const double, nb::ndim<1>> times_arg,
+                                    nb::sequence element_list,
+                                    nb::sequence ion_list,
+                                    nb::sequence photon_bands,
+                                    int max_iterations,
+                                    double redshift) {
     if (input.shape(0) == 0)
         throw std::invalid_argument("state must contain at least one cell");
     if (max_iterations <= 0)
         throw std::invalid_argument("max_iterations must be positive");
+    if (!std::isfinite(redshift) || redshift < 0.0)
+        throw std::invalid_argument("redshift must be finite and nonnegative");
 
-    const Inputs inputs = parse_inputs(element_list, ion_list, photon_bands);
-    bool scalar_time = false;
-    const std::vector<double> times = parse_times(times_arg, scalar_time);
+    SolveParameters parameters;
+    parameters.inputs = parse_inputs(element_list, ion_list, photon_bands);
+    if constexpr (include_CO) {
+        const auto &elements_by_name = element_numbers();
+        const bool has_carbon =
+            std::find(parameters.inputs.element_numbers.begin(),
+                      parameters.inputs.element_numbers.end(),
+                      elements_by_name.at("carbon")) != parameters.inputs.element_numbers.end();
+        const bool has_oxygen =
+            std::find(parameters.inputs.element_numbers.begin(),
+                      parameters.inputs.element_numbers.end(),
+                      elements_by_name.at("oxygen")) != parameters.inputs.element_numbers.end();
+        if (!has_carbon || !has_oxygen)
+            throw std::invalid_argument(
+                "element_list must include carbon and oxygen when include_co=True");
+    }
+    parameters.times = parse_times(times_arg);
 
-    const std::size_t n_cells = input.shape(0);
-    if (n_cells > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    parameters.n_cells = input.shape(0);
+    if (parameters.n_cells > static_cast<std::size_t>(std::numeric_limits<int>::max()))
         throw std::invalid_argument("the number of cells exceeds Kokkos's supported range");
+    parameters.density_offset = 1;
+    parameters.ion_offset = parameters.density_offset + parameters.inputs.element_numbers.size();
+    parameters.photon_offset = parameters.ion_offset + parameters.inputs.ions.size();
+    parameters.n_columns = parameters.photon_offset + parameters.inputs.photon_bands.size();
+    if (input.shape(1) != parameters.n_columns)
+        throw std::invalid_argument("state must have columns [temperature, element densities, ion "
+                                    "fractions, photon densities]");
+
+    return parameters;
+}
+
+std::vector<CellState>
+validate_state_values(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
+                      const SolveParameters &parameters,
+                      bool include_H2) {
+    const Inputs &inputs = parameters.inputs;
     const std::size_t n_elements = inputs.element_numbers.size();
     const std::size_t n_ions = inputs.ions.size();
     const std::size_t n_bands = inputs.photon_bands.size();
-    const std::size_t density_offset = 1;
-    const std::size_t ion_offset = density_offset + n_elements;
-    const std::size_t photon_offset = ion_offset + n_ions;
-    const std::size_t n_columns = photon_offset + n_bands;
-    if (input.shape(1) != n_columns)
-        throw std::invalid_argument(
-            "state must have columns [temperature, element densities, ion fractions, photon densities]");
-
     std::array<Element, MAX_ELEMENTS> elements{};
-    initialize_elements(elements, false);
+    initialize_elements(elements, include_H2);
     std::array<int, MAX_ELEMENTS> network{};
     network.fill(-1);
     for (int atomic_number : inputs.element_numbers)
         network[atomic_number] = 0;
-    std::vector<CellState> cells(n_cells);
-    for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
+    std::vector<CellState> cells(parameters.n_cells);
+    for (std::size_t cell_index = 0; cell_index < parameters.n_cells; ++cell_index) {
         const auto input_value = [&](std::size_t column) {
             return input.data()[cell_index * input.stride(0) + column * input.stride(1)];
         };
-        CellState& cell = cells[cell_index];
+        CellState &cell = cells[cell_index];
         cell.chemistry.init_offsets(elements.data(), network.data());
         cell.temperature = input_value(0);
         if (!std::isfinite(cell.temperature) || cell.temperature <= 0.0)
             throw std::invalid_argument("all temperatures must be finite and positive");
 
         for (std::size_t column = 0; column < n_elements; ++column) {
-            const double density = input_value(density_offset + column);
+            const double density = input_value(parameters.density_offset + column);
             if (!std::isfinite(density) || density < 0.0)
                 throw std::invalid_argument("element densities must be finite and nonnegative");
             const int atomic_number = inputs.element_numbers[column];
@@ -364,7 +387,7 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
 
         std::array<double, MAX_ELEMENTS> ion_sums{};
         for (std::size_t column = 0; column < n_ions; ++column) {
-            const double fraction = input_value(ion_offset + column);
+            const double fraction = input_value(parameters.ion_offset + column);
             if (!std::isfinite(fraction) || fraction < 0.0 || fraction > 1.0)
                 throw std::invalid_argument("ion fractions must be finite and between 0 and 1");
             const IonColumn ion = inputs.ions[column];
@@ -378,92 +401,539 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                     "listed ion fractions for each element must sum to one");
         }
         for (std::size_t group = 0; group < n_bands; ++group) {
-            const double density = input_value(photon_offset + group);
+            const double density = input_value(parameters.photon_offset + group);
             if (!std::isfinite(density) || density < 0.0)
-                throw std::invalid_argument("photon number densities must be finite and nonnegative");
+                throw std::invalid_argument(
+                    "photon number densities must be finite and nonnegative");
             cell.photons[group] = density;
         }
     }
 
+    return cells;
+}
+
+template <bool constant_temperature, bool include_H2, bool include_CO, bool include_self_shielding>
+nb::object run_solver(const SolveParameters &parameters,
+                      std::vector<CellState> cells,
+                      const std::string &requested_data_path,
+                      int max_iterations,
+                      double redshift,
+                      bool fixed_radiation) {
+    const Inputs &inputs = parameters.inputs;
+    const std::vector<double> &times = parameters.times;
+    const std::size_t n_cells = parameters.n_cells;
+    const std::size_t n_columns = parameters.n_columns;
+    const std::size_t density_offset = parameters.density_offset;
+    const std::size_t ion_offset = parameters.ion_offset;
+    const std::size_t photon_offset = parameters.photon_offset;
+
     const std::size_t output_size = times.size() * n_cells * n_columns;
     auto output_data = std::make_unique<double[]>(output_size);
-    if (!times.empty() && times.back() > 0.0) {
-        const std::filesystem::path data_path = resolve_data_path(requested_data_path);
-        Runtime& runtime = get_runtime(data_path);
-        runtime.set_photon_bands(inputs.photon_bands);
-        Solver solver = runtime.solver();
-        Kokkos::View<CellState*> device_cells("rtz_python_cells", n_cells);
-        auto host_cells = Kokkos::create_mirror_view(device_cells);
-        for (std::size_t index = 0; index < n_cells; ++index)
-            host_cells(index) = cells[index];
-        Kokkos::deep_copy(device_cells, host_cells);
-
-        double previous_time = 0.0;
-        const PhysicsFlags flags{};
-        const std::array<double, N_GROUPS> dNpdt{};
-        const Array2D_RT dFpdt{};
-        const auto elements_d = solver.elements_d;
-        for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
-            const double time = times[time_index];
-            const double delta_time = time - previous_time;
-            if (delta_time > 0.0) {
-                Kokkos::parallel_for(
-                    "rtz_python_solve",
-                    Kokkos::RangePolicy<>(0, n_cells),
-                    KOKKOS_LAMBDA(const std::size_t cell_index) {
-                        CellState& cell = device_cells(cell_index);
-                        const Element* device_elements = elements_d.data();
-                        const double ne = get_ne(device_elements, cell.chemistry, false);
-                        const double mu = get_mu(ne, device_elements, cell.chemistry,
-                                                 false, false, cell.nCO);
-                        const double Tmu = cell.temperature / mu;
-                        solver.solve_chemistry_and_cooling(
-                            Tmu, kCellSizeCm, 1.0, delta_time,
-                            cell.chemistry, cell.nCO, cell.photons, cell.flux,
-                            cell.out_Tmu, cell.out_mu,
-                            kConvergenceIterations, max_iterations, cell.iterations,
-                            flags, false, dNpdt, dFpdt);
-                        cell.temperature = cell.out_Tmu * cell.out_mu;
-                    });
-                Kokkos::deep_copy(host_cells, device_cells);
-                for (std::size_t index = 0; index < n_cells; ++index) {
-                    if (host_cells(index).iterations > max_iterations)
-                        throw std::runtime_error(
-                            "RTZ exceeded max_iterations before reaching a requested time");
-                }
-            }
-            for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
-                cells[cell_index] = host_cells(cell_index);
-                double* output_row =
-                    output_data.get() + (time_index * n_cells + cell_index) * n_columns;
-                copy_state_to_matrix(cells[cell_index], output_row, inputs,
-                                     density_offset, ion_offset, photon_offset);
-            }
-            previous_time = time;
-        }
-    } else {
+    if (times.empty() || times.back() <= 0) {
         for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
             for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
-                double* output_row =
+                double *output_row =
                     output_data.get() + (time_index * n_cells + cell_index) * n_columns;
-                copy_state_to_matrix(cells[cell_index], output_row, inputs,
-                                     density_offset, ion_offset, photon_offset);
+                copy_state_to_matrix(cells[cell_index],
+                                     output_row,
+                                     inputs,
+                                     density_offset,
+                                     ion_offset,
+                                     photon_offset);
             }
         }
-    }
-
-    nb::capsule owner(output_data.get(), [](void* pointer) noexcept {
-        delete[] static_cast<double*>(pointer);
-    });
-    double* result_data = output_data.release();
-    if (scalar_time) {
-        nb::ndarray<nb::numpy, double, nb::ndim<2>> result(
-            result_data, {n_cells, n_columns}, owner);
+        nb::capsule owner(output_data.get(),
+                        [](void *pointer) noexcept { delete[] static_cast<double *>(pointer); });
+        double *result_data = output_data.release();
+        nb::ndarray<nb::numpy, double, nb::ndim<3>> result(
+            result_data, {times.size(), n_cells, n_columns}, owner);
         return nb::cast(result);
     }
+
+
+    const std::filesystem::path data_path = resolve_data_path(requested_data_path);
+    Runtime &runtime = get_runtime(data_path);
+    runtime.configure(redshift, inputs.photon_bands);
+    Solver solver = runtime.solver();
+    Kokkos::View<CellState *> device_cells("rtz_python_cells", n_cells);
+    auto host_cells = Kokkos::create_mirror_view(device_cells);
+    std::array<Element, MAX_ELEMENTS> configured_elements{};
+    initialize_elements(configured_elements, include_H2);
+
+    std::vector<std::uint16_t> ion_map;
+    for (int atomic_number : inputs.element_numbers) {
+        if (atomic_number < 3)
+            continue;
+
+        const int ion_count = configured_elements[atomic_number].n_ions;
+        for (int stage = 0; stage < ion_count; ++stage)
+            ion_map.push_back(static_cast<std::uint16_t>((atomic_number << 8) | stage));
+    }
+
+    const int n_ion_work = static_cast<int>(ion_map.size());
+    Kokkos::View<std::uint16_t *> ion_map_d("rtz_python_ion_map", n_ion_work);
+    auto host_ion_map = Kokkos::create_mirror_view(ion_map_d);
+    for (int index = 0; index < n_ion_work; ++index)
+        host_ion_map(index) = ion_map[index];
+    Kokkos::deep_copy(ion_map_d, host_ion_map);
+
+    Kokkos::View<Element *> elements_d("rtz_python_elements", MAX_ELEMENTS);
+    auto host_elements = Kokkos::create_mirror_view(elements_d);
+    for (int index = 0; index < MAX_ELEMENTS; ++index)
+        host_elements(index) = configured_elements[index];
+    Kokkos::deep_copy(elements_d, host_elements);
+    for (std::size_t index = 0; index < n_cells; ++index)
+        host_cells(index) = cells[index];
+    Kokkos::deep_copy(device_cells, host_cells);
+
+    double previous_time = 0.0;
+    const PhysicsFlags flags{};
+    const std::array<double, N_GROUPS> dNpdt{};
+    const Array2D_RT dFpdt{};
+    const Element *device_elements = elements_d.data();
+    const std::uint16_t *device_ion_map = ion_map_d.data();
+    const TabulatedData tab_data = solver.get_tabData();
+    const double uv_background = solver.get_UV_background_G0();
+    const double primary_cr_rate = solver.get_generic_cosmic_ray_ionization_rate();
+    using TeamPolicy = Kokkos::TeamPolicy<>;
+    using TeamMember = TeamPolicy::member_type;
+    const std::size_t ion_snapshot_bytes = MAX_TOTAL_IONS * sizeof(CompactIonData::xion_t);
+
+    for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
+        const double time = times[time_index];
+        const double delta_time = time - previous_time;
+        if (delta_time == 0.0) {
+            for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
+                double *output_row =
+                    output_data.get() + (time_index * n_cells + cell_index) * n_columns;
+                copy_state_to_matrix(cells[cell_index],
+                                     output_row,
+                                     inputs,
+                                     density_offset,
+                                     ion_offset,
+                                     photon_offset);
+            }
+            previous_time = time;
+            continue;
+        }
+        assert(delta_time > 0.0);
+
+        Kokkos::parallel_for(
+            "rtz_python_interval_init",
+            Kokkos::RangePolicy<>(0, n_cells),
+            KOKKOS_LAMBDA(const std::size_t cell_index) {
+                CellState &cell = device_cells(cell_index);
+                const double initial_ne = get_ne(device_elements, cell.chemistry, false);
+                const double initial_mu = get_mu(initial_ne,
+                                                    device_elements,
+                                                    cell.chemistry,
+                                                    false,
+                                                    include_H2,
+                                                    cell.nCO);
+                const double initial_Tmu =
+                    constant_temperature ? cell.temperature : cell.temperature / initial_mu;
+                cell.dust_ratio = get_dust_mass_and_depletion(device_elements,
+                                                                cell.chemistry.n_element[8],
+                                                                cell.chemistry.n_element[1],
+                                                                cell.nCO);
+                cell.loc_rho = get_rho(device_elements, cell.chemistry);
+                apply_dust_depletion(
+                    device_elements, cell.dust_ratio, cell.chemistry, cell.nCO);
+                cell.ss_factor = 1.0;
+
+                cell.subcycle = SubcycleState{};
+                cell.subcycle.success_counter = 0;
+                cell.subcycle.ne_initial = get_ne(device_elements, cell.chemistry, false);
+                cell.subcycle.Tmu_old = initial_Tmu;
+                cell.subcycle.Tmu_new = cell.subcycle.Tmu_old;
+                cell.ddt = delta_time;
+                cell.total_time = 0.0;
+                cell.iterations = 0;
+                cell.done = false;
+            });
+
+        std::size_t pending = n_cells;
+        while (pending > 0) {
+            Kokkos::parallel_for(
+                "rtz_python_prep_radiation",
+                Kokkos::RangePolicy<>(0, n_cells),
+                KOKKOS_LAMBDA(const std::size_t cell_index) {
+                    CellState &cell = device_cells(cell_index);
+                    if (cell.done)
+                        return;
+                    ++cell.iterations;
+                    subcycle_prep_iteration<constant_temperature,
+                                            include_H2,
+                                            include_CO,
+                                            true,
+                                            include_self_shielding>(device_elements,
+                                                                    cell.chemistry,
+                                                                    cell.nCO,
+                                                                    delta_time,
+                                                                    cell.total_time,
+                                                                    primary_cr_rate,
+                                                                    cell.ddt,
+                                                                    cell.subcycle);
+                    radiation_step<constant_temperature,
+                                    include_H2,
+                                    include_CO,
+                                    true,
+                                    include_self_shielding>(cell.ddt,
+                                                            device_elements,
+                                                            cell.chemistry,
+                                                            tab_data,
+                                                            cell.nCO,
+                                                            kCellSizeCm,
+                                                            cell.dust_ratio,
+                                                            cell.photons,
+                                                            cell.photons_new,
+                                                            cell.photon_attenuation,
+                                                            cell.subcycle,
+                                                            0.0,
+                                                            nullptr,
+                                                            false,
+                                                            dNpdt,
+                                                            fixed_radiation);
+                });
+
+            if constexpr (!constant_temperature) {
+                Kokkos::parallel_for(
+                    "rtz_python_cooling_rates",
+                    Kokkos::RangePolicy<>(0, 2 * n_cells),
+                    KOKKOS_LAMBDA(const std::size_t lane_index) {
+                        const std::size_t cell_index = lane_index / 2;
+                        CellState &cell = device_cells(cell_index);
+                        if (cell.done)
+                            return;
+                        cooling_rate_lane<constant_temperature,
+                                            include_H2,
+                                            include_CO,
+                                            true,
+                                            include_self_shielding>(
+                            static_cast<int>(lane_index % 2),
+                            cell.cooling_rates.data(),
+                            1.0,
+                            device_elements,
+                            cell.chemistry,
+                            tab_data,
+                            flags,
+                            cell.nCO,
+                            cell.dust_ratio,
+                            primary_cr_rate,
+                            cell.ss_factor,
+                            uv_background,
+                            cell.photons_new,
+                            cell.subcycle);
+                    });
+            }
+
+            // Keep Dyablo's team-per-cell ion phases and single-thread
+            // cooling/molecule and commit sections.
+            TeamPolicy team_policy(static_cast<int>(n_cells), Kokkos::AUTO());
+            team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_snapshot_bytes));
+
+            Kokkos::parallel_for(
+                "rtz_python_molecules_ions_commit",
+                team_policy,
+                KOKKOS_LAMBDA(const TeamMember &team) {
+                    const std::size_t cell_index = team.league_rank();
+                    CellState &cell = device_cells(cell_index);
+                    if (cell.done)
+                        return;
+
+                    auto *ion_snapshot = static_cast<CompactIonData::xion_t *>(
+                        team.team_shmem().get_shmem(ion_snapshot_bytes));
+
+                    Kokkos::single(Kokkos::PerTeam(team), [&]() {
+                        if constexpr (!constant_temperature) {
+                            cooling_update<constant_temperature,
+                                            include_H2,
+                                            include_CO,
+                                            true,
+                                            include_self_shielding>(
+                                cell.cooling_rates.data(),
+                                cell.ddt,
+                                cell.loc_rho,
+                                cell.subcycle);
+                        }
+
+                        molecular_step<constant_temperature,
+                                        include_H2,
+                                        include_CO,
+                                        true,
+                                        include_self_shielding>(cell.ddt,
+                                                                device_elements,
+                                                                cell.chemistry,
+                                                                tab_data,
+                                                                cell.nCO,
+                                                                cell.dust_ratio,
+                                                                uv_background,
+                                                                cell.photons_new,
+                                                                cell.subcycle);
+                    });
+                    team.team_barrier();
+
+                    HandHe_ions_step<constant_temperature,
+                                        include_H2,
+                                        include_CO,
+                                        true,
+                                        include_self_shielding>(team,
+                                                                cell.ddt,
+                                                                device_elements,
+                                                                cell.chemistry,
+                                                                tab_data,
+                                                                flags,
+                                                                cell.dust_ratio,
+                                                                uv_background,
+                                                                primary_cr_rate,
+                                                                cell.ss_factor,
+                                                                cell.photons_new,
+                                                                cell.subcycle);
+
+                    metal_ions_step<constant_temperature,
+                                    include_H2,
+                                    include_CO,
+                                    true,
+                                    include_self_shielding>(team,
+                                                            cell.ddt,
+                                                            device_elements,
+                                                            cell.chemistry,
+                                                            tab_data,
+                                                            flags,
+                                                            cell.dust_ratio,
+                                                            uv_background,
+                                                            primary_cr_rate,
+                                                            cell.ss_factor,
+                                                            cell.photons_new,
+                                                            device_ion_map,
+                                                            n_ion_work,
+                                                            ion_snapshot,
+                                                            cell.subcycle);
+                    team.team_barrier();
+
+                    Kokkos::single(Kokkos::PerTeam(team), [&]() {
+                        double ddt = cell.ddt;
+                        double total_time = cell.total_time;
+                        subcycle_commit_and_control<constant_temperature,
+                                                    include_H2,
+                                                    include_CO,
+                                                    true,
+                                                    include_self_shielding>(
+                            device_elements,
+                            tab_data,
+                            cell.chemistry,
+                            cell.nCO,
+                            cell.photons,
+                            cell.flux,
+                            cell.photons_new,
+                            cell.photon_attenuation,
+                            ddt,
+                            total_time,
+                            cell.subcycle,
+                            false,
+                            dFpdt);
+                        cell.ddt = ddt;
+                        cell.total_time = total_time;
+
+                        if (fabs(cell.total_time - delta_time) / delta_time < 1e-6)
+                            cell.done = true;
+                    });
+                });
+
+            Kokkos::parallel_reduce(
+                "rtz_python_pending",
+                Kokkos::RangePolicy<>(0, n_cells),
+                KOKKOS_LAMBDA(const std::size_t cell_index, std::size_t &count) {
+                    if (!device_cells(cell_index).done)
+                        ++count;
+                },
+                pending);
+            if (pending > 0) {
+                int over_limit = 0;
+                Kokkos::parallel_reduce(
+                    "rtz_python_iteration_limit",
+                    Kokkos::RangePolicy<>(0, n_cells),
+                    KOKKOS_LAMBDA(const std::size_t cell_index, int &count) {
+                        const CellState &cell = device_cells(cell_index);
+                        if (!cell.done && cell.iterations > max_iterations)
+                            ++count;
+                    },
+                    over_limit);
+                if (over_limit > 0)
+                    throw std::runtime_error(
+                        "RTZ exceeded max_iterations before reaching a requested time");
+            }
+        }
+
+        Kokkos::parallel_for(
+            "rtz_python_interval_finish",
+            Kokkos::RangePolicy<>(0, n_cells),
+            KOKKOS_LAMBDA(const std::size_t cell_index) {
+                CellState &cell = device_cells(cell_index);
+                const double ne = get_ne(device_elements, cell.chemistry, false);
+                cell.out_mu = get_mu(
+                    ne, device_elements, cell.chemistry, false, include_H2, cell.nCO);
+                cell.out_Tmu = cell.subcycle.Tmu_old;
+                remove_dust_depletion(
+                    device_elements, cell.dust_ratio, cell.chemistry, cell.nCO);
+                if constexpr (!constant_temperature)
+                    cell.temperature = cell.out_Tmu * cell.out_mu;
+            });
+        Kokkos::deep_copy(host_cells, device_cells);
+
+        for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
+            cells[cell_index] = host_cells(cell_index);
+            double *output_row =
+                output_data.get() + (time_index * n_cells + cell_index) * n_columns;
+            copy_state_to_matrix(cells[cell_index],
+                                    output_row,
+                                    inputs,
+                                    density_offset,
+                                    ion_offset,
+                                    photon_offset);
+        }
+        previous_time = time;
+    }
+
+    nb::capsule owner(output_data.get(),
+                      [](void *pointer) noexcept { delete[] static_cast<double *>(pointer); });
+    double *result_data = output_data.release();
     nb::ndarray<nb::numpy, double, nb::ndim<3>> result(
         result_data, {times.size(), n_cells, n_columns}, owner);
     return nb::cast(result);
+}
+
+template <bool constant_temperature, bool include_H2, bool include_CO, bool include_self_shielding>
+nb::object solve_impl(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
+                      nb::ndarray<nb::numpy, const double, nb::ndim<1>> times_arg,
+                      nb::sequence element_list,
+                      nb::sequence ion_list,
+                      nb::sequence photon_bands,
+                      const std::string &requested_data_path,
+                      int max_iterations,
+                      double redshift,
+                      bool fixed_radiation) {
+    const SolveParameters parameters = validate_parameters<include_CO>(
+        input, times_arg, element_list, ion_list, photon_bands, max_iterations, redshift);
+    std::vector<CellState> cells = validate_state_values(input, parameters, include_H2);
+    return run_solver<constant_temperature, include_H2, include_CO, include_self_shielding>(
+        parameters,
+        std::move(cells),
+        requested_data_path,
+        max_iterations,
+        redshift,
+        fixed_radiation);
+}
+
+struct SolveOptions {
+    const std::string &data_path;
+    int max_iterations;
+    double redshift;
+    bool fixed_radiation;
+};
+
+template <bool constant_temperature, bool include_H2, bool include_CO>
+nb::object dispatch_self_shielding(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
+                                   nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
+                                   nb::sequence elements,
+                                   nb::sequence ions,
+                                   nb::sequence photon_bands,
+                                   const SolveOptions &options,
+                                   bool include_self_shielding) {
+    if (include_self_shielding)
+        return solve_impl<constant_temperature, include_H2, include_CO, true>(
+            state,
+            times,
+            elements,
+            ions,
+            photon_bands,
+            options.data_path,
+            options.max_iterations,
+            options.redshift,
+            options.fixed_radiation);
+    return solve_impl<constant_temperature, include_H2, include_CO, false>(state,
+                                                                           times,
+                                                                           elements,
+                                                                           ions,
+                                                                           photon_bands,
+                                                                           options.data_path,
+                                                                           options.max_iterations,
+                                                                           options.redshift,
+                                                                           options.fixed_radiation);
+}
+
+template <bool constant_temperature, bool include_H2>
+nb::object dispatch_CO(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
+                       nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
+                       nb::sequence elements,
+                       nb::sequence ions,
+                       nb::sequence photon_bands,
+                       const SolveOptions &options,
+                       bool include_CO,
+                       bool include_self_shielding) {
+    if (include_CO)
+        return dispatch_self_shielding<constant_temperature, include_H2, true>(
+            state, times, elements, ions, photon_bands, options, include_self_shielding);
+    return dispatch_self_shielding<constant_temperature, include_H2, false>(
+        state, times, elements, ions, photon_bands, options, include_self_shielding);
+}
+
+template <bool constant_temperature>
+nb::object dispatch_H2(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
+                       nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
+                       nb::sequence elements,
+                       nb::sequence ions,
+                       nb::sequence photon_bands,
+                       const SolveOptions &options,
+                       bool include_H2,
+                       bool include_CO,
+                       bool include_self_shielding) {
+    if (include_H2)
+        return dispatch_CO<constant_temperature, true>(state,
+                                                       times,
+                                                       elements,
+                                                       ions,
+                                                       photon_bands,
+                                                       options,
+                                                       include_CO,
+                                                       include_self_shielding);
+    return dispatch_CO<constant_temperature, false>(
+        state, times, elements, ions, photon_bands, options, include_CO, include_self_shielding);
+}
+
+nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
+                 nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
+                 nb::sequence elements,
+                 nb::sequence ions,
+                 nb::sequence photon_bands,
+                 const std::string &data_path,
+                 int max_iterations,
+                 double redshift,
+                 bool constant_temperature,
+                 bool include_H2,
+                 bool include_CO,
+                 bool include_self_shielding,
+                 bool fixed_radiation) {
+    const SolveOptions options{data_path, max_iterations, redshift, fixed_radiation};
+    if (constant_temperature)
+        return dispatch_H2<true>(state,
+                                 times,
+                                 elements,
+                                 ions,
+                                 photon_bands,
+                                 options,
+                                 include_H2,
+                                 include_CO,
+                                 include_self_shielding);
+    return dispatch_H2<false>(state,
+                              times,
+                              elements,
+                              ions,
+                              photon_bands,
+                              options,
+                              include_H2,
+                              include_CO,
+                              include_self_shielding);
 }
 
 } // namespace
@@ -471,17 +941,20 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
 NB_MODULE(_rtz, module) {
     module.doc() = "Kokkos-backed Python bindings for the RTZ chemistry and cooling solver";
     module.def("_finalize", &finalize_runtime);
-    module.def(
-        "solve",
-        &solve,
-        nb::arg("state"),
-        nb::arg("times"),
-        nb::arg("element_list"),
-        nb::arg("ion_list"),
-        nb::arg("photon_bands"),
-        nb::arg("data_path") = "",
-        nb::arg("max_iterations") = 100000,
-        "Evolve each state row from t=0 to the requested time(s). A scalar time "
-        "returns an (Ncell, Ncolumns) array; a sequence returns "
-        "(Ntimes, Ncell, Ncolumns), including the initial state when time=0.");
+    module.def("solve",
+               &solve,
+               nb::arg("state"),
+               nb::arg("times"),
+               nb::arg("element_list"),
+               nb::arg("ion_list"),
+               nb::arg("photon_bands"),
+               nb::arg("data_path") = "",
+               nb::arg("max_iterations") = 100000,
+               nb::arg("redshift") = 0.0,
+               nb::arg("constant_temperature") = false,
+               nb::arg("include_H2") = false,
+               nb::arg("include_CO") = false,
+               nb::arg("include_self_shielding") = false,
+               nb::arg("fixed_radiation") = false,
+               "Evolve each state row from t=0 through the requested 1D NumPy time array.");
 }

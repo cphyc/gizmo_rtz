@@ -118,7 +118,7 @@ if(GIZMO_RTZ_STANDALONE)
         else()
             nanobind_add_module(_rtz rtz_bindings.cpp)
         endif()
-        target_link_libraries(_rtz PRIVATE gizmo_rtz Kokkos::kokkos)
+        target_link_libraries(_rtz PRIVATE Kokkos::kokkos)
         target_compile_definitions(_rtz PRIVATE
             GIZMO_RTZ_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
         )
@@ -129,12 +129,8 @@ if(GIZMO_RTZ_STANDALONE)
         )
         if(Kokkos_ENABLE_CUDA)
             target_compile_options(_rtz PRIVATE
-                --expt-extended-lambda --expt-relaxed-constexpr -rdc=true
+                --expt-extended-lambda --expt-relaxed-constexpr
             )
-            target_compile_definitions(_rtz PRIVATE
-                DESUL_ATOMICS_ENABLE_CUDA_SEPARABLE_COMPILATION
-            )
-            target_link_options(_rtz PRIVATE -rdc=true)
         endif()
         install(TARGETS _rtz LIBRARY DESTINATION rtz RUNTIME DESTINATION rtz)
         install(FILES python/rtz/__init__.py DESTINATION rtz)

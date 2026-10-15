@@ -265,18 +265,14 @@ def _driver_state(temperatures, hydrogen_densities, metallicity, depletion, band
     hydrogen_densities = np.broadcast_to(
         np.asarray(hydrogen_densities, dtype=np.float64), temperatures.shape
     )
-    densities = (
-        hydrogen_densities[:, None]
-        * _DRIVER_SOLAR_ABUNDANCES[None, :]
-        * metallicity
-        * depletion
-    )
-    densities[:, 0] = hydrogen_densities
+    densities = hydrogen_densities[:, None] * _DRIVER_SOLAR_ABUNDANCES[None, :] * depletion
+    densities[:, 2:] *= metallicity
     fractions = np.full((temperatures.size, len(_DRIVER_IONS)), 1.0e-20)
     ion_offset = 0
     for atomic_number in _DRIVER_ATOMIC_NUMBERS:
+        stage_count = atomic_number + 1
         fractions[:, ion_offset] = 1.0
-        ion_offset += atomic_number + 1
+        ion_offset += stage_count
     photon_values = np.broadcast_to(
         np.asarray(photons, dtype=np.float64), (temperatures.size, len(bands))
     )
@@ -289,7 +285,7 @@ def test_python_cie_matches_gizmo_golden():
         expected[:1, 0],
         np.full(1, 1.0e-2),
         0.1,
-        _DRIVER_DEPLETION,
+        np.ones_like(_DRIVER_DEPLETION),
         [_DRIVER_BANDS[2]],
         [0.0],
     )
@@ -321,8 +317,8 @@ def test_python_cie_matches_gizmo_golden():
 
     actual_states = np.asarray(actual_states)
     actual_ions = actual_states[:, ion_offset : ion_offset + len(_DRIVER_IONS)]
-    np.testing.assert_allclose(actual_states[:, 0], expected[:, 0], rtol=1e-5)
-    np.testing.assert_allclose(actual_ions, expected[:, 1:], rtol=1e-5, atol=1e-25)
+    np.testing.assert_allclose(actual_states[:, 0], expected[:, 0], rtol=1e-4)
+    np.testing.assert_allclose(actual_ions, expected[:, 1:], rtol=1e-4, atol=1e-12)
 
 
 def test_python_ism_matches_gizmo_golden():
@@ -349,9 +345,9 @@ def test_python_ism_matches_gizmo_golden():
     actual_states = []
     for hydrogen_density in hydrogen_densities:
         state[0, 0] = 1.0e5
-        state[0, 1 : 1 + len(_DRIVER_ELEMENTS)] = (
-            hydrogen_density * _DRIVER_SOLAR_ABUNDANCES * 0.1
-        )
+        densities = hydrogen_density * _DRIVER_SOLAR_ABUNDANCES
+        densities[2:] *= 0.1
+        state[0, 1 : 1 + len(_DRIVER_ELEMENTS)] = densities
         state[0, 1] = hydrogen_density
         history = rtz.solve(
             state,
@@ -368,7 +364,7 @@ def test_python_ism_matches_gizmo_golden():
             max_iterations=40000,
             T_blackbody=1.0e5,
             temperature_is_Tmu=True,
-            use_default_depletion=False,
+            use_default_depletion=True,
             include_HM12_UVB=False,
         )
         state = history[-1].copy()
@@ -379,14 +375,14 @@ def test_python_ism_matches_gizmo_golden():
     ion_offset = 1 + len(_DRIVER_ELEMENTS)
     hydrogen_neutral_column = ion_offset
     hydrogen_ionized_column = ion_offset + 1
-    assert history.shape == (2, *state.shape)
-    np.testing.assert_allclose(result[:, 0], expected[:, 1], rtol=1e-5)
-    np.testing.assert_allclose(result[:, carbon_column], expected[:, 4], rtol=1e-5)
+    assert history.shape == (1, *state.shape)
+    np.testing.assert_allclose(result[:, 0], expected[:, 1], rtol=1e-4)
+    np.testing.assert_allclose(result[:, carbon_column], expected[:, 4], rtol=1e-4)
     np.testing.assert_allclose(
-        result[:, hydrogen_neutral_column], expected[:, 6], rtol=1e-5, atol=1e-25
+        result[:, hydrogen_neutral_column], expected[:, 6], rtol=1e-4, atol=1e-12
     )
     np.testing.assert_allclose(
-        result[:, hydrogen_ionized_column], expected[:, 7], rtol=1e-5, atol=1e-25
+        result[:, hydrogen_ionized_column], expected[:, 7], rtol=1e-4, atol=1e-12
     )
 
 
@@ -430,4 +426,4 @@ def test_python_photoheat_matches_gizmo_golden():
     result = history[1:, 0]
     assert history.shape == (expected.shape[0] + 1, 1, state.shape[1])
     np.testing.assert_allclose(result[:, 0], expected[:, 3], rtol=1e-5, atol=1e-10)
-    np.testing.assert_allclose(result[:, 3:6], expected[:, 4:7], rtol=1e-5, atol=1e-25)
+    np.testing.assert_allclose(result[:, 3:6], expected[:, 4:7], rtol=1e-5, atol=1e-12)

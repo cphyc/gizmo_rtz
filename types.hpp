@@ -55,7 +55,7 @@ constexpr int row_elem(int row) {
 }
 
 
-#define N_GROUPS 6
+#define N_GROUPS 7
 #define N_DIM 3
 #define N_DUST_WAV 1000
 using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;

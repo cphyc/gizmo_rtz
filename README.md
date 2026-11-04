@@ -41,15 +41,21 @@ uv pip install --python .venv-cuda/bin/python '.[test]' \
 To run the test suite from an existing Python environment instead, install
 `.[test]` with pip and invoke `pytest`.
 
-The `state` columns are ordered as follows:
+The legacy `state` matrix columns are ordered as follows:
 
 1. Temperature in K.
 2. One number density in cm^-3 for every item in `element_list`.
 3. One ion fraction for every item in `ion_list`.
 4. One photon number density in cm^-3 for every item in `photon_bands`.
 
-`state` must be a 2D NumPy `float64` array, and `times` must be a 1D NumPy
-`float64` array. Times are in seconds, finite, nonnegative, and strictly
+The legacy `state` input must be a 2D NumPy `float64` array, with temperature
+in K, densities and photon densities in cm^-3, and ion fractions dimensionless.
+Alternatively, pass a mapping with separate `temperature`, `densities`,
+`ion_fractions`, and `photon_densities` arrays. These may be unyt arrays and
+are converted to K, cm^-3, dimensionless, and cm^-3, respectively. Their
+shapes are `(Ncell,)` for temperature and `(Ncell, Nvalues)` for the other
+groups. `times` may be a unyt array convertible to seconds; plain NumPy times
+are interpreted as seconds. Times must be finite, nonnegative, and strictly
 increasing. The element order and ion order are the order of their respective
 lists. Element names must be lowercase full names; both `"hydrogen"` and
 `"helium"` are required. The supported elements are hydrogen, helium, carbon,
@@ -62,13 +68,17 @@ interpreted as the initial H2 fraction, allowing molecular hydrogen to be
 carried between solves. All unlisted atomic ion stages start at zero.
 
 The solver supports up to six photon bands, each supplied as a tuple
-`(lower_eV, upper_eV)`. If fewer are supplied, the final band's energy bounds
+`(lower_eV, upper_eV)`, or as a unitful array convertible to eV. If fewer are
+supplied, the final band's energy bounds
 are repeated internally and the extra photon densities are zero. Photon bounds
 must be finite and satisfy `0 < lower_eV < upper_eV`.
 
 `rtz.solve(state, times, element_list, ion_list, photon_bands)` integrates from
-t=0 to each target time and returns a history with shape
-`(Ntimes, Ncell, Ncolumns)`. An entry at t=0 is an unchanged copy of the input.
+t=0 to each target time and returns a dictionary with `temperature` (K),
+`densities` (cm^-3), `ion_fractions` (dimensionless), and `photon_densities`
+(cm^-3). Each value has leading axes `(Ntimes, Ncell)`; the final axis indexes
+the corresponding elements, ions, or photon bands. An entry at t=0 is an
+unchanged copy of the input state.
 `max_iterations` is an optional per-interval iteration limit (default 100000).
 The rate tables are loaded from this repository's `data/` directory by
 default; set `RTZ_DATA_DIR` or pass `data_path=...` to select another data
@@ -91,6 +101,7 @@ Optional keyword arguments configure the physics:
 | `conv_its` | `20000` | In equilibrium mode, stop after the convergence counter exceeds this threshold. |
 | `max_iterations` | `100000` | Maximum iterations per interval before raising an error. |
 | `T_blackbody` | `1e4` | Blackbody temperature used to calculate radiation cross-sections, in K. |
+| `sed` | `None` | Optional `(frequency, F_nu)` sampled spectrum. Frequency must be convertible to Hz and `F_nu` to erg/(s cm^2 Hz), or specific intensity units including sr^-1; samples must cover every photon band. The SED is normalized within each band. When omitted, `T_blackbody` selects the spectrum as before. |
 | `temperature_is_Tmu` | `False` | Interpret the initial temperature column as the solver's `T/mu` value rather than physical temperature. |
 | `use_default_depletion` | `True` | Apply the built-in per-element depletion factors. |
 | `include_collisional_ionization` | `True` | Enable collisional ionization. |
@@ -124,14 +135,37 @@ history = rtz.solve(
     include_H2=True,
     fixed_radiation=True,
 )
-final_state = history[-1]
+final_state = {name: values[-1] for name, values in history.items()}
+final_ion_fractions = history["ion_fractions"][-1]
+```
+
+Unit-aware inputs and an SED can also be supplied as:
+
+```python
+from unyt import Hz, K, cm, erg, s
+
+state = {
+    "temperature": temperatures * K,
+    "densities": densities / cm**3,
+    "ion_fractions": fractions,
+    "photon_densities": photons / cm**3,
+}
+history = rtz.solve(
+    state,
+    times * s,
+    elements,
+    ions,
+    photon_bands,
+    sed=(frequencies * Hz, f_nu * erg / (s * cm**2 * Hz)),
+)
 ```
 
 The binding uses `aexp=1` and a cell size of 4.4 pc. It
-evolves each row independently with Kokkos, launching the solver's
+evolves each cell independently with Kokkos, launching the solver's
 per-iteration stages as separate kernels in the same order as the PRISM update
-path. It does not use a straggler-tail path, and preserves the input column
-layout in the result.
+path. It does not use a straggler-tail path. Results are split into the four
+grouped arrays described above, in the same element, ion, and photon-band
+orders as the input lists.
 
 The Python tests include a 1 Gyr constant-temperature H/He equilibrium sweep
 from 100 K to 1e8 K, using solar He/H, `n_H=1 cm^-3`, `redshift=0`, `uv_g0=1`,

@@ -7,6 +7,7 @@
 #include <array>
 #include <fstream>
 #include <cmath>
+#include <vector>
 
 #include <Kokkos_Core.hpp>
 
@@ -2217,10 +2218,13 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
-void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_cross_sections(double T_blackbody)
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_cross_sections(
+    double T_blackbody,
+    const std::vector<double>& sed_frequency,
+    const std::vector<double>& sed_fnu)
 {
     // Update cross sections
-    update_cross_sections(T_blackbody, tabData);
+    update_cross_sections(T_blackbody, tabData, sed_frequency, sed_fnu);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include <Kokkos_Core.hpp>
+#include <vector>
 
 // MAX_ELEMENTS is already defined in types.hpp
 
@@ -58,7 +59,9 @@ public:
     void need_to_update_UVB(double redshift);
 
     // Update cross sections
-    void need_to_update_cross_sections(double T_blackbody);
+    void need_to_update_cross_sections(double T_blackbody,
+                                      const std::vector<double>& sed_frequency = {},
+                                      const std::vector<double>& sed_fnu = {});
 
     // Set the photon group energy bins
     void set_photon_groups(

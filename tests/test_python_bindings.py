@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from unyt import Hz, K, Myr, cm, eV, erg, s
 
 import rtz
 
@@ -24,11 +25,60 @@ def initial_state():
     return state, elements, ions, photon_bands
 
 
+def _matrix(history):
+    return np.concatenate(
+        (
+            history["temperature"].to_value("K")[..., None],
+            history["densities"].to_value("cm**-3"),
+            history["ion_fractions"],
+            history["photon_densities"].to_value("cm**-3"),
+        ),
+        axis=-1,
+    )
+
+
 def test_zero_time_returns_unchanged_state(initial_state):
     state, elements, ions, bands = initial_state
-    history = rtz.solve(state, np.array([0.0]), elements, ions, bands)
+    history = _matrix(rtz.solve(state, np.array([0.0]), elements, ions, bands))
     assert history.shape == (1, 1, state.shape[1])
     assert np.array_equal(history[0], state)
+
+
+def test_solve_returns_unitful_grouped_history(initial_state):
+    state, elements, ions, bands = initial_state
+    history = rtz.solve(state, np.array([0.0]), elements, ions, bands)
+    assert set(history) == {
+        "temperature", "densities", "ion_fractions", "photon_densities"
+    }
+    assert history["temperature"].shape == (1, 1)
+    assert history["densities"].shape == (1, 1, len(elements))
+    assert history["ion_fractions"].shape == (1, 1, len(ions))
+    assert history["photon_densities"].shape == (1, 1, len(bands))
+    assert str(history["temperature"].units) == "K"
+    assert str(history["densities"].units) == "cm**(-3)"
+    assert str(history["photon_densities"].units) == "cm**(-3)"
+    np.testing.assert_array_equal(_matrix(history)[0], state)
+
+
+def test_grouped_unyt_state_and_sed(initial_state):
+    state, elements, ions, bands = initial_state
+    grouped_state = {
+        "temperature": np.array([state[0, 0]]) * K,
+        "densities": state[:, 1:3] / cm**3,
+        "ion_fractions": state[:, 3:8],
+        "photon_densities": state[:, 8:] / cm**3,
+    }
+    frequency = np.array([3.0e15, 4.5e15, 6.0e15]) * Hz
+    f_nu = np.ones(3) * erg / (s * cm**2 * Hz)
+    history = _matrix(rtz.solve(
+        grouped_state,
+        np.array([0.0]) * Myr,
+        elements,
+        ions,
+        np.asarray(bands) * eV,
+        sed=(frequency, f_nu),
+    ))
+    np.testing.assert_array_equal(history[0], state)
 
 
 def test_rejects_non_numpy_state_and_times(initial_state):
@@ -96,14 +146,14 @@ def test_rejects_unnormalized_ion_fractions(initial_state):
 
 def test_evolves_one_myr_to_golden_state(initial_state):
     state, elements, ions, bands = initial_state
-    result = rtz.solve(
+    result = _matrix(rtz.solve(
         state,
         np.array([0.0, 3.15576e13]),
         elements,
         ions,
         bands,
         max_iterations=100000,
-    )
+    ))
     # Generated with the current OpenMP solver; CPU and CUDA subcycling differ slightly.
     expected = np.array(
         [
@@ -146,7 +196,7 @@ def test_constant_temperature_and_fixed_radiation(initial_state):
         ],
         dtype=np.float64,
     )
-    fixed = rtz.solve(
+    fixed = _matrix(rtz.solve(
         state,
         np.array([0.0, 1.0e12]),
         elements,
@@ -158,7 +208,7 @@ def test_constant_temperature_and_fixed_radiation(initial_state):
         include_CO=True,
         include_self_shielding=True,
         fixed_radiation=True,
-    )
+    ))
     assert np.isfinite(fixed).all()
     assert fixed[1, 0, 0] == state[0, 0]
     np.testing.assert_array_equal(fixed[1, 0, -len(bands) :], state[0, -len(bands) :])
@@ -167,8 +217,8 @@ def test_constant_temperature_and_fixed_radiation(initial_state):
 def test_absorbing_radiation_depletes_photons(initial_state):
     state, elements, ions, bands = initial_state
     times = np.array([0.0, 1.0e12])
-    fixed = rtz.solve(state, times, elements, ions, bands, fixed_radiation=True)
-    absorbed = rtz.solve(state, times, elements, ions, bands)
+    fixed = _matrix(rtz.solve(state, times, elements, ions, bands, fixed_radiation=True))
+    absorbed = _matrix(rtz.solve(state, times, elements, ions, bands))
     np.testing.assert_array_equal(fixed[1, 0, -len(bands) :], state[0, -len(bands) :])
     assert np.all(absorbed[1, 0, -len(bands) :] <= state[0, -len(bands) :])
     assert np.any(absorbed[1, 0, -len(bands) :] < state[0, -len(bands) :])
@@ -192,7 +242,7 @@ def test_hydrogen_helium_equilibrium_after_one_gyr():
     state[:, 3] = 1.0
     state[:, 5] = 1.0
 
-    history = rtz.solve(
+    history = _matrix(rtz.solve(
         state,
         np.array([0.0, 3.15576e16]),
         elements,
@@ -202,7 +252,7 @@ def test_hydrogen_helium_equilibrium_after_one_gyr():
         uv_g0=1.0,
         constant_temperature=True,
         fixed_radiation=True,
-    )
+    ))
 
     equilibrium = history[-1]
     expected = np.loadtxt(
@@ -293,7 +343,7 @@ def test_python_cie_matches_gizmo_golden():
     actual_states = []
     for expected_row in expected:
         state[0, 0] = expected_row[0]
-        history = rtz.solve(
+        history = _matrix(rtz.solve(
             state,
             np.array([1.0]),
             _DRIVER_ELEMENTS,
@@ -311,7 +361,7 @@ def test_python_cie_matches_gizmo_golden():
             include_HM12_UVB=False,
             include_dust_recombination=False,
             include_charge_exchange=False,
-        )
+        ))
         state = history[-1].copy()
         actual_states.append(state[0].copy())
 
@@ -349,7 +399,7 @@ def test_python_ism_matches_gizmo_golden():
         densities[2:] *= 0.1
         state[0, 1 : 1 + len(_DRIVER_ELEMENTS)] = densities
         state[0, 1] = hydrogen_density
-        history = rtz.solve(
+        history = _matrix(rtz.solve(
             state,
             np.array([1.0]),
             _DRIVER_ELEMENTS,
@@ -366,7 +416,7 @@ def test_python_ism_matches_gizmo_golden():
             temperature_is_Tmu=True,
             use_default_depletion=True,
             include_HM12_UVB=False,
-        )
+        ))
         state = history[-1].copy()
         actual_states.append(state[0].copy())
 
@@ -402,7 +452,7 @@ def test_python_photoheat_matches_gizmo_golden():
     state[0, 3:8] = [1.0 - 1e-8, 1e-8, 1.0 - 1e-8, 1e-8, 0.0]
     state[0, 3 + len(ions) + 2] = 1.0
     times = np.arange(expected.shape[0] + 1, dtype=np.float64) * 3.0e15
-    history = rtz.solve(
+    history = _matrix(rtz.solve(
         state,
         times,
         elements,
@@ -421,7 +471,7 @@ def test_python_photoheat_matches_gizmo_golden():
         include_HM12_UVB=False,
         include_dust_recombination=False,
         include_charge_exchange=False,
-    )
+    ))
 
     result = history[1:, 0]
     assert history.shape == (expected.shape[0] + 1, 1, state.shape[1])

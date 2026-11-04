@@ -3,6 +3,7 @@
 #include <array>
 #include <fstream>
 #include <cmath>
+#include <vector>
 #include <Kokkos_Core.hpp>
 
 #include "constants.hpp"
@@ -261,6 +262,29 @@ double blackbody_nu(double T, double nu){
 }
 
 KOKKOS_INLINE_FUNCTION
+double spectrum_nu(double T, double nu,
+                   const Kokkos::View<double*>& sed_frequency,
+                   const Kokkos::View<double*>& sed_fnu) {
+    const int n = static_cast<int>(sed_frequency.extent(0));
+    if (n == 0)
+        return blackbody_nu(T, nu);
+
+    int low = 0;
+    int high = n - 1;
+    while (high - low > 1) {
+        const int mid = (low + high) / 2;
+        if (sed_frequency(mid) <= nu)
+            low = mid;
+        else
+            high = mid;
+    }
+
+    const double t = (nu - sed_frequency(low)) /
+                     (sed_frequency(high) - sed_frequency(low));
+    return sed_fnu(low) + t * (sed_fnu(high) - sed_fnu(low));
+}
+
+KOKKOS_INLINE_FUNCTION
 double simpson_weight(int i) {
     if (i == 0 || i == n_int_points) {
         return 1.0;
@@ -277,10 +301,12 @@ void integration_bounds(double E0, double E1, double &a, double &b, double &h) {
 }
 
 KOKKOS_INLINE_FUNCTION
-void compute_blackbody_bin_integrals(double E0, double E1, double T,
-                                     double &number_denominator,
-                                     double &energy_denominator,
-                                     double &group_energy) {
+void compute_spectrum_bin_integrals(double E0, double E1, double T,
+                                    const Kokkos::View<double*>& sed_frequency,
+                                    const Kokkos::View<double*>& sed_fnu,
+                                    double &number_denominator,
+                                    double &energy_denominator,
+                                    double &group_energy) {
     double a, b, h;
     integration_bounds(E0, E1, a, b, h);
 
@@ -290,7 +316,7 @@ void compute_blackbody_bin_integrals(double E0, double E1, double T,
     for (int i = 0; i <= n_int_points; ++i) {
         const double nu = a + (i * h);
         const double weight = simpson_weight(i);
-        const double B_nu = blackbody_nu(T, nu);
+        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
 
         weighted_number_sum += weight * B_nu / (H_PLANCK * nu);
         weighted_energy_sum += weight * B_nu;
@@ -305,6 +331,8 @@ KOKKOS_INLINE_FUNCTION
 void compute_weighted_cross_sections(double E0, double E1, double T,
                                      int element, int ion,
                                      const TabulatedData& tabData,
+                                     const Kokkos::View<double*>& sed_frequency,
+                                     const Kokkos::View<double*>& sed_fnu,
                                      double number_denominator,
                                      double energy_denominator,
                                      double &sigma_number,
@@ -318,7 +346,7 @@ void compute_weighted_cross_sections(double E0, double E1, double T,
     for (int i = 0; i <= n_int_points; ++i) {
         const double nu = a + (i * h);
         const double weight = simpson_weight(i);
-        const double B_nu = blackbody_nu(T, nu);
+        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
         const double sigma = getCrosssection_rtz((C_CGS / nu) * 1e8, element, ion, tabData);
 
         weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
@@ -332,6 +360,8 @@ void compute_weighted_cross_sections(double E0, double E1, double T,
 KOKKOS_INLINE_FUNCTION
 double compute_weighted_dust_cross_section(double E0, double E1, double T,
                                            const TabulatedData& tabData,
+                                           const Kokkos::View<double*>& sed_frequency,
+                                           const Kokkos::View<double*>& sed_fnu,
                                            double number_denominator) {
     double a, b, h;
     integration_bounds(E0, E1, a, b, h);
@@ -340,7 +370,7 @@ double compute_weighted_dust_cross_section(double E0, double E1, double T,
     for (int i = 0; i <= n_int_points; ++i) {
         const double nu = a + (i * h);
         const double weight = simpson_weight(i);
-        const double B_nu = blackbody_nu(T, nu);
+        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
         const double sigma = getCrosssection_dust((C_CGS / nu) * 1e8, tabData);
 
         weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
@@ -350,7 +380,9 @@ double compute_weighted_dust_cross_section(double E0, double E1, double T,
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_N(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData){
+double sigma_N(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData,
+               const Kokkos::View<double*>& sed_frequency,
+               const Kokkos::View<double*>& sed_fnu){
     // Photon number-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -358,8 +390,10 @@ double sigma_N(double E0, double E1, double T, int element, int ion, const Tabul
     double number_denominator, energy_denominator, group_energy;
     double sigma_number, sigma_energy;
 
-    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
+    compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
+                                   number_denominator, energy_denominator, group_energy);
     compute_weighted_cross_sections(E0, E1, T, element, ion, tabData,
+                                    sed_frequency, sed_fnu,
                                     number_denominator, energy_denominator,
                                     sigma_number, sigma_energy);
 
@@ -367,7 +401,9 @@ double sigma_N(double E0, double E1, double T, int element, int ion, const Tabul
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_E(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData){
+double sigma_E(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData,
+               const Kokkos::View<double*>& sed_frequency,
+               const Kokkos::View<double*>& sed_fnu){
     // Photon energy-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -375,8 +411,10 @@ double sigma_E(double E0, double E1, double T, int element, int ion, const Tabul
     double number_denominator, energy_denominator, group_energy;
     double sigma_number, sigma_energy;
 
-    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
+    compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
+                                   number_denominator, energy_denominator, group_energy);
     compute_weighted_cross_sections(E0, E1, T, element, ion, tabData,
+                                    sed_frequency, sed_fnu,
                                     number_denominator, energy_denominator,
                                     sigma_number, sigma_energy);
 
@@ -384,19 +422,24 @@ double sigma_E(double E0, double E1, double T, int element, int ion, const Tabul
 }
 
 KOKKOS_INLINE_FUNCTION
-double e_bar(double E0, double E1, double T){
+double e_bar(double E0, double E1, double T,
+             const Kokkos::View<double*>& sed_frequency,
+             const Kokkos::View<double*>& sed_fnu){
     // Mean energy in the bin
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
     double number_denominator, energy_denominator, group_energy;
-    compute_blackbody_bin_integrals(E0, E1, T, number_denominator, energy_denominator, group_energy);
+    compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
+                                   number_denominator, energy_denominator, group_energy);
 
     return group_energy;
 }
 
 // TODO(code): Declate the 4D array and then copy to the tabdata
-void update_cross_sections(double T, TabulatedData &tabData) {
+void update_cross_sections(double T, TabulatedData &tabData,
+                           const std::vector<double>& sed_frequency,
+                           const std::vector<double>& sed_fnu) {
     // Updates the cross sections for each element and group
 
     auto &cs_ph = tabData.cs_ph;
@@ -405,6 +448,20 @@ void update_cross_sections(double T, TabulatedData &tabData) {
     const auto &group_E_max = tabData.group_E_max;
     const auto &c_frac = tabData.c_frac;
     Kokkos::View<double[N_GROUPS][3]> group_bin_data {"group_bin_data"};
+    Kokkos::View<double*> sed_frequency_d;
+    Kokkos::View<double*> sed_fnu_d;
+    if (!sed_frequency.empty()) {
+        sed_frequency_d = Kokkos::View<double*>("sed_frequency", sed_frequency.size());
+        sed_fnu_d = Kokkos::View<double*>("sed_fnu", sed_fnu.size());
+        auto sed_frequency_h = Kokkos::create_mirror_view(sed_frequency_d);
+        auto sed_fnu_h = Kokkos::create_mirror_view(sed_fnu_d);
+        for (std::size_t i = 0; i < sed_frequency.size(); ++i) {
+            sed_frequency_h(i) = sed_frequency[i];
+            sed_fnu_h(i) = sed_fnu[i];
+        }
+        Kokkos::deep_copy(sed_frequency_d, sed_frequency_h);
+        Kokkos::deep_copy(sed_fnu_d, sed_fnu_h);
+    }
 
     Kokkos::deep_copy(cs_ph, 0.0);
 
@@ -413,8 +470,9 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         double energy_denominator = 0.0;
         double group_energy = 0.0;
 
-        compute_blackbody_bin_integrals(group_E_min(i), group_E_max(i), T,
-                                        number_denominator, energy_denominator, group_energy);
+        compute_spectrum_bin_integrals(group_E_min(i), group_E_max(i), T,
+                                       sed_frequency_d, sed_fnu_d,
+                                       number_denominator, energy_denominator, group_energy);
 
         group_bin_data(i, 0) = number_denominator;
         group_bin_data(i, 1) = energy_denominator;
@@ -426,8 +484,9 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         // Blackbody-averaged dust absorption rate constant [cm^3/s]
         double sigma_dust = 0.0;
         if (number_denominator > 0.0) {
-            sigma_dust = compute_weighted_dust_cross_section(group_E_min(i), group_E_max(i), T,
-                                                             tabData, number_denominator);
+            sigma_dust = compute_weighted_dust_cross_section(
+                group_E_min(i), group_E_max(i), T, tabData, sed_frequency_d, sed_fnu_d,
+                number_denominator);
         }
         tabData.cs_dust(i) = sigma_dust * C_CGS * c_frac();
     });
@@ -446,6 +505,7 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         double sigma_energy = 0.0;
 
         compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, j, k+1, tabData,
+                                        sed_frequency_d, sed_fnu_d,
                                         number_denominator, energy_denominator,
                                         sigma_number, sigma_energy);
 
@@ -469,6 +529,7 @@ void update_cross_sections(double T, TabulatedData &tabData) {
         double sigma_energy = 0.0;
 
         compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData,
+                                        sed_frequency_d, sed_fnu_d,
                                         number_denominator, energy_denominator,
                                         sigma_number, sigma_energy);
 

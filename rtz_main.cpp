@@ -303,9 +303,9 @@ static int run_ism_test(double G0_habing, bool continue_T)
     flags.include_HM12_UVB = false;
 
     // Photon groups: 5.6-11.2 eV, 11.2-13.6 eV, 13.6-15.2 eV, 15.2-24.5 eV, 24.5-54.4 eV, 54.4-500 eV
-    std::array<double, N_GROUPS> E_min, E_max;
+    std::array<double, N_GROUPS> E_min{0.0}, E_max{0.0};
     std::array<double, 7> lower = {5.6, 11.2, 13.6, 15.2, 24.5, 54.4, 500.0};
-    for (int g = 0; g < N_GROUPS; g++) {
+    for (size_t g = 0; g < lower.size() - 1; g++) {
         E_min[g] = lower[g];
         E_max[g] = lower[g + 1];
     }
@@ -330,7 +330,7 @@ static int run_ism_test(double G0_habing, bool continue_T)
                 G0_per_unit += N_PHOT_in[g] * (C_CGS * h_cf()) * h_ge(g) * EV_2_ERG / G_conv;
         const double scale = (G0_per_unit > 0.0) ? G0_habing / G0_per_unit : 0.0;
         for (int g = 0; g < N_GROUPS; g++) N_PHOT_in[g] *= scale;
-        fprintf(stderr, "ISM test: G0 = %.6g Habing -> N_PHOT = [%.4g, %.4g] cm^-3\n",
+        fprintf(stderr, "ISM test: G0 = %.6g Habing -> N_PHOT = [%.17g, %.17g] cm^-3\n",
                 G0_habing, N_PHOT_in[0], N_PHOT_in[1]);
     }
 
@@ -411,7 +411,7 @@ static int run_ism_test(double G0_habing, bool continue_T)
         if (r.total_iter > (double)max_its)
             fprintf(stderr, "WARNING: nH=%.4e hit max_its=%d without converging\n",
                     r.nH, max_its);
-        printf("%.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e %.0f\n",
+        printf("%.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.0f\n",
                r.nH, r.T_actual, r.Tmu, r.mu,
                r.n_C, r.nCO, r.xHI, r.xHII, r.xH2, r.total_iter);
     }
@@ -527,7 +527,17 @@ static int run_cie_test()
         Kokkos::deep_copy(h_xions, d_xions);
 
         fprintf(stderr, "step %d/%d Tmu=%e solver_time=%ld ms\n", i+1, NT, h_TK(0), elapsed);
-        
+
+        int ion_index = 0;
+        printf("%.17e", h_TK(0));
+        for (int element_index = 1; element_index < MAX_ELEMENTS; element_index++) {
+            if (elements[element_index].atomic_number < 1) continue;
+            for (int stage = 0; stage < elements[element_index].n_ions; stage++)
+                printf(" %.17e", h_xions(ion_index++));
+            ion_index += elements[element_index].n_mol;
+        }
+        printf("\n");
+
         if (write_output) {
             int counter = 0;
             for (int ii = 1; ii < MAX_ELEMENTS; ii++) {

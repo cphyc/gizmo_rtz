@@ -151,6 +151,14 @@ std::vector<double> parse_times(nb::ndarray<nb::numpy, const double, nb::ndim<1>
     return result;
 }
 
+std::vector<double> copy_1d_array(nb::ndarray<nb::numpy, const double, nb::ndim<1>> array) {
+    std::vector<double> result;
+    result.reserve(array.shape(0));
+    for (std::size_t index = 0; index < array.shape(0); ++index)
+        result.push_back(array.data()[index * array.stride(0)]);
+    return result;
+}
+
 std::filesystem::path resolve_data_path(const std::string &requested_path) {
     std::filesystem::path path = requested_path;
     if (path.empty()) {
@@ -201,8 +209,11 @@ class Runtime {
     configure(double redshift,
               double uv_g0,
               double T_blackbody,
-              const std::vector<std::pair<double, double>> &bands) {
-        if (bands != configured_bands_ || T_blackbody_ != T_blackbody) {
+              const std::vector<std::pair<double, double>> &bands,
+              const std::vector<double> &sed_frequency,
+              const std::vector<double> &sed_fnu) {
+        if (bands != configured_bands_ || T_blackbody_ != T_blackbody ||
+            sed_frequency != configured_sed_frequency_ || sed_fnu != configured_sed_fnu_) {
             std::array<double, N_GROUPS> lower{};
             std::array<double, N_GROUPS> upper{};
             for (int group = 0; group < N_GROUPS; ++group) {
@@ -211,9 +222,11 @@ class Runtime {
                 upper[group] = band.second;
             }
             solver_->set_photon_groups(lower, upper);
-            solver_->need_to_update_cross_sections(T_blackbody);
+            solver_->need_to_update_cross_sections(T_blackbody, sed_frequency, sed_fnu);
             configured_bands_ = bands;
             T_blackbody_ = T_blackbody;
+            configured_sed_frequency_ = sed_frequency;
+            configured_sed_fnu_ = sed_fnu;
         }
         if (!configured_redshift_ || *configured_redshift_ != redshift) {
             solver_->need_to_update_UVB(redshift);
@@ -230,6 +243,8 @@ class Runtime {
     bool owns_kokkos_;
     std::unique_ptr<Solver> solver_;
     std::vector<std::pair<double, double>> configured_bands_;
+    std::vector<double> configured_sed_frequency_;
+    std::vector<double> configured_sed_fnu_;
     std::optional<double> configured_redshift_;
     std::optional<double> configured_uv_g0_;
     double T_blackbody_ = 0.0;
@@ -319,6 +334,8 @@ struct SolveOptions {
     double redshift;
     double uv_g0;
     double T_blackbody;
+    std::vector<double> sed_frequency;
+    std::vector<double> sed_fnu;
     bool fixed_radiation;
     bool equilibrium;
     bool temperature_is_Tmu;
@@ -348,6 +365,44 @@ SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndi
 
     SolveParameters parameters;
     parameters.inputs = parse_inputs(element_list, ion_list, photon_bands);
+    if (options.sed_frequency.empty() != options.sed_fnu.empty())
+        throw std::invalid_argument("sed_frequency and sed_fnu must both be provided");
+    if (!options.sed_frequency.empty()) {
+        if (options.sed_frequency.size() < 2 ||
+            options.sed_frequency.size() != options.sed_fnu.size())
+            throw std::invalid_argument(
+                "SED frequency and F_nu arrays must have equal lengths of at least two");
+        for (std::size_t i = 0; i < options.sed_frequency.size(); ++i) {
+            if (!std::isfinite(options.sed_frequency[i]) || options.sed_frequency[i] <= 0.0 ||
+                !std::isfinite(options.sed_fnu[i]) || options.sed_fnu[i] < 0.0 ||
+                (i > 0 && options.sed_frequency[i] <= options.sed_frequency[i - 1]))
+                throw std::invalid_argument(
+                    "SED frequencies must be positive and strictly increasing; F_nu must be "
+                    "finite and nonnegative");
+        }
+        for (const auto &[lower_eV, upper_eV] : parameters.inputs.photon_bands) {
+            const double lower_frequency = lower_eV * EV_2_ERG / H_PLANCK;
+            const double upper_frequency = upper_eV * EV_2_ERG / H_PLANCK;
+            if (options.sed_frequency.front() > lower_frequency ||
+                options.sed_frequency.back() < upper_frequency)
+                throw std::invalid_argument(
+                    "SED frequency samples must cover every photon band");
+            bool has_flux = false;
+            for (std::size_t i = 0; i + 1 < options.sed_frequency.size(); ++i) {
+                const double overlap_lower =
+                    std::max(lower_frequency, options.sed_frequency[i]);
+                const double overlap_upper =
+                    std::min(upper_frequency, options.sed_frequency[i + 1]);
+                if (overlap_lower < overlap_upper &&
+                    (options.sed_fnu[i] > 0.0 || options.sed_fnu[i + 1] > 0.0)) {
+                    has_flux = true;
+                    break;
+                }
+            }
+            if (!has_flux)
+                throw std::invalid_argument("SED F_nu must be positive within every photon band");
+        }
+    }
     if constexpr (include_CO) {
         const auto &elements_by_name = element_numbers();
         const bool has_carbon =
@@ -492,7 +547,8 @@ nb::object run_solver(const SolveParameters &parameters,
     const std::filesystem::path data_path = resolve_data_path(options.data_path);
     Runtime &runtime = get_runtime(data_path);
     runtime.configure(
-        options.redshift, options.uv_g0, options.T_blackbody, inputs.photon_bands);
+        options.redshift, options.uv_g0, options.T_blackbody, inputs.photon_bands,
+        options.sed_frequency, options.sed_fnu);
     Solver solver = runtime.solver();
     Kokkos::View<CellState *> device_cells("rtz_python_cells", n_cells);
     auto host_cells = Kokkos::create_mirror_view(device_cells);
@@ -967,6 +1023,8 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                  nb::sequence elements,
                  nb::sequence ions,
                  nb::sequence photon_bands,
+                 nb::ndarray<nb::numpy, const double, nb::ndim<1>> sed_frequency_arg,
+                 nb::ndarray<nb::numpy, const double, nb::ndim<1>> sed_fnu_arg,
                  const std::string &data_path,
                  int max_iterations,
                  double redshift,
@@ -1001,6 +1059,8 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                                redshift,
                                uv_g0,
                                T_blackbody,
+                               copy_1d_array(sed_frequency_arg),
+                               copy_1d_array(sed_fnu_arg),
                                fixed_radiation,
                                equilibrium,
                                temperature_is_Tmu,
@@ -1041,6 +1101,8 @@ NB_MODULE(_rtz, module) {
                nb::arg("element_list"),
                nb::arg("ion_list"),
                nb::arg("photon_bands"),
+               nb::arg("sed_frequency"),
+               nb::arg("sed_fnu"),
                nb::arg("data_path") = "",
                nb::arg("max_iterations") = 100000,
                nb::arg("redshift") = 0.0,

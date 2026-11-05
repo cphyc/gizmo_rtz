@@ -128,3 +128,31 @@ GPU regression run. A baseline attempt was explicitly interrupted during CIE
 after 18 tests passed in 249.89 s; the CIE sweep alone asks for roughly six
 million single-cell subcycles. No passing result is claimed for those sweeps.
 See `results/trial02.json` and `results/trial02-tests.json`.
+
+The separate Nsight Systems trace confirms 1,505 subcycles and a reduction
+from 15,050,000 to 2,389,309 cell teams (84.1% fewer). Active counts at
+subcycles 0/99/499/999/1499 are 10000/5210/1599/233/1. This confirms a
+long straggler tail, but the modest time improvement indicates substantial
+cost remains in active-cell work. See `results/trial02-active-counts.json`
+and the trial02 profile summaries.
+
+Phase times clarify the gain: cooling falls from 5.937 s to 2.018 s, while
+ions/commit stays at 33.986 s (89.9% of GPU kernel time) versus 34.135 s in
+baseline. Removing completed cell teams alone barely changes ion time;
+packing active cells into the cooling lanes accounts for most of the win.
+The next trial therefore targets utilization within the active ion teams.
+
+Nsight Compute LaunchStats/Occupancy collection was attempted on a 256-cell
+solve, but failed with `ERR_NVGPUCTRPERM`: the driver denies hardware counter
+access. No occupancy measurement is claimed. Static resource counts and
+Nsight Systems launch geometry remain available; no driver settings changed.
+
+## Trial 03: one CUDA warp per cell team
+
+Starting from committed trial 02, set CUDA ion teams to 32 threads (baseline
+AUTO chose 128). Host backends keep AUTO. All ion work still uses the same
+TeamThreadRange loops and scratch snapshot; stages beyond 32 are handled
+by additional loop iterations. This tests team utilization without changing
+rate equations, precision, timestep control, or convergence settings.
+
+Measurement and correctness validation pending.

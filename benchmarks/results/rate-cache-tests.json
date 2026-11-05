@@ -1,0 +1,11 @@
+{
+  "cpu_passed": 18,
+  "cpu_excluded_long_sweeps": 3,
+  "cpu_seconds": 1.04,
+  "cuda_passed": 18,
+  "cuda_excluded_long_sweeps": 3,
+  "cuda_seconds": 4.21,
+  "precision": "float64 computation/density/ions; both precision switches OFF",
+  "exact_gpu_output": true,
+  "configuration": "metal per-iteration recombination/collisional coefficient cache"
+}

@@ -411,3 +411,81 @@ excluded, in 4.27 s. This run used the actual CUDA binary above, not the CPU
 build. The preserved float64 binary is
 `build/galaxy-gpu/float64-compact-baseline.cpython-314-x86_64-linux-gnu.so`.
 Build and validation metadata: `results/float64-compact-tests.json`.
+
+
+## Float64 best-version kernel deep-dive
+
+Profiled the saved `float64-compact-baseline` binary (SHA recorded in
+`results/float64-best-profile.json`), not the uncommitted rate-cache build.
+Compiled metadata confirms CUDA and 8-byte computation/density/ion types.
+The cold profile completes with output bits identical to the original double
+reference. Profiling timing (39.741878 s) is not used as a warmed benchmark.
+
+| Kernel/phase | Launches | GPU seconds | Share of kernel time |
+| --- | ---: | ---: | ---: |
+| Molecules / H-He / metal ions / commit | 1505 | 34.122123 | 88.0% |
+| Cooling rates (two temperature lanes) | 1505 | 2.274776 | 5.9% |
+| Prep / radiation | 1505 | 1.129590 | 2.9% |
+| Spectrum/cross-section setup | 3 | 1.228774 | 3.2% |
+| Pending count | 1505 | 0.013879 | <0.1% |
+| Iteration-limit check | 1504 | 0.011245 | <0.1% |
+| Active-index scan (multiple passes) | 2150 | 0.010033 | <0.1% |
+| Interval initialization / finish | 1 each | 0.002174 | <0.1% |
+
+The setup kernels are first-call work. In repeated solves, the ion/commit
+phase accounts for about 90.8% of the listed recurring GPU kernel time.
+The current network disables molecules, so the fused dominant phase's
+molecular code is compiled out. H/He and commit sections run on one team
+thread; metal stages run across the 32-thread team. The ion kernel uses
+95 registers/thread in this float64 build. The trace does not separately
+time these device subfunctions, so no measured H/He-versus-metal split is
+claimed. CUDA synchronization time overlaps kernel execution and is not an
+additional cost to sum with it.
+
+Source inspection: adjacent metal stages independently evaluate the same
+recombination/collisional coefficients at frozen temperature. Trial08 tests
+reusing those coefficients in shared scratch. Further requested experiments
+will inspect duplicated exp/pow/log10 within hot functions and integer power
+exponents. Candidates will be measured separately; syntactic integer
+exponents alone do not help while the current `rtz_math::pow(Real,Real)`
+wrapper converts them back to Real. Integer overloads may change rounding
+and therefore must pass the exact gate before being retained.
+
+Raw profiling summaries: `results/float64-best-profile_cuda_*_sum.csv`.
+The full trace and SQLite export are local ignored artifacts.
+
+## Trial 08: cache neighboring metal rate coefficients (float64)
+
+Two Real scratch arrays cache recombination and collisional coefficients for
+metal stages, once per iteration after H/He. Creation/destruction terms read
+the same cached coefficient, preserving their existing multiplication and
+addition order. Only valid stages are evaluated; the cache respects the
+collisional-ionization flag. Temperature/ne used by the metal phase remain
+frozen. Existing callers retain an uncached template default; the Python team
+path explicitly enables caching. Scratch allocation includes Real alignment
+padding and grows by 2*n_ion_work*sizeof(Real). Both float32 options are OFF. Full-dataset preflight passes bit-for-bit.
+Median of five warmed runs: **33.199750 s** versus the prior float64 compact
+baseline **37.692757 s**, a **1.13533x** speedup (11.92% less time), and
+about **1.22948x** versus the original 40.818548 s baseline. Samples:
+33.207808, 33.199750, 33.195480, 33.186653, 33.209149 s.
+All returned bits are identical to the original float64 GPU reference.
+Default-double CPU regressions: 18 passed (three long sweeps excluded).
+Float64 CUDA regressions: 18 passed (three long sweeps excluded). **Retained**.
+Files: `results/rate-cache-gpu.json`, `results/rate-cache-preflight.json`,
+`results/rate-cache-tests.json`. No solver tolerances or rates changed.
+
+
+Utilization note: the user observed approximately 56% effective load in
+nvtop. This is not equated with occupancy or a count of idle launch gaps.
+In the best-version trace, the union of kernel intervals is 38.793721 s over
+39.179030 s from first kernel start to last kernel end (99.02% activity).
+`nvidia-smi dmon` samples during the cached float64 solve report 100% SM
+activity and 1–2% memory activity (`results/rate-cache-utilization.txt`).
+These coarse activity metrics do not prove full-lane or DP-pipeline
+utilization. Single-thread team sections and FP64 throughput remain plausible
+limits; hardware/source counters are needed to quantify them.
+
+The PROMISE exploration runs separately in `~/tmp/gizmo-rtz-promise`, using
+CPU-only float32/float64 selection with float32 tables/constants. It does not
+change or supply timings for the main float64 optimization branch. `/tmp` is
+RAM-backed on this machine; persistent experiments use `~/tmp`.

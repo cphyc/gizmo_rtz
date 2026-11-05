@@ -656,6 +656,8 @@ nb::object run_solver(const SolveParameters &parameters,
     using TeamPolicy = Kokkos::TeamPolicy<>;
     using TeamMember = TeamPolicy::member_type;
     const std::size_t ion_snapshot_bytes = MAX_TOTAL_IONS * sizeof(CompactIonData::xion_t);
+    const std::size_t rate_cache_bytes = 2 * n_ion_work * sizeof(Real);
+    const std::size_t ion_scratch_bytes = ion_snapshot_bytes + alignof(Real) - 1 + rate_cache_bytes;
 
     for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
         const double time = times[time_index];
@@ -801,7 +803,7 @@ nb::object run_solver(const SolveParameters &parameters,
 #else
             TeamPolicy team_policy(static_cast<int>(active_count), Kokkos::AUTO());
 #endif
-            team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_snapshot_bytes));
+            team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_scratch_bytes));
 
             Kokkos::parallel_for(
                 "rtz_python_molecules_ions_commit",
@@ -815,6 +817,8 @@ nb::object run_solver(const SolveParameters &parameters,
 
                     auto *ion_snapshot = static_cast<CompactIonData::xion_t *>(
                         team.team_shmem().get_shmem(ion_snapshot_bytes));
+                    auto* rate_cache = static_cast<Real*>(
+                        team.team_shmem().get_shmem_aligned(rate_cache_bytes, alignof(Real)));
 
                     Kokkos::single(Kokkos::PerTeam(team), [&]() {
                         if constexpr (!constant_temperature) {
@@ -863,7 +867,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                     include_H2,
                                     include_CO,
                                     rt_advect,
-                                    include_self_shielding>(team,
+                                    include_self_shielding, true>(team,
                                                             cell.ddt,
                                                             device_elements,
                                                             cell.chemistry,
@@ -877,7 +881,9 @@ nb::object run_solver(const SolveParameters &parameters,
                                                             device_ion_map,
                                                             n_ion_work,
                                                             ion_snapshot,
-                                                            cell.subcycle);
+                                                            cell.subcycle,
+                                                            rate_cache,
+                                                            rate_cache + n_ion_work);
                     team.team_barrier();
 
                     Kokkos::single(Kokkos::PerTeam(team), [&]() {

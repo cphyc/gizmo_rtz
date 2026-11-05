@@ -1676,6 +1676,7 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding,
+    bool cache_rates = false,
     typename TeamMember
 , typename Table>
 KOKKOS_INLINE_FUNCTION
@@ -1694,7 +1695,9 @@ void metal_ions_step(
     const uint16_t* ion_map,
     const int n_ion_work,
     CompactIonData::xion_t* const x_snap,
-    SubcycleState& state)
+    SubcycleState& state,
+    Real* recombination_cache = nullptr,
+    Real* collisional_cache = nullptr)
 {
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
     if (!state.compute_atoms || !state.x_percent_rule) return;
@@ -1709,6 +1712,23 @@ void metal_ions_step(
         x_snap[t] = n_and_ion_fracs.ion_fracs_new_flat[t];
     });
     team.team_barrier();
+
+    // Rate coefficients depend on frozen temperature and element/stage only.
+    // Adjacent stages use the same coefficient for creation and destruction.
+    if constexpr (cache_rates) {
+        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t) {
+            const int element = ion_map[t] >> 8;
+            const int stage = ion_map[t] & 0xFF;
+            recombination_cache[t] = Real(0);
+            collisional_cache[t] = Real(0);
+            if (n_and_ion_fracs.n_element[element] == Real(0)) return;
+            if (stage > 0)
+                recombination_cache[t] = recombination(state.TK, stage, element, tabData);
+            if (flags.include_collisional_ionization && stage < elements[element].n_ions - 1)
+                collisional_cache[t] = collisional_ionization(state.TK, stage, element, tabData);
+        });
+        team.team_barrier();
+    }
 
     // See the TODO(code) note in ions_step
     const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
@@ -1732,11 +1752,11 @@ void metal_ions_step(
         Real cr = Real(0.E0);
 
         // Recombinations of the more excited ionization state
-        if (j < (n_ions - 1)) cr += recombination(state.TK, j+1, i, tabData) * state.ne * xi_snap[j+1];
+        if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap[j+1];
 
         // Collisional ionization of the less excited state
         if (flags.include_collisional_ionization) {
-            if (j > 0) cr += collisional_ionization(state.TK, j-1, i, tabData) * state.ne * xi_snap[j-1];
+            if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap[j-1];
         }
 
         // Photoionization of the less excited state
@@ -1778,7 +1798,7 @@ void metal_ions_step(
 
         // Collisional ionization
         if (flags.include_collisional_ionization) {
-            if (j < (n_ions - 1)) de += collisional_ionization(state.TK, j, i, tabData) * state.ne;
+            if (j < (n_ions - 1)) de += (cache_rates ? collisional_cache[t] : collisional_ionization(state.TK, j, i, tabData)) * state.ne;
         }
 
         // Photoionization
@@ -1792,7 +1812,7 @@ void metal_ions_step(
         }
 
         // Recombination
-        if (j > 0) de += recombination(state.TK, j, i, tabData) * state.ne;
+        if (j > 0) de += (cache_rates ? recombination_cache[t] : recombination(state.TK, j, i, tabData)) * state.ne;
 
         // Cosmic ray ionization
         if (flags.include_cosmic_ray_ionization) {

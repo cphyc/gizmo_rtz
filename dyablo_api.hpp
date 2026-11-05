@@ -97,14 +97,18 @@ public:
     // TEMPORARY while GPU solver is being profiled/developed:
     // Accessors for drivers that launch the solver step functions as
     // separate kernels (see CoolingUpdate_PRISM_GPU.cpp)
-    const TabulatedData& get_tabData() const { return tabData; }
+    const RawTabulatedData& get_rawTabData() const { return tabData; }
+    CompactTabulatedData get_tabData() const {
+        auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), elements_d);
+        return CompactTabulatedData(tabData, host.data());
+    }
     Real get_UV_background_G0() const { return UV_background_G0; }
     Real get_generic_cosmic_ray_ionization_rate() const { return generic_cosmic_ray_ionization_rate; }
 
 private:
 
     // Tabulated rate data (lives on device)
-    TabulatedData tabData;
+    RawTabulatedData tabData;
 
     // UV background strength (sub-ionizing radiation field)
     Real UV_background_G0;

@@ -173,11 +173,19 @@ std::filesystem::path resolve_data_path(const std::string &requested_path) {
     return std::filesystem::weakly_canonical(path);
 }
 
+bool early_kokkos_owner = false;
+void ensure_cell_runtime() {
+    if (!Kokkos::is_initialized()) {
+        Kokkos::initialize();
+        early_kokkos_owner = true;
+    }
+}
+
 class Runtime {
   public:
     explicit Runtime(const std::filesystem::path &data_path)
-        : data_path_(data_path), owns_kokkos_(!Kokkos::is_initialized()) {
-        if (owns_kokkos_)
+        : data_path_(data_path), owns_kokkos_(!Kokkos::is_initialized() || early_kokkos_owner) {
+        if (!Kokkos::is_initialized())
             Kokkos::initialize();
         try {
             solver_ = std::make_unique<Solver>(data_path_.string());
@@ -270,9 +278,14 @@ Runtime &get_runtime(const std::filesystem::path &data_path) {
 
 void finalize_runtime() {
     Runtime *&runtime = runtime_instance();
-    if (!runtime)
+    if (!runtime) {
+        clear_ion_offset_cache();
+        if (early_kokkos_owner && Kokkos::is_initialized()) Kokkos::finalize();
+        early_kokkos_owner = false;
         return;
+    }
     const bool owns_kokkos = runtime->owns_kokkos();
+    clear_ion_offset_cache();
     delete runtime;
     runtime = nullptr;
     if (owns_kokkos && Kokkos::is_initialized())
@@ -597,7 +610,10 @@ nb::object run_solver(const SolveParameters &parameters,
     const Array2D_RT dFpdt{};
     const Element *device_elements = elements_d.data();
     const std::uint16_t *device_ion_map = ion_map_d.data();
-    const TabulatedData tab_data = solver.get_tabData();
+    std::array<int, MAX_ELEMENTS> active_tables{};
+    active_tables.fill(-1);
+    for (int z : inputs.element_numbers) active_tables[z] = 0;
+    const CompactTabulatedData tab_data(solver.get_rawTabData(), configured_elements.data(), active_tables.data());
     const Real uv_background = solver.get_UV_background_G0();
     const Real primary_cr_rate = solver.get_generic_cosmic_ray_ionization_rate();
     const bool equilibrium = options.equilibrium;
@@ -970,6 +986,7 @@ nb::object solve_impl(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                       const SolveOptions &options) {
     const SolveParameters parameters =
         validate_parameters<include_CO>(input, times_arg, element_list, ion_list, photon_bands, options);
+    ensure_cell_runtime();
     std::vector<CellState> cells = validate_state_values(input, parameters, include_H2);
     return run_solver<constant_temperature,
                       include_H2,

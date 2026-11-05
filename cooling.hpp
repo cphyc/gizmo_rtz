@@ -396,12 +396,13 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
 
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
 Real get_high_t_cooling_rates(Real T, Real ne,
                                 const CompactIonData& n_and_ion_fracs,
                                 const Element* elements,
                                 Real temp_smooth,
-                                const TabulatedData& tabData){
+                                const Table& tabData){
     // Computes the high-temperature cooling rates
     // derived from Harley's custom cloudy models
 
@@ -525,6 +526,7 @@ Real line_planck_spectrum(Real nu, Real temperature) {
     return prefactor / (rtz_math::exp(H_PLANCK * nu / (KB * temperature)) - Real(1));
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
 Real three_level(Real g_0, Real g_1, Real g_2,
                    Real lam_10, Real lam_20, Real lam_21,
@@ -534,7 +536,7 @@ Real three_level(Real g_0, Real g_1, Real g_2,
                    Real nHe, Real nHep, Real nHepp,
                    Real nH2,
                    int idx_0, int idx_1, int idx_2,
-                   const TabulatedData& tabData
+                   const Table& tabData
                 ){
     // Harley's three-level ion solver
 
@@ -670,11 +672,12 @@ Real three_level(Real g_0, Real g_1, Real g_2,
     return three_level_cooling;
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
 Real two_level(Real g_0, Real g_1, Real lam_10, Real A_10,
                 Real z, Real T, Real n_ion, Real ne,
                 Real nH, Real nHp, Real nHe, Real nHep,
-                Real nHepp, Real nH2, int idx_0, const TabulatedData& tabData){
+                Real nHepp, Real nH2, int idx_0, const Table& tabData){
     // Harley's two-level ion solver
 
     // ! Initialize the result
@@ -761,10 +764,11 @@ Real two_level(Real g_0, Real g_1, Real lam_10, Real A_10,
 }
 
 /* OI fine structure calculation function */
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real OI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                          Real ne, Real nH2, Real nHe, Real nHep,
-                         Real nHepp, Real z, const TabulatedData& tabData){
+                         Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(5.0);
     Real g_1 = Real(3.0);
@@ -790,10 +794,11 @@ Real OI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
 }
 
 /* OIII fine structure calculation function */
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real OIII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                            Real ne, Real nH2, Real nHe, Real nHep,
-                           Real nHepp, Real z, const TabulatedData& tabData){
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(1.0);
     Real g_1 = Real(3.0);
@@ -818,10 +823,11 @@ Real OIII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       12, 13, 14, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real CI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                            Real ne, Real nH2, Real nHe, Real nHep,
-                           Real nHepp, Real z, const TabulatedData& tabData){
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(1.0);
     Real g_1 = Real(3.0);
@@ -846,10 +852,11 @@ Real CI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       1, 2, 3, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real CII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                           Real ne, Real nH2, Real nHe, Real nHep,
-                          Real nHepp, Real z, const TabulatedData& tabData){
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(2.0);
     Real g_1 = Real(4.0);
@@ -869,10 +876,11 @@ Real CII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                     tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real NII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                           Real ne, Real nH2, Real nHe, Real nHep,
-                          Real nHepp, Real z, const TabulatedData& tabData){
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(1.0);
     Real g_1 = Real(3.0);
@@ -897,10 +905,11 @@ Real NII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       4, 5, 6, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real SiI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                           Real ne, Real nH2, Real nHe, Real nHep,
-                          Real nHepp, Real z, const TabulatedData& tabData){
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(1.0);
     Real g_1 = Real(3.0);
@@ -925,10 +934,11 @@ Real SiI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       21, 22, 23, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real SiII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                            Real ne, Real nH2, Real nHe, Real nHep,
-                           Real nHepp, Real z, const TabulatedData& tabData){
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(2.0);
     Real g_1 = Real(4.0);
@@ -947,10 +957,11 @@ Real SiII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                     11, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real NeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                            Real ne, Real nH2, Real nHe, Real nHep,
-                           Real nHepp, Real z, const TabulatedData& tabData){
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(4.0);
     Real g_1 = Real(2.0);
@@ -969,10 +980,11 @@ Real NeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                     10, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real FeI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                           Real ne, Real nH2, Real nHe, Real nHep,
-                          Real nHepp, Real z, const TabulatedData& tabData){
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(9.0);
     Real g_1 = Real(7.0);
@@ -997,10 +1009,11 @@ Real FeI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       15, 16, 17, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real FeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                            Real ne, Real nH2, Real nHe, Real nHep,
-                           Real nHepp, Real z, const TabulatedData& tabData){
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(10.0);
     Real g_1 = Real(8.0);
@@ -1025,10 +1038,11 @@ Real FeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                       18, 19, 20, tabData);
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real SI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
                          Real ne, Real nH2, Real nHe, Real nHep,
-                         Real nHepp, Real z, const TabulatedData& tabData){
+                         Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
     Real g_0 = Real(5.0);
     Real g_1 = Real(3.0);
@@ -1089,12 +1103,13 @@ Real photoelectric_heating(Real T, Real G0, Real ne, Real f_dg, Real nH){
     return rtz_math::fmax(HratePE, Real(1e-100));
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real cosmic_ray_heating(Real xe, Real n_HI, Real n_HeI, Real n_H2,
                           Real ne, Real xi_h_cr,
                           const CompactIonData& n_and_ion_fracs,
                           const Element* elements,
-                          const TabulatedData& tabData
+                          const Table& tabData
                         ){
     Real q_cr = Real(6.43) * ( Real(1.0) + Real(4.06) * rtz_math::sqrt( xe / (Real(0.07) + xe) ) ) * EV_2_ERG; //! Bialy 2019
 
@@ -1149,10 +1164,11 @@ Real cosmic_ray_heating(Real xe, Real n_HI, Real n_HeI, Real n_H2,
     return cr_heating_tot;
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real photoheating_UVB(const CompactIonData& n_and_ion_fracs,
                         const Element* elements,
-                        const TabulatedData& tabData){
+                        const Table& tabData){
     // Photoheating contribution from a UVB
 
     Real heating_rate = Real(0.0);
@@ -1172,10 +1188,11 @@ Real photoheating_UVB(const CompactIonData& n_and_ion_fracs,
     return heating_rate;
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real photoheating_UVB_G0(Real G0,
                            const CompactIonData& n_and_ion_fracs,
-                           const TabulatedData& tabData){
+                           const Table& tabData){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
 
@@ -1244,9 +1261,10 @@ Real H2_heating_bialy(Real G0, Real nH2, Real nH, Real T, Real xHI,
 
 struct CTReaction { bool is_ionization; int stage; int Z; double dE; };
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
 Real CT_heat_cool(Real T, const CompactIonData& n_and_ion_fracs,
-                    const TabulatedData& tabData){
+                    const Table& tabData){
     // Heating and cooling from charge exchange reactions
 
     Real ct_hc_rate = Real(0.0);
@@ -1338,11 +1356,12 @@ Real CT_heat_cool(Real T, const CompactIonData& n_and_ion_fracs,
 }
 
 
+template<typename Table>
 KOKKOS_FUNCTION
 Real local_photoheating(std::array<Real, N_GROUPS>& dNp,
                           const CompactIonData& n_and_ion_fracs,
                           const Element* elements,
-                          const TabulatedData& tabData) {
+                          const Table& tabData) {
     // Heading due to the local radiation field
 
     Real heating_rate = Real(0.0);
@@ -1388,6 +1407,7 @@ Real CO_cooling_koyama_00(Real nH, Real nH2, Real nHI, Real nCO, Real T) {
     return rtz_math::fmax(rate, Real(1e-100));
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
 Real all_cooling(Real T, Real ne, Real aexp, const CompactIonData& n_and_ion_fracs,
                    const Element* elements,
@@ -1398,7 +1418,7 @@ Real all_cooling(Real T, Real ne, Real aexp, const CompactIonData& n_and_ion_fra
                    Real ss_factor,
                    bool rt_advect,
                    const PhysicsFlags& flags,
-                   const TabulatedData& tabData){
+                   const Table& tabData){
     // Main cooling driver
     /*
     T --> Temperature [K]

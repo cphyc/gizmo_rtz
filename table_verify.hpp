@@ -1,9 +1,9 @@
 // table_verify.hpp
 #pragma once
 
-// Startup verification of the element-compacted TabulatedData arrays.
+// Startup verification of the element-compacted RawTabulatedData arrays.
 //
-// The host-side rate tables are indexed by atomic number; TabulatedData stores
+// The host-side rate tables are indexed by atomic number; RawTabulatedData stores
 // them with one row per tabulated element (row = elem_row(Z), N_TAB_ELEMENTS
 // rows). Every host->device copy of such a table has to apply that mapping. A
 // plain dense copy compiles just as happily and silently gives row r the data of
@@ -23,7 +23,7 @@ auto compacted_table_mirror(const V& view) {
     return host;
 }
 
-void verify_compacted_tables(const TabulatedData& tab) {
+void verify_compacted_tables(const RawTabulatedData& tab) {
     int bad = 0;
 
     // The views are float; compare against the host double narrowed the same way.

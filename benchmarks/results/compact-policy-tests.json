@@ -1,0 +1,16 @@
+{
+  "default_double_cpu": {
+    "passed": 18,
+    "excluded_long_sweeps": 3
+  },
+  "float32_cuda": {
+    "passed": 13,
+    "excluded_float64_specific": 8
+  },
+  "mapping_tests": "CPU and CUDA passed",
+  "fixture": "H, He, O, five-stage Fe; double coefficients",
+  "raw_table_data_bytes": 786246,
+  "compact_table_data_bytes": 124611,
+  "cell_offset_member_bytes": 8,
+  "full_gpu_exact_comparison": "zero differing output bit patterns over 10000 cells"
+}

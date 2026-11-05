@@ -35,7 +35,7 @@ void copy2D_pair (double (&e_src)[N][M], double (&c_src)[N][M], V &data_d) {
 }
 
 
-void init_recombination_rates(TabulatedData &tabData) {
+void init_recombination_rates(RawTabulatedData &tabData) {
 
     // ###
     // ### Hydrogen
@@ -619,10 +619,9 @@ void init_recombination_rates(TabulatedData &tabData) {
     copy2D(DR_rates_alt_iron, tabData.DR_rates_alt_iron);
 }
 
-template <int N, int M>
+template <typename Rates>
 KOKKOS_INLINE_FUNCTION
-Real alpha_RR(const Real T, const Kokkos::View<float [N][M], Kokkos::LayoutRight>& RR_rates, const int ion){
-    static_assert(M == 6, "The second dimension of RR_rates must be 6");
+Real alpha_RR(const Real T, const Rates& RR_rates, const int ion){
     // #HK NOTE: in many cases C and T2 are 0 so B = B
 
     // Unpack the values
@@ -642,10 +641,9 @@ Real alpha_RR(const Real T, const Kokkos::View<float [N][M], Kokkos::LayoutRight
     return A/(a0 * a1 * a2);
 }
 
-template <int N, int M>
+template <typename Rates>
 KOKKOS_INLINE_FUNCTION
-Real alpha_DR(const Real T, const Kokkos::View<DRTerm [N][M], Kokkos::LayoutRight>& DR_rates, const int ion){
-    static_assert(M == 9, "The second dimension of DR_rates must be 9");
+Real alpha_DR(const Real T, const Rates& DR_rates, const int ion){
     // # ! Dielectronic recombination
     // # ! T**(-3/2) * sum c_i * rtz_math::exp(-E_i/T)
     // Each term is one 16-byte (E_i, c_i) access; zeros are strictly trailing
@@ -660,8 +658,9 @@ Real alpha_DR(const Real T, const Kokkos::View<DRTerm [N][M], Kokkos::LayoutRigh
     return comp_Alpha;
 }
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
-Real cloudy_rad_rec(int iz, int in_, Real t, const TabulatedData& tabData) {
+Real cloudy_rad_rec(int iz, int in_, Real t, const Table& tabData) {
 	/*
      *** HK NOTE: this function was taken from CLOUDY
 
@@ -698,8 +697,9 @@ Real cloudy_rad_rec(int iz, int in_, Real t, const TabulatedData& tabData) {
 }
 
 
+template<typename Table>
 KOKKOS_FUNCTION
-Real recombination(Real T, int ion, int element_idx, const TabulatedData& tabData){
+Real recombination(Real T, int ion, int element_idx, const Table& tabData){
     /*
     recombination rate [cm^3 s^-1]
     Radiative recombination from Cloudy (rad_rec.dat) + dielectronic recombination
@@ -789,7 +789,7 @@ Real recombination(Real T, int ion, int element_idx, const TabulatedData& tabDat
     return rec;
 }
 
-void init_cloudy_rad_rec_data(std::string path_to_data, TabulatedData &tabData) {
+void init_cloudy_rad_rec_data(std::string path_to_data, RawTabulatedData &tabData) {
     FILE *file;
     int i, j;
     double help[9];

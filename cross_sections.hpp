@@ -18,7 +18,7 @@ constexpr int n_photo_pairs = (n_photo_elements * (n_photo_elements - 1)) / 2;
 // -------------------------------------------------------------------------
 // Load the Zubko+2004 BARE-GR-S dust absorption cross sections (Runs on Host)
 // -------------------------------------------------------------------------
-void load_bare_gr_s_dust(const std::string& path_to_data, TabulatedData &tabData) {
+void load_bare_gr_s_dust(const std::string& path_to_data, auto &tabData) {
     auto h_wav      = Kokkos::create_mirror_view(tabData.dust_wav);
     auto h_cabs     = Kokkos::create_mirror_view(tabData.dust_cabs);
     auto h_log_wav  = Kokkos::create_mirror_view(tabData.dust_log_wav);
@@ -63,7 +63,7 @@ void load_bare_gr_s_dust(const std::string& path_to_data, TabulatedData &tabData
 // -------------------------------------------------------------------------
 // Initialization Routine (Runs on Host)
 // -------------------------------------------------------------------------
-void initialize_cross_sections(const std::string& path_to_data, TabulatedData &tabData) {
+void initialize_cross_sections(const std::string& path_to_data, auto &tabData) {
     // 1. Create Host Mirrors
     auto h_tot = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_tot);
     auto h_nl  = Kokkos::create_mirror_view(tabData.photoionization_cross_sections_nl);
@@ -156,7 +156,7 @@ double verner_cs_nl(double E, double sig_0, double E_0, double yw, double ya, do
 // Main Cross Section Calculator (Callable on Device)
 // -------------------------------------------------------------------------
 KOKKOS_INLINE_FUNCTION
-double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedData& tabData) {
+double getCrosssection_rtz(double lambda, int element, int ion, const auto& tabData) {
     double cross_sec = 0.0;
 
     // Convert lambda into ev
@@ -222,7 +222,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const TabulatedD
 // -------------------------------------------------------------------------
 // Effective per-H dust absorption cross section [cm^2/H] for the BARE-GR-S model
 KOKKOS_INLINE_FUNCTION
-double getCrosssection_dust(double lambda, const TabulatedData& tabData) {
+double getCrosssection_dust(double lambda, const auto& tabData) {
     const auto& wav      = tabData.dust_wav;
     const auto& cabs     = tabData.dust_cabs;
     const auto& log_wav  = tabData.dust_log_wav;
@@ -263,8 +263,8 @@ double blackbody_nu(double T, double nu){
 
 KOKKOS_INLINE_FUNCTION
 double spectrum_nu(double T, double nu,
-                   const Kokkos::View<double*>& sed_frequency,
-                   const Kokkos::View<double*>& sed_fnu) {
+                   const auto& sed_frequency,
+                   const auto& sed_fnu) {
     const int n = static_cast<int>(sed_frequency.extent(0));
     if (n == 0)
         return blackbody_nu(T, nu);
@@ -302,8 +302,8 @@ void integration_bounds(double E0, double E1, double &a, double &b, double &h) {
 
 KOKKOS_INLINE_FUNCTION
 void compute_spectrum_bin_integrals(double E0, double E1, double T,
-                                    const Kokkos::View<double*>& sed_frequency,
-                                    const Kokkos::View<double*>& sed_fnu,
+                                    const auto& sed_frequency,
+                                    const auto& sed_fnu,
                                     double &number_denominator,
                                     double &energy_denominator,
                                     double &group_energy) {
@@ -330,9 +330,9 @@ void compute_spectrum_bin_integrals(double E0, double E1, double T,
 KOKKOS_INLINE_FUNCTION
 void compute_weighted_cross_sections(double E0, double E1, double T,
                                      int element, int ion,
-                                     const TabulatedData& tabData,
-                                     const Kokkos::View<double*>& sed_frequency,
-                                     const Kokkos::View<double*>& sed_fnu,
+                                     const auto& tabData,
+                                     const auto& sed_frequency,
+                                     const auto& sed_fnu,
                                      double number_denominator,
                                      double energy_denominator,
                                      double &sigma_number,
@@ -359,9 +359,9 @@ void compute_weighted_cross_sections(double E0, double E1, double T,
 
 KOKKOS_INLINE_FUNCTION
 double compute_weighted_dust_cross_section(double E0, double E1, double T,
-                                           const TabulatedData& tabData,
-                                           const Kokkos::View<double*>& sed_frequency,
-                                           const Kokkos::View<double*>& sed_fnu,
+                                           const auto& tabData,
+                                           const auto& sed_frequency,
+                                           const auto& sed_fnu,
                                            double number_denominator) {
     double a, b, h;
     integration_bounds(E0, E1, a, b, h);
@@ -380,9 +380,9 @@ double compute_weighted_dust_cross_section(double E0, double E1, double T,
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_N(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData,
-               const Kokkos::View<double*>& sed_frequency,
-               const Kokkos::View<double*>& sed_fnu){
+double sigma_N(double E0, double E1, double T, int element, int ion, const auto& tabData,
+               const auto& sed_frequency,
+               const auto& sed_fnu){
     // Photon number-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -401,9 +401,9 @@ double sigma_N(double E0, double E1, double T, int element, int ion, const Tabul
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_E(double E0, double E1, double T, int element, int ion, const TabulatedData& tabData,
-               const Kokkos::View<double*>& sed_frequency,
-               const Kokkos::View<double*>& sed_fnu){
+double sigma_E(double E0, double E1, double T, int element, int ion, const auto& tabData,
+               const auto& sed_frequency,
+               const auto& sed_fnu){
     // Photon energy-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -423,8 +423,8 @@ double sigma_E(double E0, double E1, double T, int element, int ion, const Tabul
 
 KOKKOS_INLINE_FUNCTION
 double e_bar(double E0, double E1, double T,
-             const Kokkos::View<double*>& sed_frequency,
-             const Kokkos::View<double*>& sed_fnu){
+             const auto& sed_frequency,
+             const auto& sed_fnu){
     // Mean energy in the bin
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
@@ -437,9 +437,12 @@ double e_bar(double E0, double E1, double T,
 }
 
 // TODO(code): Declate the 4D array and then copy to the tabdata
-void update_cross_sections(double T, TabulatedData &tabData,
+template<class Data>
+void update_cross_sections(double T, Data &tabData,
                            const std::vector<double>& sed_frequency,
                            const std::vector<double>& sed_fnu) {
+    using Space = typename Data::memory_space;
+    using Execution = typename Data::execution_space;
     // Updates the cross sections for each element and group
 
     auto &cs_ph = tabData.cs_ph;
@@ -447,12 +450,12 @@ void update_cross_sections(double T, TabulatedData &tabData,
     const auto &group_E_min = tabData.group_E_min;
     const auto &group_E_max = tabData.group_E_max;
     const auto &c_frac = tabData.c_frac;
-    Kokkos::View<double[N_GROUPS][3]> group_bin_data {"group_bin_data"};
-    Kokkos::View<double*> sed_frequency_d;
-    Kokkos::View<double*> sed_fnu_d;
+    Kokkos::View<double[N_GROUPS][3], Space> group_bin_data {"group_bin_data"};
+    Kokkos::View<double*, Space> sed_frequency_d;
+    Kokkos::View<double*, Space> sed_fnu_d;
     if (!sed_frequency.empty()) {
-        sed_frequency_d = Kokkos::View<double*>("sed_frequency", sed_frequency.size());
-        sed_fnu_d = Kokkos::View<double*>("sed_fnu", sed_fnu.size());
+        sed_frequency_d = Kokkos::View<double*, Space>("sed_frequency", sed_frequency.size());
+        sed_fnu_d = Kokkos::View<double*, Space>("sed_fnu", sed_fnu.size());
         auto sed_frequency_h = Kokkos::create_mirror_view(sed_frequency_d);
         auto sed_fnu_h = Kokkos::create_mirror_view(sed_fnu_d);
         for (std::size_t i = 0; i < sed_frequency.size(); ++i) {
@@ -465,7 +468,7 @@ void update_cross_sections(double T, TabulatedData &tabData,
 
     Kokkos::deep_copy(cs_ph, 0.0);
 
-    Kokkos::parallel_for("prepare_cross_section_groups", N_GROUPS, KOKKOS_LAMBDA(const int i) {
+    Kokkos::parallel_for("prepare_cross_section_groups", Kokkos::RangePolicy<Execution>(0, N_GROUPS), KOKKOS_LAMBDA(const int i) {
         double number_denominator = 0.0;
         double energy_denominator = 0.0;
         double group_energy = 0.0;
@@ -491,7 +494,7 @@ void update_cross_sections(double T, TabulatedData &tabData,
         tabData.cs_dust(i) = sigma_dust * C_CGS * c_frac();
     });
 
-    auto grp_pair_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});
+    auto grp_pair_policy = Kokkos::MDRangePolicy<Execution, Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});
     Kokkos::parallel_for("update_cross_sections", grp_pair_policy, KOKKOS_LAMBDA(const int i, const int pair_index) {
         const double number_denominator = group_bin_data(i, 0);
         const double energy_denominator = group_bin_data(i, 1);
@@ -520,7 +523,7 @@ void update_cross_sections(double T, TabulatedData &tabData,
         cs_ph(erow, k, i, 2) = fmax(cs_ph(erow, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
     });
 
-    Kokkos::parallel_for("update_cross_sections_h2", N_GROUPS, KOKKOS_LAMBDA(const int i) {
+    Kokkos::parallel_for("update_cross_sections_h2", Kokkos::RangePolicy<Execution>(0, N_GROUPS), KOKKOS_LAMBDA(const int i) {
         const double number_denominator = group_bin_data(i, 0);
         const double energy_denominator = group_bin_data(i, 1);
         const double group_energy = group_bin_data(i, 2);

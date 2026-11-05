@@ -221,8 +221,9 @@ constexpr double sh2_col2[43] = {
 };
 
 
+template<typename Table>
 KOKKOS_INLINE_FUNCTION
-Real comp_SCO(const TabulatedData& tabData, Real nco_mol, Real nh2, Real dx_SS) {
+Real comp_SCO(const Table& tabData, Real nco_mol, Real nh2, Real dx_SS) {
     // initialize to 1.0
     Real ss_factor = Real(1.0);
 

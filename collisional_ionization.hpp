@@ -13,7 +13,7 @@ void copy1D (double src[N], Kokkos::View<double[N]> &data_d) {
 
     Kokkos::deep_copy(data_d, data_h);
 }
-void init_collisional_ionization(std::string path_to_data, TabulatedData& tabData) {
+void init_collisional_ionization(std::string path_to_data, RawTabulatedData& tabData) {
     FILE *file;
     double data[27][27][5] = {};
 
@@ -68,8 +68,9 @@ Real coll_ion(Real T, Real dE, Real A, Real X, Real K, Real P){
     return A * (Real(1.) + P * rtz_math::sqrt(U)) * rtz_math::pow(U,K) * rtz_math::exp(-U) / (X + U);
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
-Real collisional_ionization(Real T, int ion, int element_idx, const TabulatedData& tabData) {
+Real collisional_ionization(Real T, int ion, int element_idx, const Table& tabData) {
     /*
     collisional ionization rate
     */

@@ -51,8 +51,8 @@ void copy_data_2D(T& src, V &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
-template<typename T, typename T2>
-void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
+template<typename T, typename V>
+void copy_data_1D(T& src, V &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++) {
         dst_h(i) = src[i];
@@ -60,7 +60,7 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
-// The tables below are loaded on the host indexed by atomic number, but TabulatedData
+// The tables below are loaded on the host indexed by atomic number, but RawTabulatedData
 // stores them element-compacted (row = elem_row(Z), N_TAB_ELEMENTS rows). These copies
 // apply that mapping; a plain copy_data_* would silently give row erow the data of Z = erow.
 template<typename T, typename V>
@@ -511,7 +511,7 @@ double subcycle_chemistry(
                       double primary_cosmic_ray_ionization_rate,
                       double dust_to_gas_mass_ratio_over_mw,
                       int conv_its, int max_its, int& total_iter_reached,
-                      const TabulatedData& tabData,
+                      const RawTabulatedData& tabData,
                       const PhysicsFlags& flags,
                       std::array<double, N_GROUPS> &N_PHOT,
                       Array2D_RT &F_PHOT,

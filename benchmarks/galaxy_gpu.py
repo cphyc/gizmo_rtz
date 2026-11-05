@@ -25,7 +25,7 @@ def main():
     parser.add_argument("--ncell", type=int)
     parser.add_argument("--dt-yr", type=float, default=100.)
     parser.add_argument("--reference", type=Path)
-    parser.add_argument("--accuracy", choices=("strict", "physical"), default="strict")
+    parser.add_argument("--accuracy", choices=("exact", "strict", "physical"), default="strict")
     parser.add_argument("--ion-rtol", type=float, default=.05)
     parser.add_argument("--max-iterations", type=int, default=100000)
     args = parser.parse_args()
@@ -75,7 +75,12 @@ def main():
         with np.load(args.reference, allow_pickle=False) as reference:
             result["max_absolute_difference"] = {
                 key: float(np.max(np.abs(arrays[key] - reference[key]))) for key in arrays}
-            if args.accuracy == "physical":
+            if args.accuracy == "exact":
+                result["differing_values"] = {
+                    key: int(np.count_nonzero(arrays[key].view(np.uint64) != reference[key].view(np.uint64)))
+                    for key in arrays}
+                accuracy_passed = not any(result["differing_values"].values())
+            elif args.accuracy == "physical":
                 ion_ref = reference["ion_fractions"]
                 mask = ion_ref > 1e-4
                 relative = np.abs(arrays["ion_fractions"][mask] / ion_ref[mask] - 1)

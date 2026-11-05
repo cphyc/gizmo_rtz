@@ -284,3 +284,20 @@ the local trial build enables it. The previously accepted storage-only binary
 is preserved as `build/galaxy-gpu/trial04.cpython-314-x86_64-linux-gnu.so`.
 No claim is made that default-backend regression tests have been rerun after
 this experimental computation-type refactor.
+
+
+## Compact tables / mapping policies
+
+Requested structural follow-up: rename dense setup data to RawTabulatedData,
+share immutable cell offsets, and use CompactTabulatedData with generic
+C++20 mapping policies. See `COMPACT_TABLES.md` for the interface and tests.
+The raw cache remains on the host; original GPU spectrum setup uses temporary
+dense staging so numerical behavior stays unchanged. The first host-only
+setup revision was rejected for tiny output differences. The final full GPU
+comparison is bit-for-bit identical to trial05 in every output array.
+
+Median 6.611024 s (five warm runs), versus raw float32 4.301220 s: **slower**,
+not a successful speed optimization. Sparse fixture table payload drops from
+786246 to 124611 bytes; this is a memory-layout feature. The fixed per-cell
+integer array becomes an 8-byte pointer to shared storage. Full timing and
+exact comparison are in `results/compact-policy-final-gpu.json`.

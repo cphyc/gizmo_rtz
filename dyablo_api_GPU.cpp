@@ -5,6 +5,7 @@
 #include <math.h>
 #include <cstdint>
 #include <array>
+#include <concepts>
 #include <fstream>
 #include <cmath>
 #include <vector>
@@ -65,8 +66,8 @@ void copy_data_2D(T& src, V &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
-template<typename T, typename T2>
-void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
+template<typename T, typename V>
+void copy_data_1D(T& src, V &dst) {
     auto dst_h = Kokkos::create_mirror_view(dst);
     for (uint i = 0; i < dst.extent(0); i++) {
         dst_h(i) = src[i];
@@ -74,7 +75,7 @@ void copy_data_1D(T& src, Kokkos::View<T2> &dst) {
     Kokkos::deep_copy(dst, dst_h);
 };
 
-// The tables below are loaded on the host indexed by atomic number, but TabulatedData
+// The tables below are loaded on the host indexed by atomic number, but RawTabulatedData
 // stores them element-compacted (row = elem_row(Z), N_TAB_ELEMENTS rows). These copies
 // apply that mapping, otherwise they would give row erow the data of Z = erow.
 template<typename T, typename V>
@@ -516,13 +517,13 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void radiation_step(
     const Real ddt,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const Real nCO,
     const Real dx_SS,
     const Real dust_to_gas_mass_ratio_over_mw,
@@ -645,14 +646,14 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void cooling_step(
     const Real ddt,
     const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real loc_rho,
     const Real nCO,
@@ -730,7 +731,7 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void cooling_rate_lane(
     const int lane,               // 0 -> T, 1 -> 1.001*T
@@ -738,7 +739,7 @@ void cooling_rate_lane(
     const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real nCO,
     const Real dust_to_gas_mass_ratio_over_mw,
@@ -826,7 +827,7 @@ template <
     bool rt_advect,
     bool include_self_shielding,
     typename TeamMember
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void cooling_step_team(
     const TeamMember& team,
@@ -835,7 +836,7 @@ void cooling_step_team(
     const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real loc_rho,
     const Real nCO,
@@ -872,13 +873,13 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void molecular_step(
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const Real nCO,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
@@ -1053,14 +1054,14 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void ions_gs_element(
     const int i,
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real UV_background_G0,
     const Real primary_cosmic_ray_ionization_rate,
@@ -1351,13 +1352,13 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void HandHe_ions_step(
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
@@ -1394,14 +1395,14 @@ template <
     bool rt_advect,
     bool include_self_shielding,
     typename TeamMember
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void HandHe_ions_step(
     const TeamMember& team,
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
@@ -1437,13 +1438,13 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void metal_ions_step(
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
@@ -1676,14 +1677,14 @@ template <
     bool rt_advect,
     bool include_self_shielding,
     typename TeamMember
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 void metal_ions_step(
     const TeamMember& team,
     const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
-    const TabulatedData& tabData,
+    const Table& tabData,
     const PhysicsFlags& flags,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
@@ -2040,11 +2041,11 @@ template <
     bool include_CO,
     bool rt_advect,
     bool include_self_shielding
->
+, typename Table>
 KOKKOS_INLINE_FUNCTION
 bool subcycle_commit_and_control(
     const Element* elements,
-    const TabulatedData& tabData,
+    const Table& tabData,
     CompactIonData &n_and_ion_fracs,
     Real &nCO,
     std::array<Real, N_GROUPS> &N_PHOT,
@@ -2224,7 +2225,14 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
     const std::vector<double>& sed_fnu)
 {
     // Update cross sections
-    update_cross_sections(T_blackbody, tabData, sed_frequency, sed_fnu);
+    // Preserve the original execution space and spectrum quadrature arithmetic.
+    // Dense device storage is temporary; only packed tables persist on device.
+    DeviceRawTabulatedData staging;
+    copy_raw_tables(staging, tabData);
+    update_cross_sections(T_blackbody, staging, sed_frequency, sed_fnu);
+    Kokkos::deep_copy(tabData.cs_ph, staging.cs_ph);
+    Kokkos::deep_copy(tabData.cs_dust, staging.cs_dust);
+    Kokkos::deep_copy(tabData.group_energy, staging.group_energy);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>

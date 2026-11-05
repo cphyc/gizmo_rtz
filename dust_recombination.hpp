@@ -38,7 +38,7 @@ double dust_rec_coefs[27][7] = {
 
 
 KOKKOS_FUNCTION
-Real dust_recombination_rates(int ion, int nelem, Real T, Real G, Real ne, const Kokkos::View<float[N_TAB_ELEMENTS][7], Kokkos::LayoutRight>& dust_rec_coefs){
+Real dust_recombination_rates(int ion, int nelem, Real T, Real G, Real ne, const auto& dust_rec_coefs){
     Real dust_rec_rate = Real(0.0);
     Real dr_sf = Real(1.0);
 

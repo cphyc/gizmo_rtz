@@ -149,6 +149,14 @@ if(GIZMO_RTZ_STANDALONE)
 
     # --- Testing ---
     enable_testing()
+    add_executable(compact_tables_test tests/compact_tables.cpp)
+    target_include_directories(compact_tables_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(compact_tables_test PRIVATE Kokkos::kokkos)
+    target_compile_features(compact_tables_test PRIVATE cxx_std_20)
+    if(Kokkos_ENABLE_CUDA)
+        target_compile_options(compact_tables_test PRIVATE --expt-extended-lambda --expt-relaxed-constexpr)
+    endif()
+    add_test(NAME compact_tables COMMAND compact_tables_test)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     set(DATA_DIR "${CMAKE_SOURCE_DIR}/data")

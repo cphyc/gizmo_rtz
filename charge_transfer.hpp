@@ -58,8 +58,9 @@ void load_ct_rates(std::string path_to_data){
 
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
-Real charge_transfer_recombination(int ion, int nelem, Real T, const TabulatedData& tabData){
+Real charge_transfer_recombination(int ion, int nelem, Real T, const Table& tabData){
     // ion is stage of ionization, 2 for the ion going to the atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O+ + H => O + H+ is HCTRecom(2,8,1e4)
@@ -97,8 +98,9 @@ Real charge_transfer_recombination(int ion, int nelem, Real T, const TabulatedDa
     return ct_recomb;
 }
 
+template<typename Table>
 KOKKOS_FUNCTION
-Real charge_transfer_ionization(int ion, int nelem, Real T, const TabulatedData& tabData){
+Real charge_transfer_ionization(int ion, int nelem, Real T, const Table& tabData){
     // ion is stage of ionization, 1 for atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O + H+ => O+ + H is HCTIon(1,8,1e4)

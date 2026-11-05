@@ -658,3 +658,52 @@ control passes the full physical
 oracle against the original GPU reference (maximum ion error 2.03e-10,
 temperature 9.00e-13). Precision selection remains separate and in progress;
 no candidate from it is applied to the main float64 benchmark.
+
+### Remaining cell-count imbalance after trial 11
+
+The metal grid has exactly one block per active cell. Grouping the current
+best trace by grid size gives:
+
+| Active cells | Launches | Metal GPU seconds |
+| --- | ---: | ---: |
+| 1–14 | 72 | 0.013376 |
+| 15–128 | 290 | 0.078167 |
+| 129–1000 | 556 | 0.849717 |
+| 1001–10000 | 587 | 8.094007 |
+
+Compaction executes 2,389,309 cell-iterations versus 15,050,000 without
+compaction (84.1% fewer). The <=128-cell tail is only 0.091544 s, about 1%
+of metal kernel time. Most remaining time is spent while over 1000 cells
+are active. This does not rule out unequal per-cell work within each launch,
+but shows that optimizing only the final sparse tail has limited potential.
+Artifact: `results/split-hhe-load-balance.json`.
+
+## Trial 12: skip zero-amplitude charge-transfer fits (float64)
+
+After the existing stage guards, return the existing 1e-100 rate floor when
+the fit amplitude is zero. The original zero product is either zero or NaN
+if an unused pow/exp overflows; fmax returns the same positive floor in both
+cases. Nonzero fits and high-stage statistical rates retain their original
+calculation. Full float64 accuracy and timing gates determine retention.
+
+
+Five warmed candidate samples: 13.870679, 13.837078, 13.828415, 13.830928,
+13.828767 s; median **13.830928 s**. A fresh saved-trial-11 baseline recheck
+under the same conditions gives 14.118373, 14.127240, 14.128673, 14.113867,
+14.088809 s; median **14.118373 s**. This is **1.02078x faster (2.04% less
+time)**, about 2.951x faster than the original 40.818548 s baseline.
+Both full-dataset runs pass bit-for-bit against the original float64 output;
+compiled Real/density/ion widths are all 8 bytes. CPU regressions: 18 passed,
+three long sweeps excluded (1.46 s). CUDA regressions: 18 passed, three long
+sweeps excluded (3.99 s). **Retained**. Both precision switches remain OFF.
+Artifacts: `results/zero-ct-gpu.json`, `results/zero-ct-baseline-recheck.json`,
+`results/zero-ct-tests.json`. Saved binary: `build/galaxy-gpu/zero-ct-float64.cpython-314-x86_64-linux-gnu.so`.
+
+Current-best cold profile (15.695882 s, exact output) identifies metal/commit
+as still dominant: **9.062119 s / 60.6%** of kernel time. Cooling is
+2.114452 s / 14.2%, H/He 1.347129 s / 9.0%, prep 1.127761 s / 7.5%.
+Compared with trial 11, savings occur in cooling and H/He; metal time is
+essentially unchanged (9.035267 s previously). Thus this trial improves the
+full solve but does not demonstrate faster metal execution. Profile artifacts:
+`results/zero-ct-profile.json`, `results/zero-ct-profile_cuda_gpu_kern_sum.csv`.
+The binary still uses the same active-cell compaction and kernel split.

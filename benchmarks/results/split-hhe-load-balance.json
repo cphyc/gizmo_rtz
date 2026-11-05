@@ -1,0 +1,36 @@
+{
+  "source": "split-hhe-best-profile.sqlite",
+  "phase": "metal/commit",
+  "bins": [
+    {
+      "active_cells_min": 1,
+      "active_cells_max": 14,
+      "launches": 72,
+      "gpu_seconds": 0.013376432,
+      "cell_iterations": 425
+    },
+    {
+      "active_cells_min": 15,
+      "active_cells_max": 128,
+      "launches": 290,
+      "gpu_seconds": 0.078167281,
+      "cell_iterations": 16601
+    },
+    {
+      "active_cells_min": 129,
+      "active_cells_max": 1000,
+      "launches": 556,
+      "gpu_seconds": 0.8497165520000001,
+      "cell_iterations": 232073
+    },
+    {
+      "active_cells_min": 1001,
+      "active_cells_max": 10000,
+      "launches": 587,
+      "gpu_seconds": 8.094006816,
+      "cell_iterations": 2140210
+    }
+  ],
+  "total_cell_iterations": 2389309,
+  "uncompacted_cell_iterations": 15050000
+}

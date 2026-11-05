@@ -83,6 +83,11 @@ Real charge_transfer_recombination(int ion, int nelem, Real T, const Table& tabD
 
     const int erow = elem_row(nelem);
 
+    // A zero-amplitude fit yields only the rate floor, even if an unused
+    // exponential overflows (fmax maps the resulting NaN to the same floor).
+    if (tabData.CTRecomb(0, ipIon, erow) == Real(0.0))
+        return Real(1E-100);
+
     // Make sure te is between temp. boundaries; set constant outside of range
     Real tused = Real(0.0);
     tused = rtz_math::fmin(rtz_math::fmax(T,tabData.CTRecomb(4, ipIon, erow)),tabData.CTRecomb(5, ipIon, erow));
@@ -116,6 +121,9 @@ Real charge_transfer_ionization(int ion, int nelem, Real T, const Table& tabData
     }
 
     const int erow = elem_row(nelem);
+
+    if (tabData.CTIon(0, ipIon, erow) == Real(0.0))
+        return Real(1E-100);
 
     // ! Make sure te is between temp. boundaries; set constant outside of range
     Real tused = Real(0.0);

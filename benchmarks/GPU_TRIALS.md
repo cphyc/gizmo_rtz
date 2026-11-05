@@ -129,6 +129,11 @@ after 18 tests passed in 249.89 s; the CIE sweep alone asks for roughly six
 million single-cell subcycles. No passing result is claimed for those sweeps.
 See `results/trial02.json` and `results/trial02-tests.json`.
 
+Portability check after compaction: a fresh Release OpenMP build with fast
+math disabled also passes those 18 binding tests (0.99 s, two host threads).
+See `results/trial02-cpu-tests.json`. The CUDA-only team-size trial does not
+change the host policy. This is a correctness check, not a CPU speedup claim.
+
 The separate Nsight Systems trace confirms 1,505 subcycles and a reduction
 from 15,050,000 to 2,389,309 cell teams (84.1% fewer). Active counts at
 subcycles 0/99/499/999/1499 are 10000/5210/1599/233/1. This confirms a

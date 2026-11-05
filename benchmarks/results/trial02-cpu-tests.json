@@ -1,0 +1,10 @@
+{
+  "backend": "OpenMP",
+  "threads": 2,
+  "fast_math": false,
+  "passed": 18,
+  "deselected": 3,
+  "seconds": 0.99,
+  "extension_sha256": "0311e17d01db8f6e28c4aea8b4802cf815a2279eac8569c64df4ac938df66784",
+  "selection": "tests/test_python_bindings.py -k \"not python_cie and not python_ism and not python_photoheat\""
+}

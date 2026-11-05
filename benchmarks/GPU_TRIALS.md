@@ -733,3 +733,24 @@ noted above. Saved binary: `build/galaxy-gpu/ct-cache-float64.cpython-314-x86_64
 Artifacts: `results/ct-cache-gpu.json`, `results/ct-cache-baseline-recheck.json`,
 `results/ct-cache-tests.json`, `results/ct-cache-profile.json`, and
 `results/ct-cache-profile_cuda_gpu_kern_sum.csv`. Both precision switches OFF.
+
+## Trial 14: current code with float32 computation/state
+
+User-requested precision check of revision 156ba01, both precision options
+ON. Loaded CUDA metadata confirms 4-byte Real/density/ion fractions, 1424
+bytes/cell. Existing table field types follow their precision configuration;
+this is the full-float32 arithmetic option, not the separate PROMISE table32
+experiment. Five warmed solves: 3.464247, 3.456701, 3.452585, 3.453469,
+3.456014 s; median **3.456014 s**, warmup 4.999109 s. This is **3.813x faster**
+than the current float64 median 13.177843 s.
+
+Full 10,000-cell solve completes, but fails physical accuracy limits against
+the original float64 reference: among 203,932 ion values with reference
+abundance >1e-4, 17 exceed 5% relative error; maximum **11.7698%**. One
+cell exceeds the 1% temperature tolerance; maximum **1.22227%**. Maximum
+absolute error among smaller ions is 6.42621e-6. This remains experimental;
+no precision change is retained in main. Both build options restored OFF,
+and default extension restored from the saved current float64 best binary.
+Float32 binary preserved as `build/galaxy-gpu/current-float32.cpython-314-x86_64-linux-gnu.so`.
+Results: `results/current-float32.json` (accuracy failure is intentional
+benchmark exit status 1; timings/output were saved).

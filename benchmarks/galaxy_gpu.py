@@ -21,10 +21,13 @@ def main():
     parser.add_argument("--dataset", type=Path, default=ROOT / "recombination_lag/galaxy_cells.npz")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repetitions", type=int, default=5)
+    parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--ncell", type=int)
     parser.add_argument("--dt-yr", type=float, default=100.)
     parser.add_argument("--reference", type=Path)
     args = parser.parse_args()
+    if args.repetitions < 1 or args.warmups < 0:
+        parser.error("repetitions must be positive and warmups nonnegative")
     extension = args.extension.resolve()
     spec = importlib.util.spec_from_file_location("rtz._rtz", extension)
     module = importlib.util.module_from_spec(spec)
@@ -41,21 +44,22 @@ def main():
         sed = (data["sed_frequency"] * u.Hz,
                data["sed_fnu"] * u.erg / (u.s * u.cm**2 * u.Hz))
     timings = []
-    for i in range(args.repetitions + 1):
+    for i in range(args.repetitions + args.warmups):
         start = perf_counter()
         history = rtz.solve(state, np.array([args.dt_yr * 365.25 * 86400]),
                             meta["elements"], [tuple(v) for v in meta["ions"]],
                             [tuple(v) for v in meta["bands"]], sed=sed,
                             **meta["physics"], rt_advect=True, constant_temperature=False)
         duration = perf_counter() - start
-        print(f"{'warmup' if i == 0 else i}: {duration:.6f} s", flush=True)
-        if i:
+        print(f"{'warmup' if i < args.warmups else i - args.warmups + 1}: {duration:.6f} s", flush=True)
+        if i >= args.warmups:
             timings.append(duration)
     arrays = {key: np.asarray(value) for key, value in history.items()}
     if not all(np.isfinite(value).all() for value in arrays.values()):
         raise RuntimeError("nonfinite solver output")
     result = dict(seconds=timings, median_seconds=float(np.median(timings)),
                   ncell=len(state["temperature"]), dt_yr=args.dt_yr,
+                  warmups=args.warmups,
                   extension_sha256=hashlib.sha256(extension.read_bytes()).hexdigest(),
                   dataset_sha256=hashlib.sha256(args.dataset.read_bytes()).hexdigest(),
                   git_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),

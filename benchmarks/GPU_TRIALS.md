@@ -73,11 +73,47 @@ template is `run_solver<false,false,false,true,false>`; resource records are
 in `results/baseline-resources.json` (lambda #1 init, #2 prep, #3 cooling,
 team lambda ions/commit, #4 finish).
 
+Nsight Systems (`nsys profile --trace=cuda --sample=none --cpuctxsw=none`;
+one cold solve, separate from benchmark samples) observed 1,505 subcycles:
+
+| Phase | GPU time | Share | Launch geometry |
+| --- | ---: | ---: | --- |
+| Ions/commit | 34.135 s | 81.4% | 10,000 blocks × 128 threads |
+| Cooling | 5.937 s | 14.2% | 157 blocks × 128 threads |
+| Prep/radiation | 0.560 s | 1.3% | 79 blocks × 128 threads |
+| Pending reduction | 0.0269 s | 0.1% | 40 blocks × 256 threads |
+| Iteration-limit reduction | 0.0214 s | 0.1% | 40 blocks × 256 threads |
+
+The ion kernel launches all 10,000 cell teams on every subcycle. CUDA API
+`cudaStreamSynchronize` time (40.51 s) mostly waits for these kernels and
+must not be added to GPU time. This profile suggests active-cell compaction
+will matter more than eliminating the very short reduction kernels. Raw
+summary CSVs are in `results/baseline-profile_cuda_*_sum.csv`; the full trace
+and exported SQLite database are local artifacts.
+
 ## Trial 01: combine pending and iteration-limit reductions
 
 Change: compute pending count and maximum unfinished-cell iteration in one
 Kokkos reduction with two reducers. Remove the separate limit reduction and
 its host synchronization. Preserve the condition that a cell completing on
 the last allowed iteration does not trigger an error. No physics changes.
+
+Median **40.784318 s**, speedup **1.00084×** (0.084% less time). Samples:
+40.807639, 40.784318, 40.789906, 40.784294, 40.779445 s. Every output
+is bitwise identical to baseline. See `results/trial01.json`.
+
+**Not retained**: the 34 ms gain is negligible for this workload; no paired
+rerun establishes it independently from drift. The kernel profile already
+showed the reductions are a small part of runtime. Source patch preserved in
+`trial01-combined-reduction.patch`; trial 02 starts from the original solver.
+
+## Trial 02: compact active-cell indices
+
+Change: keep cell states in their original locations, but launch subcycle
+kernels and reductions through an active index list. When cells finish, a
+stable device scan builds the next list; swap lists and shrink launch ranges.
+Reset the list for every output interval. Skip compaction if no cells finish.
+Keep the original two reductions, timestep control, team size, and physics.
+Extra index storage: two arrays of 10,000 `size_t` values (160 KB total).
 
 Measurement and correctness validation pending.

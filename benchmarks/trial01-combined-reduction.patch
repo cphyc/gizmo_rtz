@@ -1,0 +1,47 @@
+diff --git a/rtz_bindings.cpp b/rtz_bindings.cpp
+index 47bb178..ef9f98b 100644
+--- a/rtz_bindings.cpp
++++ b/rtz_bindings.cpp
+@@ -852,29 +852,24 @@ nb::object run_solver(const SolveParameters &parameters,
+                     });
+                 });
+ 
++            int largest_pending_iteration = 0;
+             Kokkos::parallel_reduce(
+                 "rtz_python_pending",
+                 Kokkos::RangePolicy<>(0, n_cells),
+-                KOKKOS_LAMBDA(const std::size_t cell_index, std::size_t &count) {
+-                    if (!device_cells(cell_index).done)
++                KOKKOS_LAMBDA(const std::size_t cell_index,
++                              std::size_t &count, int &largest_iteration) {
++                    const CellState &cell = device_cells(cell_index);
++                    if (!cell.done) {
+                         ++count;
++                        if (cell.iterations > largest_iteration)
++                            largest_iteration = cell.iterations;
++                    }
+                 },
+-                pending);
+-            if (pending > 0) {
+-                int over_limit = 0;
+-                Kokkos::parallel_reduce(
+-                    "rtz_python_iteration_limit",
+-                    Kokkos::RangePolicy<>(0, n_cells),
+-                    KOKKOS_LAMBDA(const std::size_t cell_index, int &count) {
+-                        const CellState &cell = device_cells(cell_index);
+-                        if (!cell.done && cell.iterations > max_iterations)
+-                            ++count;
+-                    },
+-                    over_limit);
+-                if (over_limit > 0)
+-                    throw std::runtime_error(
+-                        "RTZ exceeded max_iterations before reaching a requested time");
+-            }
++                Kokkos::Sum<std::size_t>(pending),
++                Kokkos::Max<int>(largest_pending_iteration));
++            if (pending > 0 && largest_pending_iteration > max_iterations)
++                throw std::runtime_error(
++                    "RTZ exceeded max_iterations before reaching a requested time");
+         }
+ 
+         Kokkos::parallel_for(

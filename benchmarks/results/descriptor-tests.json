@@ -1,0 +1,11 @@
+{
+  "cpu_passed": 18,
+  "cpu_excluded": 3,
+  "cuda_passed": 13,
+  "cuda_excluded": 8,
+  "exact_gpu_output": true,
+  "ion_registers_before": 72,
+  "ion_registers_after": 64,
+  "parameter_bytes_before": 13696,
+  "parameter_bytes_after": 744
+}

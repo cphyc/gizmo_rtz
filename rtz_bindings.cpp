@@ -314,6 +314,36 @@ struct CellState {
     Array2D_RT flux{};
 };
 
+// Keep the descriptor alive once per solve rather than copying all of its
+// views and mappings into every subcycle kernel's argument block.
+template<class Tables>
+class DeviceTableDescriptor {
+    Kokkos::View<unsigned char*> storage_;
+    Tables* pointer_;
+  public:
+    static void construct(Tables* pointer, const Tables& tables) {
+        Kokkos::parallel_for("rtz_table_descriptor_init", 1, KOKKOS_LAMBDA(int) {
+            ::new (static_cast<void*>(pointer)) Tables(tables);
+        });
+    }
+    static void destroy(Tables* pointer) {
+        Kokkos::parallel_for("rtz_table_descriptor_destroy", 1, KOKKOS_LAMBDA(int) {
+            pointer->~Tables();
+        });
+        Kokkos::fence();
+    }
+    explicit DeviceTableDescriptor(const Tables& tables)
+        : storage_(Kokkos::view_alloc(Kokkos::WithoutInitializing, "rtz_table_descriptor"), sizeof(Tables)),
+          pointer_(reinterpret_cast<Tables*>(storage_.data())) {
+        construct(pointer_, tables);
+    }
+    DeviceTableDescriptor(const DeviceTableDescriptor&) = delete;
+    ~DeviceTableDescriptor() {
+        destroy(pointer_);
+    }
+    const Tables* data() const { return pointer_; }
+};
+
 void copy_state_to_matrix(const CellState &cell,
                           double *row,
                           const Inputs &inputs,
@@ -613,7 +643,9 @@ nb::object run_solver(const SolveParameters &parameters,
     std::array<int, MAX_ELEMENTS> active_tables{};
     active_tables.fill(-1);
     for (int z : inputs.element_numbers) active_tables[z] = 0;
-    const CompactTabulatedData tab_data(solver.get_rawTabData(), configured_elements.data(), active_tables.data());
+    const CompactTabulatedData host_tables(solver.get_rawTabData(), configured_elements.data(), active_tables.data());
+    const DeviceTableDescriptor<CompactTabulatedData> descriptor(host_tables);
+    const auto* device_tables = descriptor.data();
     const Real uv_background = solver.get_UV_background_G0();
     const Real primary_cr_rate = solver.get_generic_cosmic_ray_ionization_rate();
     const bool equilibrium = options.equilibrium;
@@ -691,6 +723,7 @@ nb::object run_solver(const SolveParameters &parameters,
                 "rtz_python_prep_radiation",
                 Kokkos::RangePolicy<>(0, active_count),
                 KOKKOS_LAMBDA(const std::size_t active_index) {
+                    const auto& tab_data = *device_tables;
                     const std::size_t cell_index = active_cells(active_index);
                     CellState &cell = device_cells(cell_index);
                     if (cell.done)
@@ -735,6 +768,7 @@ nb::object run_solver(const SolveParameters &parameters,
                     "rtz_python_cooling_rates",
                     Kokkos::RangePolicy<>(0, 2 * active_count),
                     KOKKOS_LAMBDA(const std::size_t lane_index) {
+                        const auto& tab_data = *device_tables;
                         const std::size_t cell_index = active_cells(lane_index / 2);
                         CellState &cell = device_cells(cell_index);
                         if (cell.done)
@@ -773,6 +807,7 @@ nb::object run_solver(const SolveParameters &parameters,
                 "rtz_python_molecules_ions_commit",
                 team_policy,
                 KOKKOS_LAMBDA(const TeamMember &team) {
+                    const auto& tab_data = *device_tables;
                     const std::size_t cell_index = active_cells(team.league_rank());
                     CellState &cell = device_cells(cell_index);
                     if (cell.done)

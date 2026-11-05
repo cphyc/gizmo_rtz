@@ -1,0 +1,42 @@
+{
+  "seconds": [
+    6.523131691996241,
+    6.517448828002671,
+    6.523015054001007,
+    6.550084168993635,
+    6.520428054995136
+  ],
+  "median_seconds": 6.523015054001007,
+  "ncell": 10000,
+  "dt_yr": 100.0,
+  "warmups": 1,
+  "max_iterations": 100000,
+  "extension_sha256": "454833eedc35a83d6ec9c1586f598994dc558dca8367870de2bfb4786d52fdb7",
+  "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
+  "git_revision": "fa15ebf965dce7300c01335537f8e43d31915b09",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 68, 1530 MHz, 15.65 W",
+  "command": [
+    "benchmarks/galaxy_gpu.py",
+    "--extension",
+    "build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so",
+    "--output",
+    "benchmarks/results/descriptor-gpu",
+    "--reference",
+    "benchmarks/results/trial05.npz",
+    "--accuracy",
+    "exact"
+  ],
+  "max_absolute_difference": {
+    "temperature": 0.0,
+    "densities": 0.0,
+    "ion_fractions": 0.0,
+    "photon_densities": 0.0
+  },
+  "differing_values": {
+    "temperature": 0,
+    "densities": 0,
+    "ion_fractions": 0,
+    "photon_densities": 0
+  },
+  "accuracy_passed": true
+}

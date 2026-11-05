@@ -301,3 +301,31 @@ not a successful speed optimization. Sparse fixture table payload drops from
 786246 to 124611 bytes; this is a memory-layout feature. The fixed per-cell
 integer array becomes an 8-byte pointer to shared storage. Full timing and
 exact comparison are in `results/compact-policy-final-gpu.json`.
+
+
+## Trial 06: one device-resident table descriptor per solve
+
+Profile of the compact baseline: ions/commit consumes 64.5% of GPU kernel
+time (4.868 s in the cold profile); prep/radiation 0.913 s and cooling 0.490 s.
+The ion kernel uses 72 registers/thread and 13,696 bytes of parameter constant
+space, versus 64 registers and 3,520 bytes in the raw float32 build.
+
+Change: construct one descriptor in device storage, keep its host owners
+alive for the solve, and pass a pointer in subcycle kernels. Construction and
+destruction use Kokkos kernels with explicit object lifetime; no view ownership
+is transferred by a raw byte copy. NVCC disallows extended lambdas directly
+inside constructors/destructors, so those launches live in named static helpers.
+Mappings and arithmetic are unchanged.
+
+Median **6.523015 s**, versus compact baseline **6.611024 s**: **1.01349x**
+speedup (1.33% less time). Samples: 6.523132, 6.517449, 6.523015, 6.550084,
+6.520428 s. Full 10,000-cell GPU results remain bit-for-bit identical to the
+raw float32 reference. Ion registers drop to 64/thread and parameter space
+to 744 bytes. No local-memory allocation is reported. The large parameter
+block was reduced, but most of the performance gap remains.
+
+**Retained.** Default-double CPU tests: 18 passed (three long sweeps excluded).
+Float32 CUDA tests: 13 passed (eight float64-specific tests excluded). Data
+and timing hashes are in `results/descriptor-gpu.json`; kernel summaries in
+`results/compact-profile_cuda_*_sum.csv`. The raw float32 accuracy limitations
+against the double reference remain unchanged; this trial adds no differences.

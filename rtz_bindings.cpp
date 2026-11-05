@@ -551,6 +551,9 @@ nb::object run_solver(const SolveParameters &parameters,
         options.sed_frequency, options.sed_fnu);
     Solver solver = runtime.solver();
     Kokkos::View<CellState *> device_cells("rtz_python_cells", n_cells);
+    // Keep chemistry in place; compact only cell indices as subcycles finish.
+    Kokkos::View<std::size_t *> active_cells("rtz_python_active_cells", n_cells);
+    Kokkos::View<std::size_t *> next_active_cells("rtz_python_next_active_cells", n_cells);
     auto host_cells = Kokkos::create_mirror_view(device_cells);
     std::array<Element, MAX_ELEMENTS> configured_elements{};
     initialize_elements(configured_elements, include_H2);
@@ -629,6 +632,7 @@ nb::object run_solver(const SolveParameters &parameters,
             "rtz_python_interval_init",
             Kokkos::RangePolicy<>(0, n_cells),
             KOKKOS_LAMBDA(const std::size_t cell_index) {
+                active_cells(cell_index) = cell_index;
                 CellState &cell = device_cells(cell_index);
                 const double initial_ne = get_ne(device_elements, cell.chemistry, false);
                 const double initial_mu = get_mu(
@@ -664,11 +668,13 @@ nb::object run_solver(const SolveParameters &parameters,
             });
 
         std::size_t pending = n_cells;
+        std::size_t active_count = n_cells;
         while (pending > 0) {
             Kokkos::parallel_for(
                 "rtz_python_prep_radiation",
-                Kokkos::RangePolicy<>(0, n_cells),
-                KOKKOS_LAMBDA(const std::size_t cell_index) {
+                Kokkos::RangePolicy<>(0, active_count),
+                KOKKOS_LAMBDA(const std::size_t active_index) {
+                    const std::size_t cell_index = active_cells(active_index);
                     CellState &cell = device_cells(cell_index);
                     if (cell.done)
                         return;
@@ -710,9 +716,9 @@ nb::object run_solver(const SolveParameters &parameters,
             if constexpr (!constant_temperature) {
                 Kokkos::parallel_for(
                     "rtz_python_cooling_rates",
-                    Kokkos::RangePolicy<>(0, 2 * n_cells),
+                    Kokkos::RangePolicy<>(0, 2 * active_count),
                     KOKKOS_LAMBDA(const std::size_t lane_index) {
-                        const std::size_t cell_index = lane_index / 2;
+                        const std::size_t cell_index = active_cells(lane_index / 2);
                         CellState &cell = device_cells(cell_index);
                         if (cell.done)
                             return;
@@ -739,14 +745,14 @@ nb::object run_solver(const SolveParameters &parameters,
 
             // Keep Dyablo's team-per-cell ion phases and single-thread
             // cooling/molecule and commit sections.
-            TeamPolicy team_policy(static_cast<int>(n_cells), Kokkos::AUTO());
+            TeamPolicy team_policy(static_cast<int>(active_count), Kokkos::AUTO());
             team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_snapshot_bytes));
 
             Kokkos::parallel_for(
                 "rtz_python_molecules_ions_commit",
                 team_policy,
                 KOKKOS_LAMBDA(const TeamMember &team) {
-                    const std::size_t cell_index = team.league_rank();
+                    const std::size_t cell_index = active_cells(team.league_rank());
                     CellState &cell = device_cells(cell_index);
                     if (cell.done)
                         return;
@@ -854,8 +860,9 @@ nb::object run_solver(const SolveParameters &parameters,
 
             Kokkos::parallel_reduce(
                 "rtz_python_pending",
-                Kokkos::RangePolicy<>(0, n_cells),
-                KOKKOS_LAMBDA(const std::size_t cell_index, std::size_t &count) {
+                Kokkos::RangePolicy<>(0, active_count),
+                KOKKOS_LAMBDA(const std::size_t active_index, std::size_t &count) {
+                    const std::size_t cell_index = active_cells(active_index);
                     if (!device_cells(cell_index).done)
                         ++count;
                 },
@@ -864,8 +871,9 @@ nb::object run_solver(const SolveParameters &parameters,
                 int over_limit = 0;
                 Kokkos::parallel_reduce(
                     "rtz_python_iteration_limit",
-                    Kokkos::RangePolicy<>(0, n_cells),
-                    KOKKOS_LAMBDA(const std::size_t cell_index, int &count) {
+                    Kokkos::RangePolicy<>(0, active_count),
+                    KOKKOS_LAMBDA(const std::size_t active_index, int &count) {
+                        const std::size_t cell_index = active_cells(active_index);
                         const CellState &cell = device_cells(cell_index);
                         if (!cell.done && cell.iterations > max_iterations)
                             ++count;
@@ -875,6 +883,24 @@ nb::object run_solver(const SolveParameters &parameters,
                     throw std::runtime_error(
                         "RTZ exceeded max_iterations before reaching a requested time");
             }
+            if (pending > 0 && pending < active_count) {
+                // Stable scan preserves cell order and never moves solver state.
+                // No host result: the next kernel consumes the indices in stream order.
+                Kokkos::parallel_scan(
+                    "rtz_python_compact_active",
+                    Kokkos::RangePolicy<>(0, active_count),
+                    KOKKOS_LAMBDA(const std::size_t active_index,
+                                  std::size_t &offset, const bool final) {
+                        const std::size_t cell_index = active_cells(active_index);
+                        if (!device_cells(cell_index).done) {
+                            if (final)
+                                next_active_cells(offset) = cell_index;
+                            ++offset;
+                        }
+                    });
+                std::swap(active_cells, next_active_cells);
+            }
+            active_count = pending;
         }
 
         Kokkos::parallel_for(

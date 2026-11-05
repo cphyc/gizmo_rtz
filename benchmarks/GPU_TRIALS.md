@@ -116,4 +116,15 @@ Reset the list for every output interval. Skip compaction if no cells finish.
 Keep the original two reductions, timestep control, team size, and physics.
 Extra index storage: two arrays of 10,000 `size_t` values (160 KB total).
 
-Measurement and correctness validation pending.
+Median **36.682302 s**, **1.11276×** faster than baseline (10.13% less time).
+Samples: 36.682302, 36.676885, 36.680548, 36.684004, 36.686162 s.
+All four output arrays are bitwise identical to baseline over all 10,000 cells.
+18 CUDA binding tests pass (4.11 s), including golden 1 Myr evolution,
+1 Gyr H/He equilibrium, mixed-cell/multiple-interval ordering, fixed and
+absorbing radiation, and the iteration limit. **Retained**.
+
+The three sequential C++ golden sweep comparisons were excluded from the
+GPU regression run. A baseline attempt was explicitly interrupted during CIE
+after 18 tests passed in 249.89 s; the CIE sweep alone asks for roughly six
+million single-cell subcycles. No passing result is claimed for those sweeps.
+See `results/trial02.json` and `results/trial02-tests.json`.

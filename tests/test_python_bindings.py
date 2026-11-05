@@ -44,6 +44,26 @@ def test_zero_time_returns_unchanged_state(initial_state):
     assert np.array_equal(history[0], state)
 
 
+def test_iteration_limit_rejects_unfinished_cells(initial_state):
+    state, elements, ions, bands = initial_state
+    # Cooling/chemistry at this state needs multiple adaptive subcycles.
+    with pytest.raises(RuntimeError, match="exceeded max_iterations"):
+        rtz.solve(np.repeat(state, 2, axis=0), np.array([1e12]),
+                  elements, ions, bands, max_iterations=1)
+
+
+def test_mixed_batch_matches_individual_cells_across_intervals(initial_state):
+    state, elements, ions, bands = initial_state
+    mixed = np.repeat(state, 3, axis=0)
+    mixed[:, 0] = [1e5, 1e4, 1e6]
+    mixed[:, 1:3] *= np.array([1., 100., 1e-4])[:, None]
+    times = np.array([0., 1e4, 1e8])
+    batched = _matrix(rtz.solve(mixed, times, elements, ions, bands))
+    for index, cell in enumerate(mixed):
+        individual = _matrix(rtz.solve(cell[None, :], times, elements, ions, bands))
+        np.testing.assert_allclose(batched[:, index], individual[:, 0], rtol=1e-10, atol=1e-12)
+
+
 def test_solve_returns_unitful_grouped_history(initial_state):
     state, elements, ions, bands = initial_state
     history = rtz.solve(state, np.array([0.0]), elements, ions, bands)

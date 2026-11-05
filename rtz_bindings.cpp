@@ -745,7 +745,11 @@ nb::object run_solver(const SolveParameters &parameters,
 
             // Keep Dyablo's team-per-cell ion phases and single-thread
             // cooling/molecule and commit sections.
+#ifdef KOKKOS_ENABLE_CUDA
+            TeamPolicy team_policy(static_cast<int>(active_count), 32);
+#else
             TeamPolicy team_policy(static_cast<int>(active_count), Kokkos::AUTO());
+#endif
             team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_snapshot_bytes));
 
             Kokkos::parallel_for(

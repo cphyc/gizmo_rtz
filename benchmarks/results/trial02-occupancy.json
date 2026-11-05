@@ -1,0 +1,19 @@
+{
+  "source": "User-provided sudo Nsight Compute LaunchStats/Occupancy output, 2026-11-05",
+  "extension_sha256": "9d071786884d59977685853eab61b6b89d737d826a6864dcf41c55c08905c543",
+  "ncell": 256,
+  "profiled_launch": "first ions/commit",
+  "block_size": 128,
+  "grid_size": 256,
+  "registers_per_thread": 95,
+  "sm_count": 14,
+  "dynamic_shared_bytes_per_block": 1940,
+  "static_shared_bytes_per_block": 112,
+  "block_limit_registers": 5,
+  "block_limit_sm": 16,
+  "theoretical_active_warps_per_sm": 20,
+  "theoretical_occupancy_percent": 62.5,
+  "achieved_occupancy_percent": 55.64,
+  "achieved_active_warps_per_sm": 17.81,
+  "note": "Single profiled launch, not a whole-solve occupancy measurement. Partial wave estimate is launch-specific."
+}

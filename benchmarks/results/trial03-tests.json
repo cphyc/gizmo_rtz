@@ -1,0 +1,7 @@
+{
+  "extension_sha256": "68169d527cfd6a54bed67fe2117edb256215091b5676703c57322e6657c22b99",
+  "passed": 18,
+  "deselected": 3,
+  "seconds": 4.04,
+  "selection": "tests/test_python_bindings.py -k \"not python_cie and not python_ism and not python_photoheat\""
+}

@@ -1,0 +1,6 @@
+{
+  "ion_team_resources": [
+    "REG:95 STACK:0 SHARED:112 LOCAL:0 CONSTANT[2]:640 CONSTANT[0]:3616 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  ],
+  "note": "Compiled resource counts; team size 32, unchanged 95 registers/thread."
+}

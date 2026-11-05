@@ -152,6 +152,14 @@ solve, but failed with `ERR_NVGPUCTRPERM`: the driver denies hardware counter
 access. No occupancy measurement is claimed. Static resource counts and
 Nsight Systems launch geometry remain available; no driver settings changed.
 
+The user subsequently ran the same `ncu` command with sudo successfully.
+For the first ion launch (256 cells), 95 registers/thread limit residency to
+5 blocks/SM: theoretical occupancy 62.50%, achieved 55.64% (17.81 active
+warps/SM). Shared memory is not the binding resource (14-block limit).
+The launch has 3.66 waves/SM on 14 SMs; its partial-wave estimate is specific
+to this small launch, not a measured whole-workload speedup. Recorded in
+`results/trial02-occupancy.json`.
+
 ## Trial 03: one CUDA warp per cell team
 
 Starting from committed trial 02, set CUDA ion teams to 32 threads (baseline
@@ -160,4 +168,17 @@ TeamThreadRange loops and scratch snapshot; stages beyond 32 are handled
 by additional loop iterations. This tests team utilization without changing
 rate equations, precision, timestep control, or convergence settings.
 
-Measurement and correctness validation pending.
+Median **36.467472 s**, **1.00589×** faster than committed compaction
+(0.586% less time), and **1.11931×** faster than original baseline.
+Samples: 36.467472, 36.470889, 36.475718, 36.459842, 36.460235 s.
+All outputs are bitwise identical to the original baseline. 18 CUDA tests
+pass in 4.04 s. **Retained**.
+
+A subsequent 128-thread control run takes 38.219789 s cold, then 36.694135
+and 36.695595 s warm, confirming the small improvement against adjacent
+control measurements with the GPU still at 1530 MHz (69 C). The cold control
+sample includes setup and is not compared with warm candidate samples.
+
+Compiled ion registers remain 95 per thread; this is a team geometry gain,
+not a reduction in registers/thread. See `results/trial03.json`,
+`results/trial03-control.json`, and `results/trial03-tests.json`.

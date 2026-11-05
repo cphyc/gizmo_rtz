@@ -1,0 +1,17 @@
+{
+  "build_info": {
+    "execution_space": "Cuda",
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "extension_sha256": "17258efb666ba43a7fe9c5e15ca7a21806d54254e5112d426fb353d63a18e938",
+  "passed": 18,
+  "excluded_long_sweeps": 3,
+  "seconds": 4.27,
+  "selection": "tests/test_python_bindings.py -k \"not python_cie and not python_ism and not python_photoheat\"",
+  "exact_gpu_reference": "benchmarks/results/baseline.npz",
+  "differing_values": 0
+}

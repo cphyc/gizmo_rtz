@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--accuracy", choices=("exact", "strict", "physical"), default="strict")
     parser.add_argument("--ion-rtol", type=float, default=.05)
     parser.add_argument("--max-iterations", type=int, default=100000)
+    parser.add_argument("--require-float64", action="store_true")
     args = parser.parse_args()
     if args.repetitions < 1 or args.warmups < 0:
         parser.error("repetitions must be positive and warmups nonnegative")
@@ -36,6 +37,11 @@ def main():
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    build_info = module.build_info() if hasattr(module, "build_info") else None
+    if args.require_float64 and (build_info is None or any(
+            build_info[key] != 8 for key in ("real_bytes", "density_bytes", "ion_fraction_bytes"))):
+        raise RuntimeError(f"float64 extension required; loaded build reports {build_info}")
+    print(f"Build: {build_info}", flush=True)
     sys.path.insert(0, str(ROOT / "python"))
     os.environ["RTZ_DATA_DIR"] = str(ROOT / "data")
     import rtz
@@ -62,6 +68,7 @@ def main():
     if not all(np.isfinite(value).all() for value in arrays.values()):
         raise RuntimeError("nonfinite solver output")
     result = dict(seconds=timings, median_seconds=float(np.median(timings)),
+                  build_info=build_info,
                   ncell=len(state["temperature"]), dt_yr=args.dt_yr,
                   warmups=args.warmups,
                   max_iterations=args.max_iterations,

@@ -286,7 +286,7 @@ No claim is made that default-backend regression tests have been rerun after
 this experimental computation-type refactor.
 
 
-## Compact tables / mapping policies
+## Compact tables / mapping policies (float32)
 
 Requested structural follow-up: rename dense setup data to RawTabulatedData,
 share immutable cell offsets, and use CompactTabulatedData with generic
@@ -303,7 +303,7 @@ integer array becomes an 8-byte pointer to shared storage. Full timing and
 exact comparison are in `results/compact-policy-final-gpu.json`.
 
 
-## Trial 06: one device-resident table descriptor per solve
+## Trial 06: one device-resident table descriptor per solve (float32)
 
 Profile of the compact baseline: ions/commit consumes 64.5% of GPU kernel
 time (4.868 s in the cold profile); prep/radiation 0.913 s and cooling 0.490 s.
@@ -329,3 +329,85 @@ Float32 CUDA tests: 13 passed (eight float64-specific tests excluded). Data
 and timing hashes are in `results/descriptor-gpu.json`; kernel summaries in
 `results/compact-profile_cuda_*_sum.csv`. The raw float32 accuracy limitations
 against the double reference remain unchanged; this trial adds no differences.
+
+
+## Trial 07: compile-time extents (float32; not retained)
+
+Precision: both `GIZMO_RTZ_FLOAT32_ARITHMETIC=ON` and
+`GIZMO_RTZ_REDUCED_PRECISION=ON`, as in trial06. Default-double CPU tests
+are separate and must not be mistaken for float64 GPU performance results.
+
+Change: use compile-time raw extents for the built-in policies, retaining
+runtime extents for dynamic shapes and leaving custom mapping contracts
+unchanged. Added a dynamic-shape fallback check. Median **6.566065 s** versus
+trial06 **6.523015 s**; no measured improvement. Samples: 6.582285, 6.570811,
+6.563905, 6.555041, 6.566065 s. Full GPU output is bit-for-bit identical.
+Register count remains 64/thread; parameter space remains 744 bytes.
+**Reverted**. Source patch: `trial07-static-extents.patch`; measurements:
+`results/static-shape-gpu.json`.
+
+## Precision correction and float64 GPU continuation
+
+The user explicitly requested float64 GPU testing. The recent compact-table,
+descriptor, and static-extent performance trials used float32 GPU arithmetic
+and state storage. Their default-double CPU regressions did NOT validate
+float64 GPU timing. Those float32 results are retained as historical evidence
+and will not be presented as float64 measurements.
+
+The GPU build was reconfigured with BOTH precision options OFF:
+`GIZMO_RTZ_FLOAT32_ARITHMETIC=OFF` and
+`GIZMO_RTZ_REDUCED_PRECISION=OFF`. This selects `Real=double`,
+`CompactIonData::ndens_t=double`, and `xion_t=double`. Tables that were
+already float in the original solver (e.g. HM12 and high-T cooling fits)
+retain their original types. The build-info/type-size check and explicit
+float64 GPU benchmark are recorded below.
+
+
+Float64 preflight completed: the loaded extension reports execution space
+`Cuda`, `real_bytes=8`, `density_bytes=8`, `ion_fraction_bytes=8`.
+All four arrays over 10,000 cells are bit-for-bit identical to the original
+float64 GPU baseline. One cold solve took 39.249979 s; this is a correctness
+preflight, not a warmed performance claim. See
+`results/float64-compact-preflight.json`. The warmed measurements are recorded below.
+
+The harness now records the compiled extension's `build_info()` and supports
+`--require-float64`, which rejects missing or non-8-byte computation/state
+metadata before starting a solve. Subsequent GPU performance runs use this
+flag explicitly, alongside `--accuracy exact`.
+
+
+### Float64 compact-table baseline (verified CUDA build)
+
+Both precision switches are OFF. The binary reports `Cuda`, 8-byte Real,
+density, and ion fractions, 2824 bytes per cell, and a 6528-byte table
+descriptor. `--require-float64` passed. Five warmed full-dataset samples:
+**37.690896, 37.708016, 37.697585, 37.692757, 37.674616 s**; median
+**37.692757 s**. Warmup 39.260707 s. All output bit patterns match the
+original float64 GPU reference exactly (zero differing values).
+
+This is the baseline for subsequent float64 tuning. It is separate from the
+6.523 s float32 descriptor result. Files:
+`results/float64-compact-baseline.json` and
+`results/float64-compact-preflight.json` include binary/input hashes and
+compiled type metadata. The original float64 baseline was 40.818548 s;
+current float64 performance is about 1.083x faster. That historical comparison
+includes earlier changes; no float64 speedup is inferred from float32 trials.
+
+Reproduce this precision check and timing with:
+
+```sh
+cmake -S . -B build/galaxy-gpu \
+  -DGIZMO_RTZ_FLOAT32_ARITHMETIC=OFF -DGIZMO_RTZ_REDUCED_PRECISION=OFF
+# Build with the existing CUDA toolchain settings documented above.
+/usr/bin/python3.14 benchmarks/galaxy_gpu.py \
+  --extension build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so \
+  --output benchmarks/results/float64-compact-baseline \
+  --reference benchmarks/results/baseline.npz --accuracy exact --require-float64
+```
+
+
+Float64 CUDA validation: **18 passed**, three long sequential golden sweeps
+excluded, in 4.27 s. This run used the actual CUDA binary above, not the CPU
+build. The preserved float64 binary is
+`build/galaxy-gpu/float64-compact-baseline.cpython-314-x86_64-linux-gnu.so`.
+Build and validation metadata: `results/float64-compact-tests.json`.

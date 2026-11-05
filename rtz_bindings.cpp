@@ -1190,6 +1190,16 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
 } // namespace
 
 NB_MODULE(_rtz, module) {
+    module.def("build_info", []() {
+        nb::dict info;
+        info["execution_space"] = Kokkos::DefaultExecutionSpace::name();
+        info["real_bytes"] = sizeof(prism_gpu::Real);
+        info["density_bytes"] = sizeof(prism_gpu::CompactIonData::ndens_t);
+        info["ion_fraction_bytes"] = sizeof(prism_gpu::CompactIonData::xion_t);
+        info["cell_bytes"] = sizeof(CellState);
+        info["table_descriptor_bytes"] = sizeof(prism_gpu::CompactTabulatedData);
+        return info;
+    });
     module.doc() = "Kokkos-backed Python bindings for the RTZ chemistry and cooling solver";
     module.def("_finalize", &finalize_runtime);
     module.def("solve",

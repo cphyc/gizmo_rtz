@@ -1,0 +1,7 @@
+{
+  "extension_sha256": "0b6ecff339fd1b4b58ee300c410301337781a62421e7b508740039eb6033f24f",
+  "passed": 13,
+  "deselected": 8,
+  "seconds": 2.66,
+  "selection": "tests/test_python_bindings.py -k \"rejects or requires or iteration_limit or constant_temperature or absorbing or mixed_batch\""
+}

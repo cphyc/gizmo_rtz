@@ -182,3 +182,60 @@ sample includes setup and is not compared with warm candidate samples.
 Compiled ion registers remain 95 per thread; this is a team geometry gain,
 not a reduction in registers/thread. See `results/trial03.json`,
 `results/trial03-control.json`, and `results/trial03-tests.json`.
+
+## Trial 04: float32 chemistry state storage
+
+Starting from trial 03, enable `GIZMO_RTZ_REDUCED_PRECISION`: float chemistry
+densities and ion-fraction arrays, with the existing double arithmetic and
+temperature state. This is a storage trial, not all-float arithmetic. The
+existing CMake option was not propagated to `_rtz`, so this trial adds that
+definition to the Python extension target. Its old uint16 description was
+stale; actual storage uses float. The project option default remains OFF;
+the local GPU trial build explicitly enables it.
+
+The user's initial ion tolerance was relative 1e-6 for reference fractions
+above 1e-4. The first full-dataset check failed it: 19,224 of 203,932 ion
+values exceeded that limit. The user then explicitly requested retaining the
+trial and relaxed the ion limit to **less than 5%**. The temperature limit
+remains **less than 1%**. The initially attempted double rebuild was stopped,
+and the local GPU configuration was set back to reduced precision ON.
+
+Under the revised criteria, the full-dataset result **passes**: maximum ion
+relative error **0.0294172** (2.94%), maximum temperature relative error
+**0.000737818** (0.0738%). The worst ion is Fe XIV in cell 1961: reference
+0.000108944314, float32 0.000112149151, initially T=991450 K and
+nH=349.94 cm^-3. Maximum absolute error among reference fractions at/below
+1e-4 is 2.93e-6. The initial strict-failure JSON is preserved for provenance.
+
+The harness `--accuracy physical --ion-rtol .05` checks every cell/output,
+records violations, and saves results before raising on failure. Density and
+photon outputs also get relative 1e-6 checks. Strict comparison remains the
+default; it was used for all double-precision trials. The physical accuracy
+limits are workload validation limits, not relaxed internal solver settings.
+
+**Retained at the user's explicit request.** Median **36.369796 s**:
+36.373434, 36.372413, 36.369796, 36.355144, 36.357038 s.
+This is **1.00269×** faster than trial 03 and **1.12232×** faster than the
+original baseline. The storage-only gain is small; it does not establish the
+benefit of float32 arithmetic. See `results/trial04.json` for timings and
+passing revised accuracy metrics. The canonical `_rtz` binary matches the
+preserved trial04 binary (SHA256 recorded there), and the local CMake cache
+has reduced precision ON.
+
+13 precision-compatible CUDA API/physics regressions pass in 2.66 s,
+including mixed-batch interval ordering, iteration limits, fixed-temperature
+molecular/radiation behavior, and absorbing photons. Eight tests requiring
+exact float64 round trips or tight float64 golden results were deselected;
+this does not claim that the float32 build passes those strict tests. Default
+double builds retain their previously validated strict behavior.
+
+## Next: arithmetic propagation
+
+The user asked whether float32 reaches all headers/source calculations. It
+does not in trial04: only `CompactIonData` densities/fractions are float;
+rate functions, intermediates, and temperature remain double. The next trial
+must separately propagate a computation type through the device chemistry
+and cooling path, audit literals/overloads to prevent promotion back to
+double, and check the same full-dataset <5% ion / <1% temperature limits.
+Host file parsing and Python's float64 API buffers require explicit boundary
+conversions rather than a blanket keyword replacement.

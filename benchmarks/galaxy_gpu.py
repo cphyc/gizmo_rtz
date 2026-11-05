@@ -25,6 +25,8 @@ def main():
     parser.add_argument("--ncell", type=int)
     parser.add_argument("--dt-yr", type=float, default=100.)
     parser.add_argument("--reference", type=Path)
+    parser.add_argument("--accuracy", choices=("strict", "physical"), default="strict")
+    parser.add_argument("--ion-rtol", type=float, default=.05)
     args = parser.parse_args()
     if args.repetitions < 1 or args.warmups < 0:
         parser.error("repetitions must be positive and warmups nonnegative")
@@ -65,17 +67,39 @@ def main():
                   git_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                   gpu=subprocess.check_output(["nvidia-smi", "--query-gpu=name,driver_version,temperature.gpu,clocks.sm,power.draw", "--format=csv"], text=True).strip(),
                   command=sys.argv)
+    accuracy_passed = True
     if args.reference:
         with np.load(args.reference, allow_pickle=False) as reference:
             result["max_absolute_difference"] = {
                 key: float(np.max(np.abs(arrays[key] - reference[key]))) for key in arrays}
-            for key in arrays:
-                np.testing.assert_allclose(arrays[key], reference[key], rtol=1e-10, atol=1e-12,
-                                           err_msg=key)
+            if args.accuracy == "physical":
+                ion_ref = reference["ion_fractions"]
+                mask = ion_ref > 1e-4
+                relative = np.abs(arrays["ion_fractions"][mask] / ion_ref[mask] - 1)
+                temperature_relative = np.abs(arrays["temperature"] / reference["temperature"] - 1)
+                result["accuracy"] = dict(
+                    mode="physical", ion_fraction_threshold=1e-4,
+                    ion_relative_tolerance=args.ion_rtol, temperature_relative_tolerance=.01,
+                    checked_ion_values=int(mask.sum()),
+                    max_ion_relative_error=float(relative.max(initial=0)),
+                    ion_violations=int(np.count_nonzero(relative >= args.ion_rtol)),
+                    max_temperature_relative_error=float(temperature_relative.max()),
+                    temperature_violations=int(np.count_nonzero(temperature_relative >= .01)),
+                    max_small_ion_absolute_error=float(np.abs(arrays["ion_fractions"][~mask] - ion_ref[~mask]).max(initial=0)))
+                accuracy_passed = not (result["accuracy"]["ion_violations"] or
+                                       result["accuracy"]["temperature_violations"])
+                for key in ("densities", "photon_densities"):
+                    accuracy_passed &= bool(np.allclose(arrays[key], reference[key], rtol=1e-6, atol=0))
+            else:
+                accuracy_passed = all(np.allclose(arrays[key], reference[key], rtol=1e-10, atol=1e-12)
+                                      for key in arrays)
+            result["accuracy_passed"] = bool(accuracy_passed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output.with_suffix(".npz"), **arrays)
     args.output.with_suffix(".json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2), flush=True)
+    if not accuracy_passed:
+        raise AssertionError("reference accuracy check failed; results saved for diagnosis")
 
 
 if __name__ == "__main__":

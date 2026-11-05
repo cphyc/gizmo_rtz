@@ -57,39 +57,39 @@ void init_collisional_ionization(std::string path_to_data, TabulatedData& tabDat
 };
 
 KOKKOS_INLINE_FUNCTION
-double coll_ion(double T, double dE, double A, double X, double K, double P){
+Real coll_ion(Real T, Real dE, Real A, Real X, Real K, Real P){
     // Eqn 1 of Voronov 1997
-    double U = dE / (T * 8.61732814974056E-05); // #! K --> eV
+    Real U = dE / (T * Real(8.61732814974056E-05)); // #! K --> eV
 
-    if (U > 80.0) {
-        return 0.0;
+    if (U > Real(80.0)) {
+        return Real(0.0);
     }
 
-    return A * (1. + P * sqrt(U)) * pow(U,K) * exp(-U) / (X + U);
+    return A * (Real(1.) + P * rtz_math::sqrt(U)) * rtz_math::pow(U,K) * rtz_math::exp(-U) / (X + U);
 }
 
 KOKKOS_FUNCTION
-double collisional_ionization(double T, int ion, int element_idx, const TabulatedData& tabData) {
+Real collisional_ionization(Real T, int ion, int element_idx, const TabulatedData& tabData) {
     /*
     collisional ionization rate
     */
 
-    double col = 0.0;
+    Real col = Real(0.0);
 
     int n_electron = element_idx - ion;
 
     if (n_electron > 0) {
         const int erow = elem_row(element_idx);
-        double dE = tabData.collisional_ionization_data(erow, n_electron, 0);
-        double P  = tabData.collisional_ionization_data(erow, n_electron, 1);
-        double A  = tabData.collisional_ionization_data(erow, n_electron, 2);
-        double X  = tabData.collisional_ionization_data(erow, n_electron, 3);
-        double K  = tabData.collisional_ionization_data(erow, n_electron, 4);
+        Real dE = tabData.collisional_ionization_data(erow, n_electron, 0);
+        Real P  = tabData.collisional_ionization_data(erow, n_electron, 1);
+        Real A  = tabData.collisional_ionization_data(erow, n_electron, 2);
+        Real X  = tabData.collisional_ionization_data(erow, n_electron, 3);
+        Real K  = tabData.collisional_ionization_data(erow, n_electron, 4);
 
         col = coll_ion(T, dE, A, X, K, P);
     }
 
-    col = fmax(col,1e-100);
+    col = rtz_math::fmax(col,Real(1e-100));
 
     return col;
 }

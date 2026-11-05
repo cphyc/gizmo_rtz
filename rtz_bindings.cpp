@@ -13,6 +13,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -214,8 +215,8 @@ class Runtime {
               const std::vector<double> &sed_fnu) {
         if (bands != configured_bands_ || T_blackbody_ != T_blackbody ||
             sed_frequency != configured_sed_frequency_ || sed_fnu != configured_sed_fnu_) {
-            std::array<double, N_GROUPS> lower{};
-            std::array<double, N_GROUPS> upper{};
+            std::array<Real, N_GROUPS> lower{};
+            std::array<Real, N_GROUPS> upper{};
             for (int group = 0; group < N_GROUPS; ++group) {
                 const auto &band = bands[std::min<std::size_t>(group, bands.size() - 1)];
                 lower[group] = band.first;
@@ -281,22 +282,22 @@ void finalize_runtime() {
 struct CellState {
     CompactIonData chemistry{};
     SubcycleState subcycle{};
-    double temperature = 0.0;
-    double nCO = 0.0;
-    double out_Tmu = 0.0;
-    double out_mu = 0.0;
-    double dust_ratio = 0.0;
-    double loc_rho = 0.0;
-    double ss_factor = 1.0;
-    double ddt = 0.0;
-    double total_time = 0.0;
+    Real temperature = 0.0;
+    Real nCO = 0.0;
+    Real out_Tmu = 0.0;
+    Real out_mu = 0.0;
+    Real dust_ratio = 0.0;
+    Real loc_rho = 0.0;
+    Real ss_factor = 1.0;
+    Real ddt = 0.0;
+    Real total_time = 0.0;
     int iterations = 0;
     bool done = false;
     bool initial_interval = true;
-    std::array<double, N_GROUPS> photons{};
-    std::array<double, N_GROUPS> photons_new{};
-    std::array<double, N_GROUPS> photon_attenuation{};
-    std::array<double, 2> cooling_rates{};
+    std::array<Real, N_GROUPS> photons{};
+    std::array<Real, N_GROUPS> photons_new{};
+    std::array<Real, N_GROUPS> photon_attenuation{};
+    std::array<Real, 2> cooling_rates{};
     Array2D_RT flux{};
 };
 
@@ -592,13 +593,13 @@ nb::object run_solver(const SolveParameters &parameters,
 
     double previous_time = 0.0;
     const PhysicsFlags flags = options.physics_flags;
-    const std::array<double, N_GROUPS> dNpdt{};
+    const std::array<Real, N_GROUPS> dNpdt{};
     const Array2D_RT dFpdt{};
     const Element *device_elements = elements_d.data();
     const std::uint16_t *device_ion_map = ion_map_d.data();
     const TabulatedData tab_data = solver.get_tabData();
-    const double uv_background = solver.get_UV_background_G0();
-    const double primary_cr_rate = solver.get_generic_cosmic_ray_ionization_rate();
+    const Real uv_background = solver.get_UV_background_G0();
+    const Real primary_cr_rate = solver.get_generic_cosmic_ray_ionization_rate();
     const bool equilibrium = options.equilibrium;
     const bool temperature_is_Tmu = options.temperature_is_Tmu;
     const bool fixed_radiation = options.fixed_radiation;
@@ -610,7 +611,7 @@ nb::object run_solver(const SolveParameters &parameters,
 
     for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
         const double time = times[time_index];
-        const double requested_delta_time = time - previous_time;
+        const Real requested_delta_time = time - previous_time;
         if (requested_delta_time == 0.0) {
             for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
                 double *output_row =
@@ -626,7 +627,7 @@ nb::object run_solver(const SolveParameters &parameters,
             continue;
         }
         assert(requested_delta_time > 0.0);
-        const double total_delta_time = equilibrium ? -1.0 : requested_delta_time;
+        const Real total_delta_time = equilibrium ? -1.0 : requested_delta_time;
 
         Kokkos::parallel_for(
             "rtz_python_interval_init",
@@ -634,10 +635,10 @@ nb::object run_solver(const SolveParameters &parameters,
             KOKKOS_LAMBDA(const std::size_t cell_index) {
                 active_cells(cell_index) = cell_index;
                 CellState &cell = device_cells(cell_index);
-                const double initial_ne = get_ne(device_elements, cell.chemistry, false);
-                const double initial_mu = get_mu(
+                const Real initial_ne = get_ne(device_elements, cell.chemistry, false);
+                const Real initial_mu = get_mu(
                     initial_ne, device_elements, cell.chemistry, false, include_H2, cell.nCO);
-                const double initial_Tmu = constant_temperature
+                const Real initial_Tmu = constant_temperature
                                                ? cell.temperature
                                                : (temperature_is_Tmu &&
                                                           cell.initial_interval
@@ -650,9 +651,9 @@ nb::object run_solver(const SolveParameters &parameters,
                 cell.loc_rho = get_rho(device_elements, cell.chemistry);
                 apply_dust_depletion(device_elements, cell.dust_ratio, cell.chemistry, cell.nCO);
                 if constexpr (include_self_shielding)
-                    cell.ss_factor = exp(-cell.chemistry[1].n_element / 1E-2);
+                    cell.ss_factor = rtz_math::exp(-cell.chemistry[1].n_element / Real(1E-2));
                 else
-                    cell.ss_factor = 1.0;
+                    cell.ss_factor = Real(1.0);
 
                 cell.subcycle = SubcycleState{};
                 cell.subcycle.success_counter = 0;
@@ -660,9 +661,9 @@ nb::object run_solver(const SolveParameters &parameters,
                 cell.subcycle.Tmu_old = initial_Tmu;
                 cell.subcycle.Tmu_new = cell.subcycle.Tmu_old;
                 cell.ddt = equilibrium
-                               ? 10000.0 * 365.25 * 24.0 * 60.0 * 60.0
+                               ? Real(10000.0) * Real(365.25) * Real(24.0) * Real(60.0) * Real(60.0)
                                : requested_delta_time;
-                cell.total_time = 0.0;
+                cell.total_time = Real(0.0);
                 cell.iterations = 0;
                 cell.done = false;
             });
@@ -706,7 +707,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                                            cell.photons_new,
                                                            cell.photon_attenuation,
                                                            cell.subcycle,
-                                                           0.0,
+                                                           Real(0.0),
                                                            nullptr,
                                                            false,
                                                            dNpdt,
@@ -728,7 +729,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                           rt_advect,
                                           include_self_shielding>(static_cast<int>(lane_index % 2),
                                                                   cell.cooling_rates.data(),
-                                                                  1.0,
+                                                                  Real(1.0),
                                                                   device_elements,
                                                                   cell.chemistry,
                                                                   tab_data,
@@ -829,8 +830,8 @@ nb::object run_solver(const SolveParameters &parameters,
                     team.team_barrier();
 
                     Kokkos::single(Kokkos::PerTeam(team), [&]() {
-                        double ddt = cell.ddt;
-                        double total_time = cell.total_time;
+                        Real ddt = cell.ddt;
+                        Real total_time = cell.total_time;
                         subcycle_commit_and_control<constant_temperature,
                                                     include_H2,
                                                     include_CO,
@@ -854,9 +855,9 @@ nb::object run_solver(const SolveParameters &parameters,
                         if (equilibrium) {
                             if (cell.subcycle.success_counter > conv_its)
                                 cell.done = true;
-                        } else if (fabs(cell.total_time - requested_delta_time) /
+                        } else if (rtz_math::fabs(cell.total_time - requested_delta_time) /
                                        requested_delta_time <
-                                   1e-6) {
+                                   Real(1e-6)) {
                             cell.done = true;
                         }
                     });
@@ -883,9 +884,24 @@ nb::object run_solver(const SolveParameters &parameters,
                             ++count;
                     },
                     over_limit);
-                if (over_limit > 0)
-                    throw std::runtime_error(
-                        "RTZ exceeded max_iterations before reaching a requested time");
+                if (over_limit > 0) {
+                    Kokkos::deep_copy(host_cells, device_cells);
+                    std::ostringstream message;
+                    message << "RTZ exceeded max_iterations before reaching a requested time";
+                    for (std::size_t index = 0; index < n_cells; ++index) {
+                        const auto &cell = host_cells(index);
+                        if (cell.done || cell.iterations <= max_iterations)
+                            continue;
+                        message << std::scientific << "; cell=" << index
+                                << " elapsed=" << cell.total_time << " dt=" << cell.ddt
+                                << " T=" << cell.subcycle.TK
+                                << " ne=" << cell.subcycle.ne
+                                << " residual=" << cell.subcycle.max_residual_all
+                                << " accepted=" << cell.subcycle.x_percent_rule;
+                        break;
+                    }
+                    throw std::runtime_error(message.str());
+                }
             }
             if (pending > 0 && pending < active_count) {
                 // Stable scan preserves cell order and never moves solver state.
@@ -913,7 +929,7 @@ nb::object run_solver(const SolveParameters &parameters,
             KOKKOS_LAMBDA(const std::size_t cell_index) {
                 CellState &cell = device_cells(cell_index);
                 cell.initial_interval = false;
-                const double ne = get_ne(device_elements, cell.chemistry, false);
+                const Real ne = get_ne(device_elements, cell.chemistry, false);
                 cell.out_mu =
                     get_mu(ne, device_elements, cell.chemistry, false, include_H2, cell.nCO);
                 cell.out_Tmu = cell.subcycle.Tmu_old;

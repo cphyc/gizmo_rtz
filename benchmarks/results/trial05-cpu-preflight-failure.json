@@ -1,0 +1,9 @@
+{
+  "backend": "OpenMP, 2 threads",
+  "ncell": 256,
+  "dt_yr": 100,
+  "max_iterations": 100000,
+  "result": "RuntimeError: RTZ exceeded max_iterations before reaching a requested time",
+  "accuracy": "not evaluated: solve did not finish",
+  "configuration": "GIZMO_RTZ_FLOAT32_ARITHMETIC=ON; GIZMO_RTZ_REDUCED_PRECISION=ON"
+}

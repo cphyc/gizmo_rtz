@@ -332,7 +332,7 @@ void load_UVB_data(std::string path_to_data) {
 }
 
 void update_UVB(double redshift){
-    /* 
+    /*
     interpolates the UVB for all ions
     to a particular redshift
     */
@@ -353,7 +353,7 @@ void update_UVB(double redshift){
         // Loop through the array to find the interval in which x_interp lies
         for (int i = 0; i < N_UVB_POINTS - 1; i++) {
             if (redshift >= HM12_UVB_redshifts[i] && redshift < HM12_UVB_redshifts[i+1]) {
-                
+
                 // Perform linear interpolation
                 scale_high = (redshift - HM12_UVB_redshifts[i]) / (HM12_UVB_redshifts[i+1] - HM12_UVB_redshifts[i]);
                 scale_low  = 1.0 - scale_high;
@@ -367,7 +367,7 @@ void update_UVB(double redshift){
                         HM12_UVB_z[2][j][0]  = (scale_low * HM12_UVB_helium[i][j][0])    + (scale_high * HM12_UVB_helium[i+1][j][0]);
                         HM12_UVB_z[2][j][1]  = (scale_low * HM12_UVB_helium[i][j][1])    + (scale_high * HM12_UVB_helium[i+1][j][1]);
                     }
-                    if (j<6){  
+                    if (j<6){
                         HM12_UVB_z[6][j][0]  = (scale_low * HM12_UVB_carbon[i][j][0])    + (scale_high * HM12_UVB_carbon[i+1][j][0]);
                         HM12_UVB_z[6][j][1]  = (scale_low * HM12_UVB_carbon[i][j][1])    + (scale_high * HM12_UVB_carbon[i+1][j][1]);
                     }
@@ -399,7 +399,7 @@ void update_UVB(double redshift){
                         HM12_UVB_z[26][j][0]  = (scale_low * HM12_UVB_iron[i][j][0])      + (scale_high * HM12_UVB_iron[i+1][j][0]);
                         HM12_UVB_z[26][j][1]  = (scale_low * HM12_UVB_iron[i][j][1])      + (scale_high * HM12_UVB_iron[i+1][j][1]);
                     }
-                }                
+                }
             }
         }
     }

@@ -16,26 +16,26 @@ KOKKOS_FUNCTION
 void initialize_ion_fracs(
     std::array<Element, MAX_ELEMENTS> &elements,
     std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs,
-    double hdens,
-    double metallicity,
+    Real hdens,
+    Real metallicity,
     int itype
 );
 
 KOKKOS_FUNCTION
-double get_ne(
+Real get_ne(
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     bool use_new
 );
 
 KOKKOS_FUNCTION
-double get_mu(
-    double ne,
+Real get_mu(
+    Real ne,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     bool use_new,
     bool include_H2,
-    double nCO
+    Real nCO
 );
 
 
@@ -50,44 +50,44 @@ public:
     RTZ(std::string path_to_data);
 
     // Set the reduced speed of light factor (1.0 = no reduction)
-    void set_reduced_speed_of_light_factor(double factor);
+    void set_reduced_speed_of_light_factor(Real factor);
 
     // Set the static (sub-ionizing) UV background G0
-    void set_UV_background_G0(double G0);
+    void set_UV_background_G0(Real G0);
 
     // Update the UV background for a given redshift
-    void need_to_update_UVB(double redshift);
+    void need_to_update_UVB(Real redshift);
 
     // Update cross sections
-    void need_to_update_cross_sections(double T_blackbody,
+    void need_to_update_cross_sections(Real T_blackbody,
                                       const std::vector<double>& sed_frequency = {},
                                       const std::vector<double>& sed_fnu = {});
 
     // Set the photon group energy bins
     void set_photon_groups(
-        std::array<double, N_GROUPS> E_min,
-        std::array<double, N_GROUPS> E_max
+        std::array<Real, N_GROUPS> E_min,
+        std::array<Real, N_GROUPS> E_max
     );
 
     // Solve the chemistry network and cooling for a single cell
     KOKKOS_FUNCTION
     void solve_chemistry_and_cooling(
-        double TK,
-        double dx,
-        const double aexp,
-        const double total_dt,
+        Real TK,
+        Real dx,
+        const Real aexp,
+        const Real total_dt,
         CompactIonData& n_and_ion_fracs_loc,
-        double& nCO,
-        std::array<double, N_GROUPS> &N_PHOT_loc,
+        Real& nCO,
+        std::array<Real, N_GROUPS> &N_PHOT_loc,
         Array2D_RT &F_PHOT_loc,
-        double& out_Tmu,
-        double& out_mu,
+        Real& out_Tmu,
+        Real& out_mu,
         int conv_its,
         int max_its,
         int& total_iter_reached,
         PhysicsFlags flags,
         const bool rt_smooth,
-        const std::array<double, N_GROUPS>& dNpdt,
+        const std::array<Real, N_GROUPS>& dNpdt,
         const Array2D_RT& dFpdt
     ) const;
 
@@ -98,8 +98,8 @@ public:
     // Accessors for drivers that launch the solver step functions as
     // separate kernels (see CoolingUpdate_PRISM_GPU.cpp)
     const TabulatedData& get_tabData() const { return tabData; }
-    double get_UV_background_G0() const { return UV_background_G0; }
-    double get_generic_cosmic_ray_ionization_rate() const { return generic_cosmic_ray_ionization_rate; }
+    Real get_UV_background_G0() const { return UV_background_G0; }
+    Real get_generic_cosmic_ray_ionization_rate() const { return generic_cosmic_ray_ionization_rate; }
 
 private:
 
@@ -107,8 +107,8 @@ private:
     TabulatedData tabData;
 
     // UV background strength (sub-ionizing radiation field)
-    double UV_background_G0;
+    Real UV_background_G0;
 
     // Background cosmic-ray ionization rate (primary + secondary)
-    double generic_cosmic_ray_ionization_rate;
+    Real generic_cosmic_ray_ionization_rate;
 };

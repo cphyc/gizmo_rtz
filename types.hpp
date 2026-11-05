@@ -1,6 +1,39 @@
 #pragma once
 #include <Kokkos_Core.hpp>
 #include <cstdint>
+
+#ifdef RTZ_FLOAT32_ARITHMETIC
+using Real = float;
+#else
+using Real = double;
+#endif
+// Explicit Real overloads prevent integer pow exponents and global C math
+// overloads from silently promoting float computations back to double.
+namespace rtz_math {
+KOKKOS_INLINE_FUNCTION Real sqrt(Real x) { return Kokkos::sqrt(x); }
+KOKKOS_INLINE_FUNCTION Real exp(Real x) { return Kokkos::exp(x); }
+KOKKOS_INLINE_FUNCTION Real log(Real x) { return Kokkos::log(x); }
+KOKKOS_INLINE_FUNCTION Real log10(Real x) { return Kokkos::log10(x); }
+KOKKOS_INLINE_FUNCTION Real exp2(Real x) { return Kokkos::exp2(x); }
+KOKKOS_INLINE_FUNCTION Real fabs(Real x) { return Kokkos::fabs(x); }
+KOKKOS_INLINE_FUNCTION Real floor(Real x) { return Kokkos::floor(x); }
+KOKKOS_INLINE_FUNCTION Real ceil(Real x) { return Kokkos::ceil(x); }
+KOKKOS_INLINE_FUNCTION Real cbrt(Real x) { return Kokkos::cbrt(x); }
+KOKKOS_INLINE_FUNCTION Real sin(Real x) { return Kokkos::sin(x); }
+KOKKOS_INLINE_FUNCTION Real cos(Real x) { return Kokkos::cos(x); }
+KOKKOS_INLINE_FUNCTION Real tanh(Real x) { return Kokkos::tanh(x); }
+KOKKOS_INLINE_FUNCTION Real pow(Real x, Real y) { return Kokkos::pow(x, y); }
+KOKKOS_INLINE_FUNCTION Real fmin(Real x, Real y) { return Kokkos::fmin(x, y); }
+KOKKOS_INLINE_FUNCTION Real fmax(Real x, Real y) { return Kokkos::fmax(x, y); }
+KOKKOS_INLINE_FUNCTION Real exp10(Real x) {
+#ifdef RTZ_FLOAT32_ARITHMETIC
+    return Kokkos::pow(Real(10), x);
+#else
+    return ::exp10(x);
+#endif
+}
+}
+
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
 // Maximum total ion+molecule states across all elements:
@@ -58,8 +91,8 @@ constexpr int row_elem(int row) {
 #define N_GROUPS 7
 #define N_DIM 3
 #define N_DUST_WAV 1000
-using Array2D = std::array<std::array<double, MAX_ELEMENTS>, MAX_ELEMENTS>;
-using Array2D_RT = std::array<std::array<double, N_DIM>, N_GROUPS>;
+using Array2D = std::array<std::array<Real, MAX_ELEMENTS>, MAX_ELEMENTS>;
+using Array2D_RT = std::array<std::array<Real, N_DIM>, N_GROUPS>;
 
 
 typedef struct
@@ -67,10 +100,10 @@ typedef struct
     int atomic_number;
     int n_ions;
     int n_mol;
-    double atomic_mass;
-    double z_solar;
-    double G0_photo_rate;
-    double depletion;
+    Real atomic_mass;
+    Real z_solar;
+    Real G0_photo_rate;
+    Real depletion;
 } Element;
 
 // Runtime physics flags (controls which processes are active in the solver)
@@ -85,10 +118,10 @@ struct PhysicsFlags {
 
 typedef struct
 {
-    double n_element;
-    double n_element_new;
-    std::array<double, MAX_ELEMENTS> ion_fracs;
-    std::array<double, MAX_ELEMENTS> ion_fracs_new;
+    Real n_element;
+    Real n_element_new;
+    std::array<Real, MAX_ELEMENTS> ion_fracs;
+    std::array<Real, MAX_ELEMENTS> ion_fracs_new;
 } ParticleIonData;
 
 // Reduced-precision storage (enabled with -DRTZ_REDUCED_PRECISION):
@@ -98,12 +131,12 @@ typedef struct
 // std::array<ParticleIonData, MAX_ELEMENTS> but uses MAX_TOTAL_IONS storage
 // instead of MAX_ELEMENTS * MAX_ELEMENTS.
 struct CompactIonData {
-#ifdef RTZ_REDUCED_PRECISION
+#if defined(RTZ_REDUCED_PRECISION) || defined(RTZ_FLOAT32_ARITHMETIC)
     using ndens_t = float;
     using xion_t = float;
 #else
-    using ndens_t = double;
-    using xion_t = double;
+    using ndens_t = Real;
+    using xion_t = Real;
 #endif
 
     ndens_t n_element[MAX_ELEMENTS];
@@ -163,25 +196,25 @@ struct CompactIonData {
 
 // Define the structure equivalent to the Fortran type
 typedef struct {
-    double E_th;
-    double E_max;
-    double E_0;
-    double sig_0;
-    double y_a;
-    double P;
-    double y_w;
-    double y_0;
-    double y_1;
+    Real E_th;
+    Real E_max;
+    Real E_0;
+    Real sig_0;
+    Real y_a;
+    Real P;
+    Real y_w;
+    Real y_0;
+    Real y_1;
 } CrossSections;
 
 
 typedef struct {
-    double E_th; // @HarleyKatz IS THIS CORRECT?
-    double E_0;
-    double sig_0;
-    double y_a;
-    double P;
-    double y_w;
+    Real E_th; // @HarleyKatz IS THIS CORRECT?
+    Real E_0;
+    Real sig_0;
+    Real y_a;
+    Real P;
+    Real y_w;
     int l;
 } CrossSectionsNL;
 
@@ -191,8 +224,8 @@ typedef struct {
 // two gathers into separate tables. e == 0 marks an unused term; the tables
 // only have trailing zeros, so a zero e terminates the row.
 struct alignas(16) DRTerm {
-    double e;
-    double c;
+    Real e;
+    Real c;
 };
 
 struct TabulatedData
@@ -211,113 +244,113 @@ struct TabulatedData
     Kokkos::View<bool[N_TAB_ELEMENTS][27], Kokkos::LayoutRight> high_t_cooling_rates_tflag {"high_t_cooling_rates_tflag"};
 
     Kokkos::View<DRTerm[3][9], Kokkos::LayoutRight> DR_rates_helium {"DR_rates_helium"};
-    Kokkos::View<double[7][6], Kokkos::LayoutRight> RR_rates_carbon {"RR_rates_carbon"};
+    Kokkos::View<Real[7][6], Kokkos::LayoutRight> RR_rates_carbon {"RR_rates_carbon"};
     Kokkos::View<DRTerm[7][9], Kokkos::LayoutRight> DR_rates_carbon {"DR_rates_carbon"};
-    Kokkos::View<double[8][6], Kokkos::LayoutRight> RR_rates_nitrogen {"RR_rates_nitrogen"};
+    Kokkos::View<Real[8][6], Kokkos::LayoutRight> RR_rates_nitrogen {"RR_rates_nitrogen"};
     Kokkos::View<DRTerm[8][9], Kokkos::LayoutRight> DR_rates_nitrogen {"DR_rates_nitrogen"};
-    Kokkos::View<double[9][6], Kokkos::LayoutRight> RR_rates_oxygen {"RR_rates_oxygen"};
+    Kokkos::View<Real[9][6], Kokkos::LayoutRight> RR_rates_oxygen {"RR_rates_oxygen"};
     Kokkos::View<DRTerm[9][9], Kokkos::LayoutRight> DR_rates_oxygen {"DR_rates_oxygen"};
-    Kokkos::View<double[11][6], Kokkos::LayoutRight> RR_rates_neon {"RR_rates_neon"};
+    Kokkos::View<Real[11][6], Kokkos::LayoutRight> RR_rates_neon {"RR_rates_neon"};
     Kokkos::View<DRTerm[11][9], Kokkos::LayoutRight> DR_rates_neon {"DR_rates_neon"};
-    Kokkos::View<double[13][6], Kokkos::LayoutRight> RR_rates_magnesium {"RR_rates_magnesium"};
+    Kokkos::View<Real[13][6], Kokkos::LayoutRight> RR_rates_magnesium {"RR_rates_magnesium"};
     Kokkos::View<DRTerm[13][9], Kokkos::LayoutRight> DR_rates_magnesium {"DR_rates_magnesium"};
-    Kokkos::View<double[15][6], Kokkos::LayoutRight> RR_rates_silicon {"RR_rates_silicon"};
+    Kokkos::View<Real[15][6], Kokkos::LayoutRight> RR_rates_silicon {"RR_rates_silicon"};
     Kokkos::View<DRTerm[15][9], Kokkos::LayoutRight> DR_rates_silicon {"DR_rates_silicon"};
-    Kokkos::View<double[17][6], Kokkos::LayoutRight> RR_rates_sulfur {"RR_rates_sulfur"};
+    Kokkos::View<Real[17][6], Kokkos::LayoutRight> RR_rates_sulfur {"RR_rates_sulfur"};
     Kokkos::View<DRTerm[17][9], Kokkos::LayoutRight> DR_rates_sulfur {"DR_rates_sulfur"};
-    Kokkos::View<double[17][2], Kokkos::LayoutRight> RR_rates_alt_sulfur {"RR_rates_alt_sulfur"};
-    Kokkos::View<double[17][4], Kokkos::LayoutRight> DR_rates_alt_sulfur {"DR_rates_alt_sulfur"};
-    Kokkos::View<double[27][6], Kokkos::LayoutRight> RR_rates_iron {"RR_rates_iron"};
+    Kokkos::View<Real[17][2], Kokkos::LayoutRight> RR_rates_alt_sulfur {"RR_rates_alt_sulfur"};
+    Kokkos::View<Real[17][4], Kokkos::LayoutRight> DR_rates_alt_sulfur {"DR_rates_alt_sulfur"};
+    Kokkos::View<Real[27][6], Kokkos::LayoutRight> RR_rates_iron {"RR_rates_iron"};
     Kokkos::View<DRTerm[27][9], Kokkos::LayoutRight> DR_rates_iron {"DR_rates_iron"};
-    Kokkos::View<double[27][2], Kokkos::LayoutRight> RR_rates_alt_iron {"RR_rates_alt_iron"};
-    Kokkos::View<double[27][8], Kokkos::LayoutRight> DR_rates_alt_iron {"DR_rates_alt_iron"};
+    Kokkos::View<Real[27][2], Kokkos::LayoutRight> RR_rates_alt_iron {"RR_rates_alt_iron"};
+    Kokkos::View<Real[27][8], Kokkos::LayoutRight> DR_rates_alt_iron {"DR_rates_alt_iron"};
 
-    Kokkos::View<double[6]> dE_carbon {"dE_carbon"};
-    Kokkos::View<double[6]> A_carbon {"A_carbon"};
-    Kokkos::View<double[6]> X_carbon {"X_carbon"};
-    Kokkos::View<double[6]> K_carbon {"K_carbon"};
-    Kokkos::View<double[6]> P_carbon {"P_carbon"};
+    Kokkos::View<Real[6]> dE_carbon {"dE_carbon"};
+    Kokkos::View<Real[6]> A_carbon {"A_carbon"};
+    Kokkos::View<Real[6]> X_carbon {"X_carbon"};
+    Kokkos::View<Real[6]> K_carbon {"K_carbon"};
+    Kokkos::View<Real[6]> P_carbon {"P_carbon"};
 
-    Kokkos::View<double[7]> dE_nitrogen {"dE_nitrogen"};
-    Kokkos::View<double[7]> A_nitrogen {"A_nitrogen"};
-    Kokkos::View<double[7]> X_nitrogen {"X_nitrogen"};
-    Kokkos::View<double[7]> K_nitrogen {"K_nitrogen"};
-    Kokkos::View<double[7]> P_nitrogen {"P_nitrogen"};
+    Kokkos::View<Real[7]> dE_nitrogen {"dE_nitrogen"};
+    Kokkos::View<Real[7]> A_nitrogen {"A_nitrogen"};
+    Kokkos::View<Real[7]> X_nitrogen {"X_nitrogen"};
+    Kokkos::View<Real[7]> K_nitrogen {"K_nitrogen"};
+    Kokkos::View<Real[7]> P_nitrogen {"P_nitrogen"};
 
-    Kokkos::View<double[8]> dE_oxygen {"dE_oxygen"};
-    Kokkos::View<double[8]> A_oxygen {"A_oxygen"};
-    Kokkos::View<double[8]> X_oxygen {"X_oxygen"};
-    Kokkos::View<double[8]> K_oxygen {"K_oxygen"};
-    Kokkos::View<double[8]> P_oxygen {"P_oxygen"};
+    Kokkos::View<Real[8]> dE_oxygen {"dE_oxygen"};
+    Kokkos::View<Real[8]> A_oxygen {"A_oxygen"};
+    Kokkos::View<Real[8]> X_oxygen {"X_oxygen"};
+    Kokkos::View<Real[8]> K_oxygen {"K_oxygen"};
+    Kokkos::View<Real[8]> P_oxygen {"P_oxygen"};
 
-    Kokkos::View<double[10]> dE_neon {"dE_neon"};
-    Kokkos::View<double[10]> A_neon {"A_neon"};
-    Kokkos::View<double[10]> X_neon {"X_neon"};
-    Kokkos::View<double[10]> K_neon {"K_neon"};
-    Kokkos::View<double[10]> P_neon {"P_neon"};
+    Kokkos::View<Real[10]> dE_neon {"dE_neon"};
+    Kokkos::View<Real[10]> A_neon {"A_neon"};
+    Kokkos::View<Real[10]> X_neon {"X_neon"};
+    Kokkos::View<Real[10]> K_neon {"K_neon"};
+    Kokkos::View<Real[10]> P_neon {"P_neon"};
 
-    Kokkos::View<double[12]> dE_magnesium {"dE_magnesium"};
-    Kokkos::View<double[12]> A_magnesium {"A_magnesium"};
-    Kokkos::View<double[12]> X_magnesium {"X_magnesium"};
-    Kokkos::View<double[12]> K_magnesium {"K_magnesium"};
-    Kokkos::View<double[12]> P_magnesium {"P_magnesium"};
+    Kokkos::View<Real[12]> dE_magnesium {"dE_magnesium"};
+    Kokkos::View<Real[12]> A_magnesium {"A_magnesium"};
+    Kokkos::View<Real[12]> X_magnesium {"X_magnesium"};
+    Kokkos::View<Real[12]> K_magnesium {"K_magnesium"};
+    Kokkos::View<Real[12]> P_magnesium {"P_magnesium"};
 
-    Kokkos::View<double[14]> dE_silicon {"dE_silicon"};
-    Kokkos::View<double[14]> A_silicon {"A_silicon"};
-    Kokkos::View<double[14]> X_silicon {"X_silicon"};
-    Kokkos::View<double[14]> K_silicon {"K_silicon"};
-    Kokkos::View<double[14]> P_silicon {"P_silicon"};
+    Kokkos::View<Real[14]> dE_silicon {"dE_silicon"};
+    Kokkos::View<Real[14]> A_silicon {"A_silicon"};
+    Kokkos::View<Real[14]> X_silicon {"X_silicon"};
+    Kokkos::View<Real[14]> K_silicon {"K_silicon"};
+    Kokkos::View<Real[14]> P_silicon {"P_silicon"};
 
-    Kokkos::View<double[16]> dE_sulfur {"dE_sulfur"};
-    Kokkos::View<double[16]> A_sulfur {"A_sulfur"};
-    Kokkos::View<double[16]> X_sulfur {"X_sulfur"};
-    Kokkos::View<double[16]> K_sulfur {"K_sulfur"};
-    Kokkos::View<double[16]> P_sulfur {"P_sulfur"};
+    Kokkos::View<Real[16]> dE_sulfur {"dE_sulfur"};
+    Kokkos::View<Real[16]> A_sulfur {"A_sulfur"};
+    Kokkos::View<Real[16]> X_sulfur {"X_sulfur"};
+    Kokkos::View<Real[16]> K_sulfur {"K_sulfur"};
+    Kokkos::View<Real[16]> P_sulfur {"P_sulfur"};
 
-    Kokkos::View<double[26]> dE_iron {"dE_iron"};
-    Kokkos::View<double[26]> A_iron {"A_iron"};
-    Kokkos::View<double[26]> X_iron {"X_iron"};
-    Kokkos::View<double[26]> K_iron {"K_iron"};
-    Kokkos::View<double[26]> P_iron {"P_iron"};
+    Kokkos::View<Real[26]> dE_iron {"dE_iron"};
+    Kokkos::View<Real[26]> A_iron {"A_iron"};
+    Kokkos::View<Real[26]> X_iron {"X_iron"};
+    Kokkos::View<Real[26]> K_iron {"K_iron"};
+    Kokkos::View<Real[26]> P_iron {"P_iron"};
 
     // Cloudy radiative recombination data (from rad_rec.dat)
-    Kokkos::View<double[30][N_TAB_ELEMENTS][2], Kokkos::LayoutRight> rrec {"rrec"};
-    Kokkos::View<double[30][N_TAB_ELEMENTS][4], Kokkos::LayoutRight> rnew {"rnew"};
-    Kokkos::View<double[13][3], Kokkos::LayoutRight> fe {"fe"};
+    Kokkos::View<Real[30][N_TAB_ELEMENTS][2], Kokkos::LayoutRight> rrec {"rrec"};
+    Kokkos::View<Real[30][N_TAB_ELEMENTS][4], Kokkos::LayoutRight> rnew {"rnew"};
+    Kokkos::View<Real[13][3], Kokkos::LayoutRight> fe {"fe"};
 
     // Collisional ionization data (from collisional_ionization.dat)
-    Kokkos::View<double[N_TAB_ELEMENTS][27][5], Kokkos::LayoutRight> collisional_ionization_data {"collisional_ionization_data"};
+    Kokkos::View<Real[N_TAB_ELEMENTS][27][5], Kokkos::LayoutRight> collisional_ionization_data {"collisional_ionization_data"};
 
     // Verner cross sections
     Kokkos::View<CrossSections[27][27], Kokkos::LayoutRight> photoionization_cross_sections_tot {"photoionization_cross_sections_tot"};
     Kokkos::View<CrossSectionsNL[27][27][8], Kokkos::LayoutRight> photoionization_cross_sections_nl {"photoionization_cross_sections_nl"};
 
     // Photoionization cross sections and photoheating rates for each group, element, and ion
-    Kokkos::View<double[N_TAB_ELEMENTS][27][N_GROUPS][3], Kokkos::LayoutRight> cs_ph {"cs_ph"};
+    Kokkos::View<Real[N_TAB_ELEMENTS][27][N_GROUPS][3], Kokkos::LayoutRight> cs_ph {"cs_ph"};
 
-    Kokkos::View<double[52]> sco_col1 {"sigma_CO_1"};
-    Kokkos::View<double[52]> sco_col2 {"sigma_CO_2"};
-    Kokkos::View<double[43]> sh2_col1 {"sigma_H2_1"};
-    Kokkos::View<double[43]> sh2_col2 {"sigma_H2_2"};
+    Kokkos::View<Real[52]> sco_col1 {"sigma_CO_1"};
+    Kokkos::View<Real[52]> sco_col2 {"sigma_CO_2"};
+    Kokkos::View<Real[43]> sh2_col1 {"sigma_H2_1"};
+    Kokkos::View<Real[43]> sh2_col2 {"sigma_H2_2"};
 
     // Photon bins
-    Kokkos::View<double[N_GROUPS]> group_E_min {"group_E_min"};
-    Kokkos::View<double[N_GROUPS]> group_E_max {"group_E_max"};
+    Kokkos::View<Real[N_GROUPS]> group_E_min {"group_E_min"};
+    Kokkos::View<Real[N_GROUPS]> group_E_max {"group_E_max"};
 
     // Mean photon energy [eV] of each group, weighted over the blackbody spectrum
-    Kokkos::View<double[N_GROUPS]> group_energy {"group_energy"};
+    Kokkos::View<Real[N_GROUPS]> group_energy {"group_energy"};
 
     // Dust absorption cross section per H [cm^2/H] from the BARE-GR-S model
-    Kokkos::View<double[N_DUST_WAV]> dust_wav {"dust_wav"};
-    Kokkos::View<double[N_DUST_WAV]> dust_cabs {"dust_cabs"}; 
-    Kokkos::View<double[N_DUST_WAV]> dust_log_wav {"dust_log_wav"};
-    Kokkos::View<double[N_DUST_WAV]> dust_log_cabs {"dust_log_cabs"};
+    Kokkos::View<Real[N_DUST_WAV]> dust_wav {"dust_wav"};
+    Kokkos::View<Real[N_DUST_WAV]> dust_cabs {"dust_cabs"};
+    Kokkos::View<Real[N_DUST_WAV]> dust_log_wav {"dust_log_wav"};
+    Kokkos::View<Real[N_DUST_WAV]> dust_log_cabs {"dust_log_cabs"};
 
     // Blackbody-averaged dust absorption rate
-    Kokkos::View<double[N_GROUPS]> cs_dust {"cs_dust"};
+    Kokkos::View<Real[N_GROUPS]> cs_dust {"cs_dust"};
 
     // Reduced speed of light factor
-    Kokkos::View<double> c_frac {"c_frac"};
+    Kokkos::View<Real> c_frac {"c_frac"};
 
     // Explicitly host-only destructor to avoid device context warnings
     ~TabulatedData() = default;

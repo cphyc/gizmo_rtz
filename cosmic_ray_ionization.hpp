@@ -84,11 +84,11 @@ void initialize_cr_rates(){
 }
 
 KOKKOS_FUNCTION
-double secondary_cr_rates(double xe){
+Real secondary_cr_rates(Real xe){
     /*
     Secondary CR ionization rate
     */
-    double phi_s = (1.0 - (xe / 1.20)) * (0.670 / (1.0 + (xe / 0.05)));
+    Real phi_s = (Real(1.0) - (xe / Real(1.20))) * (Real(0.670) / (Real(1.0) + (xe / Real(0.05))));
     return phi_s;
 }
 

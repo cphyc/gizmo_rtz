@@ -59,73 +59,73 @@ void load_ct_rates(std::string path_to_data){
 }
 
 KOKKOS_FUNCTION
-double charge_transfer_recombination(int ion, int nelem, double T, const TabulatedData& tabData){
+Real charge_transfer_recombination(int ion, int nelem, Real T, const TabulatedData& tabData){
     // ion is stage of ionization, 2 for the ion going to the atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O+ + H => O + H+ is HCTRecom(2,8,1e4)
     // Note that temperature is in linear scale
 
-    double ct_recomb = 0.0;
+    Real ct_recomb = Real(0.0);
 
     if (ion == 0)
     {
         return ct_recomb;
     }
 
-    int ipIon = ion - 1; 
+    int ipIon = ion - 1;
     //  use statistical charge transfer for ion > 4
-    if( ion > 4 ) 
+    if( ion > 4 )
     {
-        ct_recomb = 1.92E-9 * (double)(ipIon+1);
+        ct_recomb = Real(1.92E-9) * (Real)(ipIon+1);
         return ct_recomb;
     }
-    
+
     const int erow = elem_row(nelem);
 
     // Make sure te is between temp. boundaries; set constant outside of range
-    double tused = 0.0;
-    tused = fmin(fmax(T,tabData.CTRecomb(4, ipIon, erow)),tabData.CTRecomb(5, ipIon, erow));
-    tused *= 1E-4;
-    tused = fmax(tused,1E-10); //! harley added to prevent zero temperature
+    Real tused = Real(0.0);
+    tused = rtz_math::fmin(rtz_math::fmax(T,tabData.CTRecomb(4, ipIon, erow)),tabData.CTRecomb(5, ipIon, erow));
+    tused *= Real(1E-4);
+    tused = rtz_math::fmax(tused,Real(1E-10)); //! harley added to prevent zero temperature
 
     // The interpolation equation
-    ct_recomb = tabData.CTRecomb(0, ipIon, erow) * 1E-9 * pow(tused,tabData.CTRecomb(1, ipIon, erow)) * (1. + tabData.CTRecomb(2, ipIon, erow) * exp(tabData.CTRecomb(3, ipIon, erow)*tused) );
+    ct_recomb = tabData.CTRecomb(0, ipIon, erow) * Real(1E-9) * rtz_math::pow(tused,tabData.CTRecomb(1, ipIon, erow)) * (Real(1.) + tabData.CTRecomb(2, ipIon, erow) * rtz_math::exp(tabData.CTRecomb(3, ipIon, erow)*tused) );
 
     // Clamp
-    ct_recomb = fmax(ct_recomb,1E-100);
+    ct_recomb = rtz_math::fmax(ct_recomb,Real(1E-100));
 
     return ct_recomb;
 }
 
 KOKKOS_FUNCTION
-double charge_transfer_ionization(int ion, int nelem, double T, const TabulatedData& tabData){
+Real charge_transfer_ionization(int ion, int nelem, Real T, const TabulatedData& tabData){
     // ion is stage of ionization, 1 for atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O + H+ => O+ + H is HCTIon(1,8,1e4)
     // Note that temperature is in linear scale
 
-    double ct_ion = 0.0;
+    Real ct_ion = Real(0.0);
 
     int ipIon = ion;
     if( ipIon > 1 )
     {
-        ct_ion = 0.0;
+        ct_ion = Real(0.0);
         return ct_ion;
     }
 
     const int erow = elem_row(nelem);
 
     // ! Make sure te is between temp. boundaries; set constant outside of range
-    double tused = 0.0;
-    tused = fmin(fmax(T, tabData.CTIon(4, ipIon, erow)), tabData.CTIon(5, ipIon, erow));
-    tused *= 1E-4;
-    tused = fmax(tused,1E-10); //! harley added to prevent zero temperature
+    Real tused = Real(0.0);
+    tused = rtz_math::fmin(rtz_math::fmax(T, tabData.CTIon(4, ipIon, erow)), tabData.CTIon(5, ipIon, erow));
+    tused *= Real(1E-4);
+    tused = rtz_math::fmax(tused,Real(1E-10)); //! harley added to prevent zero temperature
 
     // ! the interpolation equation
-    ct_ion = tabData.CTIon(0, ipIon, erow) * 1E-9 * pow(tused,tabData.CTIon(1, ipIon, erow)) * (1. + tabData.CTIon(2, ipIon, erow) * exp(tabData.CTIon(3, ipIon, erow)*tused) ) * exp(-1.0 * tabData.CTIon(6, ipIon, erow)/tused);
+    ct_ion = tabData.CTIon(0, ipIon, erow) * Real(1E-9) * rtz_math::pow(tused,tabData.CTIon(1, ipIon, erow)) * (Real(1.) + tabData.CTIon(2, ipIon, erow) * rtz_math::exp(tabData.CTIon(3, ipIon, erow)*tused) ) * rtz_math::exp(-Real(1.0) * tabData.CTIon(6, ipIon, erow)/tused);
 
     // Clamp
-    ct_ion = fmax(ct_ion,1E-100);
+    ct_ion = rtz_math::fmax(ct_ion,Real(1E-100));
 
     return ct_ion;
 }

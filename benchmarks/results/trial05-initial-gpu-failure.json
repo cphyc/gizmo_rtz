@@ -1,0 +1,8 @@
+{
+  "ncell": 256,
+  "dt_yr": 100,
+  "max_iterations": 3000,
+  "backend": "CUDA",
+  "result": "RuntimeError: RTZ exceeded max_iterations before reaching a requested time",
+  "note": "Initial full-arithmetic build, before finite-range Planck prefactor change. No completed outputs or timing claim."
+}

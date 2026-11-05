@@ -32,11 +32,11 @@ namespace prism_gpu {
 #include "table_verify.hpp"
 
 // MAX_ELEMENTS is already defined in types.hpp (included via dyablo_api.hpp)
-const double MIN_XION = 1E-20;         // Minimum ion fraction
-const double X_PCT_RULE = 1E-1;        // Value required for convergence
-const double X_FM = 1E-6;              // Damping value for X_PCT_RULE
-const double T_MIN = 2.725;
-const double T_MAX = 1E9;
+const Real MIN_XION = Real(1E-20);         // Minimum ion fraction
+const Real X_PCT_RULE = Real(1E-1);        // Value required for convergence
+const Real X_FM = Real(1E-6);              // Damping value for X_PCT_RULE
+const Real T_MIN = Real(2.725);
+const Real T_MAX = Real(1E9);
 
 #define uint unsigned int
 
@@ -151,119 +151,119 @@ void initialize_elements(std::array<Element, MAX_ELEMENTS> &elements, bool inclu
     for (int i = 0; i < MAX_ELEMENTS; i++) {
         elements[i].atomic_number = -1;
         elements[i].n_ions = -1;
-        elements[i].atomic_mass = -1.0;
-        elements[i].z_solar = -1.0;
-        elements[i].G0_photo_rate = 0.0;
+        elements[i].atomic_mass = -Real(1.0);
+        elements[i].z_solar = -Real(1.0);
+        elements[i].G0_photo_rate = Real(0.0);
         elements[i].n_mol = 0;
-        elements[i].depletion = 1.0;
+        elements[i].depletion = Real(1.0);
     }
 
     // Element 1: Hydrogen
     elements[1].atomic_number = 1;
-    elements[1].atomic_mass = 1.008;
-    elements[1].z_solar = 1.0;
-    elements[1].G0_photo_rate = 0.0; // No subionizing PI
+    elements[1].atomic_mass = Real(1.008);
+    elements[1].z_solar = Real(1.0);
+    elements[1].G0_photo_rate = Real(0.0); // No subionizing PI
     elements[1].n_ions = elements[1].atomic_number + 1;
     elements[1].n_mol = include_h2 ? 1 : 0;
-    elements[1].depletion = 1.0;
+    elements[1].depletion = Real(1.0);
 
     // Element 2: Helium
     elements[2].atomic_number = 2;
-    elements[2].atomic_mass = 4.0026;
-    elements[2].z_solar = 8.51E-02;
-    elements[2].G0_photo_rate = 0.0; // No subionizing PI
+    elements[2].atomic_mass = Real(4.0026);
+    elements[2].z_solar = Real(8.51E-02);
+    elements[2].G0_photo_rate = Real(0.0); // No subionizing PI
     elements[2].n_ions = elements[2].atomic_number + 1;
-    elements[2].depletion = 1.0;
+    elements[2].depletion = Real(1.0);
 
     // Element 6: Carbon
     elements[6].atomic_number = 6;
-    elements[6].atomic_mass = 12.0107;
-    elements[6].z_solar = 2.69E-04;
-    elements[6].G0_photo_rate = 3.39E-10;
+    elements[6].atomic_mass = Real(12.0107);
+    elements[6].z_solar = Real(2.69E-04);
+    elements[6].G0_photo_rate = Real(3.39E-10);
     elements[6].n_ions = elements[6].atomic_number + 1;
-    elements[6].depletion = 0.5;
+    elements[6].depletion = Real(0.5);
 
     // Element 7: Nitrogen
     elements[7].atomic_number = 7;
-    elements[7].atomic_mass = 14.0067;
-    elements[7].z_solar = 6.76E-05;
-    elements[7].G0_photo_rate = 0.0; // No subionizing PI
+    elements[7].atomic_mass = Real(14.0067);
+    elements[7].z_solar = Real(6.76E-05);
+    elements[7].G0_photo_rate = Real(0.0); // No subionizing PI
     elements[7].n_ions = elements[7].atomic_number + 1;
-    elements[7].depletion = 0.6;
+    elements[7].depletion = Real(0.6);
 
     // Element 8: Oxygen
     elements[8].atomic_number = 8;
-    elements[8].atomic_mass = 15.9994;
-    elements[8].z_solar = 4.90E-04;
-    elements[8].G0_photo_rate = 0.0; // No subionizing PI
+    elements[8].atomic_mass = Real(15.9994);
+    elements[8].z_solar = Real(4.90E-04);
+    elements[8].G0_photo_rate = Real(0.0); // No subionizing PI
     elements[8].n_ions = elements[8].atomic_number + 1;
-    elements[8].depletion = 0.73;
+    elements[8].depletion = Real(0.73);
 
     // Element 10: Neon
     elements[10].atomic_number = 10;
-    elements[10].atomic_mass = 20.1797;
-    elements[10].z_solar = 8.51E-05;
-    elements[10].G0_photo_rate = 0.0; // No subionizing PI
+    elements[10].atomic_mass = Real(20.1797);
+    elements[10].z_solar = Real(8.51E-05);
+    elements[10].G0_photo_rate = Real(0.0); // No subionizing PI
     elements[10].n_ions = elements[10].atomic_number + 1;
-    elements[10].depletion = 1.0;
+    elements[10].depletion = Real(1.0);
 
     // Element 12: Magnesium
     elements[12].atomic_number = 12;
-    elements[12].atomic_mass = 24.305;
-    elements[12].z_solar = 3.98E-05;
-    elements[12].G0_photo_rate = 6.59E-11;
+    elements[12].atomic_mass = Real(24.305);
+    elements[12].z_solar = Real(3.98E-05);
+    elements[12].G0_photo_rate = Real(6.59E-11);
     elements[12].n_ions = elements[12].atomic_number + 1;
-    elements[12].depletion = 0.16;
+    elements[12].depletion = Real(0.16);
 
     // Element 14: Silicon
     elements[14].atomic_number = 14;
-    elements[14].atomic_mass = 28.0855;
-    elements[14].z_solar = 3.24E-05;
-    elements[14].G0_photo_rate = 4.47E-09;
+    elements[14].atomic_mass = Real(28.0855);
+    elements[14].z_solar = Real(3.24E-05);
+    elements[14].G0_photo_rate = Real(4.47E-09);
     elements[14].n_ions = elements[14].atomic_number + 1;
-    elements[14].depletion = 0.1;
+    elements[14].depletion = Real(0.1);
 
     // Element 16: Sulfur
     elements[16].atomic_number = 16;
-    elements[16].atomic_mass = 32.065;
-    elements[16].z_solar = 1.32E-05;
-    elements[16].G0_photo_rate = 1.13E-09;
+    elements[16].atomic_mass = Real(32.065);
+    elements[16].z_solar = Real(1.32E-05);
+    elements[16].G0_photo_rate = Real(1.13E-09);
     elements[16].n_ions = elements[16].atomic_number + 1;
-    elements[16].depletion = 1.0;
+    elements[16].depletion = Real(1.0);
 
     // Element 26: Iron
     elements[26].atomic_number = 26;
-    elements[26].atomic_mass = 55.854;
-    elements[26].z_solar = 3.16E-05;
-    elements[26].G0_photo_rate = 4.71E-10;
+    elements[26].atomic_mass = Real(55.854);
+    elements[26].z_solar = Real(3.16E-05);
+    elements[26].G0_photo_rate = Real(4.71E-10);
     elements[26].n_ions = elements[26].atomic_number + 1;
-    elements[26].depletion = 0.01;
+    elements[26].depletion = Real(0.01);
 }
 
 
 KOKKOS_FUNCTION
-double get_dust_mass_and_depletion(
+Real get_dust_mass_and_depletion(
     const Element* elements,
-    const double nO, const double nH, const double nCO)
+    const Real nO, const Real nH, const Real nCO)
 {
     // Dust-to-gas mass ratio (relative to the MW value). The per-element
     // gas-phase depletion factor follows from the returned ratio alone as
     // 1 - (1 - elements[i].depletion) * ratio.
     if (elements[8].atomic_number < 1) {
-        return 0.0; // no depletion without a dust budget
+        return Real(0.0); // no depletion without a dust budget
     }
 
     // Parameters for the RR14 dust-to-gas mass ratio
-    double a = 2.21;
-    double aH = 1.00;
-    double b = 0.96;
-    double aL = 3.10;
-    double xt = 8.10;
-    double xs = 8.69;
-    double y;
+    Real a = Real(2.21);
+    Real aH = Real(1.00);
+    Real b = Real(0.96);
+    Real aL = Real(3.10);
+    Real xt = Real(8.10);
+    Real xs = Real(8.69);
+    Real y;
 
-    double loc_z = 12.0 + log10((nO + nCO + 1E-20) / (nH + 1E-20));
-    double x = fmax(loc_z, 5.0);
+    Real loc_z = Real(12.0) + rtz_math::log10((nO + nCO + Real(1E-20)) / (nH + Real(1E-20)));
+    Real x = rtz_math::fmax(loc_z, Real(5.0));
 
     // Determine y (gas-to-dust mass ratio)
     if (loc_z > xt)
@@ -271,28 +271,28 @@ double get_dust_mass_and_depletion(
     else
         y = b + aL * (xs - x);
 
-    double G2D = exp10(y);
-    double G2D_sol = exp10(a);
+    Real G2D = rtz_math::exp10(y);
+    Real G2D_sol = rtz_math::exp10(a);
 
-    double y_ratio = fmax(fmin(G2D_sol / G2D, 1.0), 0.0);
+    Real y_ratio = rtz_math::fmax(rtz_math::fmin(G2D_sol / G2D, Real(1.0)), Real(0.0));
 
     return y_ratio;
 }
 
 KOKKOS_INLINE_FUNCTION
-double depletion_factor(const Element& element, const double y_ratio)
+Real depletion_factor(const Element& element, const Real y_ratio)
 {
-    return 1.0 - ((1.0 - element.depletion) * y_ratio);
+    return Real(1.0) - ((Real(1.0) - element.depletion) * y_ratio);
 }
 
 KOKKOS_FUNCTION
-void apply_dust_depletion(const Element* elements, const double y_ratio,
-                          CompactIonData& n_and_ion_fracs, const double nCO)
+void apply_dust_depletion(const Element* elements, const Real y_ratio,
+                          CompactIonData& n_and_ion_fracs, const Real nCO)
 {
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0)
+        if (n_and_ion_fracs.n_element[i] == Real(0.0))
             continue;
-        double depletion = depletion_factor(elements[i], y_ratio);
+        Real depletion = depletion_factor(elements[i], y_ratio);
         if (i == 6 || i == 8)
             n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) * depletion - nCO;
         else
@@ -301,13 +301,13 @@ void apply_dust_depletion(const Element* elements, const double y_ratio,
 }
 
 KOKKOS_FUNCTION
-void remove_dust_depletion(const Element* elements, const double y_ratio,
-                           CompactIonData& n_and_ion_fracs, const double nCO)
+void remove_dust_depletion(const Element* elements, const Real y_ratio,
+                           CompactIonData& n_and_ion_fracs, const Real nCO)
 {
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0)
+        if (n_and_ion_fracs.n_element[i] == Real(0.0))
             continue;
-        double depletion = depletion_factor(elements[i], y_ratio);
+        Real depletion = depletion_factor(elements[i], y_ratio);
         if (i == 6 || i == 8)
             n_and_ion_fracs.n_element[i] = (n_and_ion_fracs.n_element[i] + nCO) / depletion - nCO;
         else
@@ -317,7 +317,7 @@ void remove_dust_depletion(const Element* elements, const double y_ratio,
 
 // Structs for element properties
 KOKKOS_FUNCTION
-void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, double hdens, double metallicity, int itype)
+void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::array<ParticleIonData, MAX_ELEMENTS> &n_and_ion_fracs, Real hdens, Real metallicity, int itype)
 {
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -337,8 +337,8 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
                 n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
-            n_and_ion_fracs[i].ion_fracs[elements[i].n_ions - 1] = 1.0;
-            n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions - 1] = 1.0;
+            n_and_ion_fracs[i].ion_fracs[elements[i].n_ions - 1] = Real(1.0);
+            n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions - 1] = Real(1.0);
             break;
         case 2:
             // fully neutral
@@ -346,8 +346,8 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
                 n_and_ion_fracs[i].ion_fracs[j] = MIN_XION;
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
-            n_and_ion_fracs[i].ion_fracs[0] = 1.0;
-            n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
+            n_and_ion_fracs[i].ion_fracs[0] = Real(1.0);
+            n_and_ion_fracs[i].ion_fracs_new[0] = Real(1.0);
             break;
         case 3:
             // fully molecular or neutral
@@ -356,11 +356,11 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
                 n_and_ion_fracs[i].ion_fracs_new[j] = MIN_XION;
             }
             if (elements[i].n_mol > 0) {
-                n_and_ion_fracs[i].ion_fracs[elements[i].n_ions + elements[i].n_mol - 1] = 1.0;
-                n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions + elements[i].n_mol - 1] = 1.0;
+                n_and_ion_fracs[i].ion_fracs[elements[i].n_ions + elements[i].n_mol - 1] = Real(1.0);
+                n_and_ion_fracs[i].ion_fracs_new[elements[i].n_ions + elements[i].n_mol - 1] = Real(1.0);
             } else {
-                n_and_ion_fracs[i].ion_fracs[0] = 1.0;
-                n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
+                n_and_ion_fracs[i].ion_fracs[0] = Real(1.0);
+                n_and_ion_fracs[i].ion_fracs_new[0] = Real(1.0);
             }
             break;
         default:
@@ -371,17 +371,17 @@ void initialize_ion_fracs(std::array<Element, MAX_ELEMENTS> &elements, std::arra
 }
 
 KOKKOS_FUNCTION
-double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, const bool use_new)
+Real get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, const bool use_new)
 {
     /*
     Returns the electron number density by looping over all elements
     and summing their contributions
     */
-    double ne = 0E0;
+    Real ne = Real(0E0);
 
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0)
+        if (n_and_ion_fracs.n_element[i] == Real(0.0))
             continue;
 
         // Get the number of ions
@@ -402,30 +402,30 @@ double get_ne(const Element* elements, const CompactIonData &n_and_ion_fracs, co
 }
 
 KOKKOS_FUNCTION
-double get_rho(const Element* elements,
+Real get_rho(const Element* elements,
                const CompactIonData& n_and_ion_fracs) {
-    double rho = 0.0;
+    Real rho = Real(0.0);
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
         rho += n_and_ion_fracs[i].n_element * elements[i].atomic_mass; // amu/cm^3
     }
     return rho;
 }
 
 KOKKOS_FUNCTION
-double get_mu(double ne,
+Real get_mu(Real ne,
               const Element* elements,
               const CompactIonData& n_and_ion_fracs,
-              bool use_new, bool include_H2, double nCO) {
+              bool use_new, bool include_H2, Real nCO) {
     /*
     Calculated the mean molecular weight
     */
-    double m_bar = 0.0;
-    double n_hat = 0.0;
+    Real m_bar = Real(0.0);
+    Real n_hat = Real(0.0);
 
     // Loop over all elements
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
         // Get the number of ions
         int n_ions = elements[i].n_ions;
@@ -449,10 +449,10 @@ double get_mu(double ne,
     if (include_H2) {
         if (use_new){
             m_bar += (n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] * elements[1].atomic_mass);
-            n_hat += (0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2]);
+            n_hat += (Real(0.5) * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2]);
         } else {
             m_bar += (n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs[2] * elements[1].atomic_mass);
-            n_hat += (0.5 * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs[2]);
+            n_hat += (Real(0.5) * n_and_ion_fracs[1].n_element * n_and_ion_fracs[1].ion_fracs[2]);
         }
     }
 
@@ -460,7 +460,7 @@ double get_mu(double ne,
     m_bar += nCO * (elements[6].atomic_mass + elements[8].atomic_mass);
     n_hat += nCO;
 
-    double mu = m_bar / n_hat;
+    Real mu = m_bar / n_hat;
     return mu;
 }
 
@@ -472,33 +472,33 @@ double get_mu(double ne,
 // (and later launched independently, e.g. from CoolingUpdate_PRISM_GPU.cpp).
 struct SubcycleState {
     // Thermal state
-    double TK;                  // Temperature [K]
-    double mu;                  // Mean molecular weight
-    double Tmu_old;             // T/mu
-    double Tmu_new;             // T/mu
+    Real TK;                  // Temperature [K]
+    Real mu;                  // Mean molecular weight
+    Real Tmu_old;             // T/mu
+    Real Tmu_new;             // T/mu
 
     // Electrons
-    double ne;                  // Electron number density
-    double ne_initial;          // Electron number density at iteration start (for convergence)
-    double xe;                  // Electron fraction (n_electron/nH)
+    Real ne;                  // Electron number density
+    Real ne_initial;          // Electron number density at iteration start (for convergence)
+    Real xe;                  // Electron fraction (n_electron/nH)
 
     // Cosmic rays
-    double total_cosmic_ray_ionization_rate;
-    double H2_cosmic_ray_ionization_rate;
-    double cosmic_ray_scale_factor; // only needed for secondary UVs
+    Real total_cosmic_ray_ionization_rate;
+    Real H2_cosmic_ray_ionization_rate;
+    Real cosmic_ray_scale_factor; // only needed for secondary UVs
 
     // Radiation --> set by radiation_step
-    double G0_local;
-    double f_shd_H2;            // H2 self-shielding factor
-    double f_shd_CO;            // CO self-shielding factor
+    Real G0_local;
+    Real f_shd_H2;            // H2 self-shielding factor
+    Real f_shd_CO;            // CO self-shielding factor
 
     // Molecules --> set by molecular_step, consumed by ions_step
-    double alpha_H2_loc;        // H2 formation rate [cm3 s-1]
-    double de_H2;               // H2 destruction rate [s-1]
-    double nCO_new;
+    Real alpha_H2_loc;        // H2 formation rate [cm3 s-1]
+    Real de_H2;               // H2 destruction rate [s-1]
+    Real nCO_new;
 
     // Convergence
-    double max_residual_all;
+    Real max_residual_all;
     int success_counter;
     bool x_percent_rule;
     bool compute_temperature;
@@ -519,61 +519,61 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void radiation_step(
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
-    const double nCO,
-    const double dx_SS,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const std::array<double, N_GROUPS>& N_PHOT,
-    std::array<double, N_GROUPS>& N_phot_new,
-    std::array<double, N_GROUPS>& phot_att,
+    const Real nCO,
+    const Real dx_SS,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const std::array<Real, N_GROUPS>& N_PHOT,
+    std::array<Real, N_GROUPS>& N_phot_new,
+    std::array<Real, N_GROUPS>& phot_att,
     SubcycleState& state,
     // Optional: a group depleted below rad_residual_floor times its density at
     // the start of the hydro step (N_phot_start) is physically spent — in
     // optically thick cells its exponential decay would otherwise pin the
     // subcycle timestep at ddt*kappa ~ 0.07 for thousands of iterations.
     // Such groups still deplete normally but stop gating the controller.
-    const double rad_residual_floor,
-    const std::array<double, N_GROUPS>* N_phot_start,
+    const Real rad_residual_floor,
+    const std::array<Real, N_GROUPS>* N_phot_start,
     const bool rt_smooth,
-    const std::array<double, N_GROUPS>& dNpdt,
+    const std::array<Real, N_GROUPS>& dNpdt,
     const bool static_field_test = false)
 {
     // Self-shielding factors
-    state.f_shd_H2 = 1.0;
-    state.f_shd_CO = 1.0;
+    state.f_shd_H2 = Real(1.0);
+    state.f_shd_CO = Real(1.0);
 
-    double nHI = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[0];
-    double nH2 = 0.5 * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2];
+    Real nHI = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[0];
+    Real nH2 = Real(0.5) * n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2];
 
     if constexpr (include_H2)
         state.f_shd_H2 = comp_SH2(nH2, dx_SS) * comp_Sd(nHI, nH2, dx_SS, dust_to_gas_mass_ratio_over_mw);
     if constexpr (include_CO)
         state.f_shd_CO = comp_SCO(tabData, nCO, nH2, dx_SS);
 
-    double G_conv = 1.6E-3; // [erg/s/cm2] (Habing 1968)
+    Real G_conv = Real(1.6E-3); // [erg/s/cm2] (Habing 1968)
 
-    state.G0_local = 0.0;
+    state.G0_local = Real(0.0);
 
     if constexpr (rt_advect) {
-        double phAbs = 0.0;
-        double group_egy;
+        Real phAbs = Real(0.0);
+        Real group_egy;
 
         for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
 
             // G0 from the radiation field
             group_egy = tabData.group_energy(k);
-            if (group_egy > 5.6 && group_egy < 13.6) {
+            if (group_egy > Real(5.6) && group_egy < Real(13.6)) {
                 state.G0_local += N_PHOT[k] * (C_CGS * tabData.c_frac())
                       * group_egy * EV_2_ERG / G_conv;
             }
 
             // Get the opacity
-            phAbs = 0.0; // zero out absorption
+            phAbs = Real(0.0); // zero out absorption
             for (int i = 1; i < MAX_ELEMENTS; i++) { // Loop over all elements
-                if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+                if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
                 // Get the number of ions
                 int n_ions = elements[i].n_ions;
@@ -587,15 +587,15 @@ void radiation_step(
 
             // Deal with molecular hydrogen separately if needed
             if constexpr (include_H2) {
-                if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
+                if (tabData.group_energy(k) > Real(11.2) && tabData.group_energy(k) < Real(13.6))
                     phAbs += nH2 * tabData.cs_ph(elem_row(1), 2, k, 0) * state.f_shd_H2;
                 else
                     phAbs += nH2 * tabData.cs_ph(elem_row(1), 2, k, 0);
             }
 
             // Dust photoabsorption (Zubko+2004 BARE-GR-S)
-            double dustAbs = 0.0;
-            if (state.TK < 1.0e6) {
+            Real dustAbs = Real(0.0);
+            if (state.TK < Real(1.0e6)) {
                 dustAbs = tabData.cs_dust(k) * n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
             }
 
@@ -603,21 +603,21 @@ void radiation_step(
             if (static_field_test) {
                 // Not depleted: phot_att stays 1 so the commit leaves F_PHOT
                 // alone too, and the residual below is identically zero.
-                phot_att[k] = 1.0;
+                phot_att[k] = Real(1.0);
                 N_phot_new[k] = N_PHOT[k];
             } else {
-                phot_att[k] = 1.0 / (1.0 + ddt * (phAbs + dustAbs));
+                phot_att[k] = Real(1.0) / (Real(1.0) + ddt * (phAbs + dustAbs));
                 N_phot_new[k] = N_PHOT[k] * phot_att[k];
                 if (rt_smooth)
-                    N_phot_new[k] = fmax(1e-30, (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
+                    N_phot_new[k] = rtz_math::fmax(Real(1e-30), (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
             }
 
             // Measure the redisual
-            double residual = fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + 1E-13));
-            if (rad_residual_floor > 0.0 && N_phot_start != nullptr
+            Real residual = rtz_math::fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + Real(1E-13)));
+            if (rad_residual_floor > Real(0.0) && N_phot_start != nullptr
                 && N_PHOT[k] < rad_residual_floor * (*N_phot_start)[k])
-                residual = 0.0; // group is spent: it no longer gates the timestep
-            state.max_residual_all = fmax(state.max_residual_all, residual);
+                residual = Real(0.0); // group is spent: it no longer gates the timestep
+            state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
             if (residual > X_PCT_RULE){
                 // Reset the success counter
@@ -648,24 +648,24 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void cooling_step(
-    const double ddt,
-    const double aexp,
+    const Real ddt,
+    const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double loc_rho,
-    const double nCO,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const double UV_background_G0,
-    std::array<double, N_GROUPS>& N_phot_new,
+    const Real loc_rho,
+    const Real nCO,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const Real UV_background_G0,
+    std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     if (constant_temperature || !state.compute_temperature) return;
 
-    double cooling_rate = all_cooling(state.TK, state.ne, aexp,
+    Real cooling_rate = all_cooling(state.TK, state.ne, aexp,
                                n_and_ion_fracs, elements, N_phot_new,
                                nCO, state.G0_local, UV_background_G0, state.f_shd_H2,
                                dust_to_gas_mass_ratio_over_mw,
@@ -675,7 +675,7 @@ void cooling_step(
                                flags, tabData
                         );
 
-    double cooling_rate_prime = all_cooling(1.001 * state.TK, state.ne, aexp,
+    Real cooling_rate_prime = all_cooling(Real(1.001) * state.TK, state.ne, aexp,
                                      n_and_ion_fracs, elements, N_phot_new,
                                      nCO, state.G0_local, UV_background_G0, state.f_shd_H2,
                                      dust_to_gas_mass_ratio_over_mw,
@@ -684,28 +684,28 @@ void cooling_step(
                                      ss_factor, rt_advect,
                                      flags, tabData
                                 );
-    cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((1.001*state.TK) - state.TK);
+    cooling_rate_prime = (cooling_rate_prime - cooling_rate) / ((Real(1.001)*state.TK) - state.TK);
 
 
-    double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
+    Real X_nHkb = Real(1.0) / (Real(1.5) * loc_rho * Real(1.380649e-16));
 
     cooling_rate *= X_nHkb;
     cooling_rate_prime *= X_nHkb * state.mu;
 
-    double dUU = fabs(fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
-    state.Tmu_new = fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(1.0 - cooling_rate_prime * ddt));
+    Real dUU = rtz_math::fabs(rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
+    state.Tmu_new = rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
 
     // ! New T2 value
     state.TK = state.Tmu_new * state.mu;
 
-    double residual = fmax(dUU, fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
-    residual = fmax(residual, fabs(cooling_rate_prime * ddt));
+    Real residual = rtz_math::fmax(dUU, rtz_math::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
+    residual = rtz_math::fmax(residual, rtz_math::fabs(cooling_rate_prime * ddt));
 
     // Convergence
     // X% rule
 
     // Max residual over all elements
-    state.max_residual_all = fmax(state.max_residual_all, residual);
+    state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
     if (residual > X_PCT_RULE){
         // Reset the success counter
@@ -734,23 +734,23 @@ template <
 KOKKOS_INLINE_FUNCTION
 void cooling_rate_lane(
     const int lane,               // 0 -> T, 1 -> 1.001*T
-    double* rate_pair,
-    const double aexp,
+    Real* rate_pair,
+    const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double nCO,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const double UV_background_G0,
-    std::array<double, N_GROUPS>& N_phot_new,
+    const Real nCO,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const Real UV_background_G0,
+    std::array<Real, N_GROUPS>& N_phot_new,
     const SubcycleState& state)
 {
     if (constant_temperature || !state.compute_temperature) return;
 
-    rate_pair[lane] = all_cooling((lane == 0 ? 1.0 : 1.001) * state.TK, state.ne, aexp,
+    rate_pair[lane] = all_cooling((lane == 0 ? Real(1.0) : Real(1.001)) * state.TK, state.ne, aexp,
                                   n_and_ion_fracs, elements, N_phot_new,
                                   nCO, state.G0_local, UV_background_G0, state.f_shd_H2,
                                   dust_to_gas_mass_ratio_over_mw,
@@ -772,36 +772,36 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void cooling_update(
-    const double* rate_pair,
-    const double ddt,
-    const double loc_rho,
+    const Real* rate_pair,
+    const Real ddt,
+    const Real loc_rho,
     SubcycleState& state)
 {
     if (constant_temperature || !state.compute_temperature) return;
 
-    double cooling_rate = rate_pair[0];
-    double cooling_rate_prime = (rate_pair[1] - cooling_rate) / ((1.001*state.TK) - state.TK);
+    Real cooling_rate = rate_pair[0];
+    Real cooling_rate_prime = (rate_pair[1] - cooling_rate) / ((Real(1.001)*state.TK) - state.TK);
 
 
-    double X_nHkb = 1.0 / (1.5 * loc_rho * 1.380649e-16);
+    Real X_nHkb = Real(1.0) / (Real(1.5) * loc_rho * Real(1.380649e-16));
 
     cooling_rate *= X_nHkb;
     cooling_rate_prime *= X_nHkb * state.mu;
 
-    double dUU = fabs(fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
-    state.Tmu_new = fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(1.0 - cooling_rate_prime * ddt));
+    Real dUU = rtz_math::fabs(rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
+    state.Tmu_new = rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
 
     // ! New T2 value
     state.TK = state.Tmu_new * state.mu;
 
-    double residual = fmax(dUU, fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
-    residual = fmax(residual, fabs(cooling_rate_prime * ddt));
+    Real residual = rtz_math::fmax(dUU, rtz_math::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
+    residual = rtz_math::fmax(residual, rtz_math::fabs(cooling_rate_prime * ddt));
 
     // Convergence
     // X% rule
 
     // Max residual over all elements
-    state.max_residual_all = fmax(state.max_residual_all, residual);
+    state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
     if (residual > X_PCT_RULE){
         // Reset the success counter
@@ -830,20 +830,20 @@ template <
 KOKKOS_INLINE_FUNCTION
 void cooling_step_team(
     const TeamMember& team,
-    double* rate_pair,
-    const double ddt,
-    const double aexp,
+    Real* rate_pair,
+    const Real ddt,
+    const Real aexp,
     const Element* elements,
     const CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double loc_rho,
-    const double nCO,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const double UV_background_G0,
-    std::array<double, N_GROUPS>& N_phot_new,
+    const Real loc_rho,
+    const Real nCO,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const Real UV_background_G0,
+    std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     if (constant_temperature || !state.compute_temperature) return;
@@ -875,20 +875,20 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void molecular_step(
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
-    const double nCO,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double UV_background_G0,
-    const std::array<double, N_GROUPS>& N_phot_new,
+    const Real nCO,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real UV_background_G0,
+    const std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     // Rates consumed by ions_step: reset every iteration, even when this
     // step is skipped, so ions_step sees zero molecular coupling.
-    state.alpha_H2_loc = 0.0;
-    state.de_H2 = 0.0;
+    state.alpha_H2_loc = Real(0.0);
+    state.de_H2 = Real(0.0);
     state.nCO_new = nCO;
 
     if (!state.compute_molecules) return;
@@ -897,9 +897,9 @@ void molecular_step(
     if constexpr (include_H2) {
 
         // H2 fraction --> Note that we actually store 2 * xH2
-        double xH2 = n_and_ion_fracs[1].ion_fracs_new[2]/2.0;
+        Real xH2 = n_and_ion_fracs[1].ion_fracs_new[2]/Real(2.0);
 
-        double cr_H2 = 0.E0;
+        Real cr_H2 = Real(0.E0);
 
         // Creation //
 
@@ -914,18 +914,18 @@ void molecular_step(
         // Destruction //
 
         // Collisional destruction
-        double beta_H2_loc = beta_H2_krome(state.TK, n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new,
+        Real beta_H2_loc = beta_H2_krome(state.TK, n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new,
                                     state.ne, xH2 * n_and_ion_fracs[1].n_element_new,
                                     n_and_ion_fracs[2].ion_fracs_new[0] * n_and_ion_fracs[2].n_element_new);
         state.de_H2 += beta_H2_loc;
 
         // Photodissociation UV background
-        state.de_H2 += UV_background_G0 * 5.68E-11;
+        state.de_H2 += UV_background_G0 * Real(5.68E-11);
 
         // Photodissociation from local radiation field
         if constexpr (rt_advect) {
             for (int k = 0; k < N_GROUPS; k++) {
-                if (tabData.group_energy(k) > 11.2 && tabData.group_energy(k) < 13.6)
+                if (tabData.group_energy(k) > Real(11.2) && tabData.group_energy(k) < Real(13.6))
                     // self-shield the LW band
                     state.de_H2 += tabData.cs_ph(elem_row(1), 2, k, 0) * N_phot_new[k] * state.f_shd_H2;
                 else
@@ -937,19 +937,19 @@ void molecular_step(
         state.de_H2 += state.H2_cosmic_ray_ionization_rate;
 
         // Update xH2
-        xH2 = (cr_H2*ddt + xH2)/(1.+state.de_H2*ddt);
+        xH2 = (cr_H2*ddt + xH2)/(Real(1.)+state.de_H2*ddt);
 
         // Store in the struct
-        n_and_ion_fracs[1].ion_fracs_new[2] = 2.0 * fmin(fmax(xH2,MIN_XION),0.5);
+        n_and_ion_fracs[1].ion_fracs_new[2] = Real(2.0) * rtz_math::fmin(rtz_math::fmax(xH2,MIN_XION),Real(0.5));
 
         // Convergence
         // X% rule
-        double residual = fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
+        Real residual = rtz_math::fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
 
         // Max residual over all elements
-        state.max_residual_all = fmax(state.max_residual_all,residual);
+        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
 
-        if (residual > X_PCT_RULE && n_and_ion_fracs[1].ion_fracs[2] > 1E-10){
+        if (residual > X_PCT_RULE && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
             // Reset the success counter
             state.success_counter = 0;
             // Declare the x-percent rule was violated
@@ -968,41 +968,41 @@ void molecular_step(
     if constexpr (include_CO) {
         if (state.compute_atoms) {
             // Check if there is enough C, O, and CO to warrant computing the chemistry
-            if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > 1e-10) {
+            if ((n_and_ion_fracs[6].n_element_new + n_and_ion_fracs[8].n_element_new + nCO)/n_and_ion_fracs[1].n_element_new > Real(1e-10)) {
 
-                double nH   = n_and_ion_fracs[1].n_element_new;
-                double nCII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
-                double nOI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
-                double nH2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / 2.0;
-                double x_OI = nOI / nH;
+                Real nH   = n_and_ion_fracs[1].n_element_new;
+                Real nCII = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[1];
+                Real nOI  = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[0];
+                Real nH2  = n_and_ion_fracs[1].n_element_new * n_and_ion_fracs[1].ion_fracs_new[2] / Real(2.0);
+                Real x_OI = nOI / nH;
 
                 //!! Creation !!
-                double cr_CO = alpha_CO(state.G0_local*state.f_shd_CO + UV_background_G0, state.H2_cosmic_ray_ionization_rate, nCII, nH2, x_OI, nH * n_and_ion_fracs[1].ion_fracs_new[0]);
+                Real cr_CO = alpha_CO(state.G0_local*state.f_shd_CO + UV_background_G0, state.H2_cosmic_ray_ionization_rate, nCII, nH2, x_OI, nH * n_and_ion_fracs[1].ion_fracs_new[0]);
 
                 //!! Destruction !!
-                double de_CO = beta_CO(state.G0_local*state.f_shd_CO + UV_background_G0, state.H2_cosmic_ray_ionization_rate);
+                Real de_CO = beta_CO(state.G0_local*state.f_shd_CO + UV_background_G0, state.H2_cosmic_ray_ionization_rate);
 
                 // Compute the initial guess of new nCO
-                state.nCO_new = (nCO + cr_CO*ddt) / (1.0 + de_CO*ddt);
+                state.nCO_new = (nCO + cr_CO*ddt) / (Real(1.0) + de_CO*ddt);
 
                 // Tentative update
-                double delta_CO = state.nCO_new - nCO;
+                Real delta_CO = state.nCO_new - nCO;
 
                 // Enforce positivity floors: don't destroy more CO than exists,
                 // and don't create more than allowed by available CII and OI
-                double max_delta_CO = fmax(fmin(nCII - 1e-30, nOI - 1e-30), 0.0);
-                double min_delta_CO = fmin(-nCO + 1e-30, 0.0);
+                Real max_delta_CO = rtz_math::fmax(rtz_math::fmin(nCII - Real(1e-30), nOI - Real(1e-30)), Real(0.0));
+                Real min_delta_CO = rtz_math::fmin(-nCO + Real(1e-30), Real(0.0));
 
                 // Clip delta_CO to enforce physical bounds
-                delta_CO = fmax(fmin(delta_CO, max_delta_CO), min_delta_CO);
+                delta_CO = rtz_math::fmax(rtz_math::fmin(delta_CO, max_delta_CO), min_delta_CO);
 
                 // Apply updates
                 state.nCO_new  = nCO + delta_CO;
-                double nCII_new = nCII - delta_CO;
-                double nOI_new  = nOI  - delta_CO;
+                Real nCII_new = nCII - delta_CO;
+                Real nOI_new  = nOI  - delta_CO;
 
                 // Now update the ion fractions for C and O
-                double tot_C = n_and_ion_fracs[6].n_element_new - delta_CO;
+                Real tot_C = n_and_ion_fracs[6].n_element_new - delta_CO;
                 for (int i=0; i<elements[6].n_ions; i++) {
                     if (i != 1) {
                         n_and_ion_fracs[6].ion_fracs_new[i] = n_and_ion_fracs[6].n_element_new * n_and_ion_fracs[6].ion_fracs_new[i] / tot_C;
@@ -1011,7 +1011,7 @@ void molecular_step(
                     }
                 }
 
-                double tot_O = n_and_ion_fracs[8].n_element_new - delta_CO;
+                Real tot_O = n_and_ion_fracs[8].n_element_new - delta_CO;
                 for (int i=0; i<elements[8].n_ions; i++) {
                     if (i != 0) {
                         n_and_ion_fracs[8].ion_fracs_new[i] = n_and_ion_fracs[8].n_element_new * n_and_ion_fracs[8].ion_fracs_new[i] / tot_O;
@@ -1021,12 +1021,12 @@ void molecular_step(
                 }
 
                 // Check for convergence
-                double residual = fabs(state.nCO_new - nCO) / (nCO + X_FM);
+                Real residual = rtz_math::fabs(state.nCO_new - nCO) / (nCO + X_FM);
 
                 // Max residual over all elements
-                state.max_residual_all = fmax(state.max_residual_all,residual);
+                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
 
-                if (residual > X_PCT_RULE && nCO > 1E-10){
+                if (residual > X_PCT_RULE && nCO > Real(1E-10)){
                     // Reset the success counter
                     state.success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -1057,16 +1057,16 @@ template <
 KOKKOS_INLINE_FUNCTION
 void ions_gs_element(
     const int i,
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double UV_background_G0,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const std::array<double, N_GROUPS>& N_phot_new,
-    const double dust_effective_number_density,
+    const Real UV_background_G0,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const std::array<Real, N_GROUPS>& N_phot_new,
+    const Real dust_effective_number_density,
     SubcycleState& state)
 {
     // Gauss-Seidel update of one element's ionization stages followed by its
@@ -1085,12 +1085,12 @@ void ions_gs_element(
         // instead of once per stage halves the charge-transfer work for H --
         // each term costs a pow plus one or two exp, and for the H/He/C/O
         // network the loop covers 19 stages.
-        double ct_ion_sum = 0.0, ct_rec_sum = 0.0;
+        Real ct_ion_sum = Real(0.0), ct_rec_sum = Real(0.0);
         if (flags.include_charge_exchange && i == 1) {
             for (int ii = 2; ii < MAX_ELEMENTS; ii++){
-                if (n_and_ion_fracs.n_element[ii] == 0.0) continue;
+                if (n_and_ion_fracs.n_element[ii] == Real(0.0)) continue;
                 for (int jj = 0; jj < elements[ii].n_ions; jj++) {
-                    const double paired_ion_number_density =
+                    const Real paired_ion_number_density =
                         n_and_ion_fracs[ii].ion_fracs_new[jj] * n_and_ion_fracs[ii].n_element_new;
                     ct_ion_sum += charge_transfer_ionization(jj,ii,state.TK, tabData) * paired_ion_number_density;
                     ct_rec_sum += charge_transfer_recombination(jj,ii,state.TK, tabData) * paired_ion_number_density;
@@ -1104,7 +1104,7 @@ void ions_gs_element(
             /////////////////////////
             //       Creation      //
             /////////////////////////
-            double cr = 0.E0;
+            Real cr = Real(0.E0);
 
             // Account for molecular hydrogen
             if ((i == 1) & (j == 0) & include_H2) { // select only HI
@@ -1156,11 +1156,11 @@ void ions_gs_element(
             /////////////////////////
             //     Destruction     //
             /////////////////////////
-            double de = 0.E0;
+            Real de = Real(0.E0);
 
             // Account for molecular hydrogen
             if ((i == 1) & (j == 0) & include_H2) { // select only HI
-                de += 2.0 * state.alpha_H2_loc / (n_and_ion_fracs[1].ion_fracs_new[0] + 1e-40);
+                de += Real(2.0) * state.alpha_H2_loc / (n_and_ion_fracs[1].ion_fracs_new[0] + Real(1e-40));
             }
 
             // Collisional ionization
@@ -1223,8 +1223,8 @@ void ions_gs_element(
                         cr += ct_rec_sum * n_and_ion_fracs[i].ion_fracs_new[j-1];  //! Example:  O+ + H => O + H+
                     }
                 } else { // All other elements
-                    double HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new;
-                    double HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element_new;
+                    Real HI_number_density = n_and_ion_fracs[1].ion_fracs_new[0] * n_and_ion_fracs[1].n_element_new;
+                    Real HII_number_density = n_and_ion_fracs[1].ion_fracs_new[1] * n_and_ion_fracs[1].n_element_new;
 
                     if (j > 0) {
                         // Ionization from less excited state
@@ -1249,16 +1249,16 @@ void ions_gs_element(
             /////////////////////////
 
             // The update
-            n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(1.0 + de*ddt);
-            n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),1.0);
+            n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(Real(1.0) + de*ddt);
+            n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),Real(1.0));
 
             // Get the new electron fraction
-            state.ne += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j]) - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (double)j;
+            state.ne += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j]) - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
             state.xe = state.ne / n_and_ion_fracs[1].n_element_new;
 
             if (flags.include_cosmic_ray_ionization) {
-                double phi_s = secondary_cr_rates(state.xe);
-                state.total_cosmic_ray_ionization_rate = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
+                Real phi_s = secondary_cr_rates(state.xe);
+                state.total_cosmic_ray_ionization_rate = primary_cosmic_ray_ionization_rate * (Real(1.0) + phi_s);
             }
 
             // Update mu and T --> only H and He (others don't matter)
@@ -1273,17 +1273,17 @@ void ions_gs_element(
             //     Convergence     //
             /////////////////////////
             // X% rule
-            double residual = fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + X_FM);
+            Real residual = rtz_math::fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + X_FM);
 
             // electron density residual
-            double ne_residual = fabs(state.ne - state.ne_initial) / (state.ne + X_FM);
-            residual = fmax(residual,ne_residual);
+            Real ne_residual = rtz_math::fabs(state.ne - state.ne_initial) / (state.ne + X_FM);
+            residual = rtz_math::fmax(residual,ne_residual);
 
             // Max residual over all elements
-            state.max_residual_all = fmax(state.max_residual_all,residual);
+            state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
 
             // Check if X percent rule is broken
-            if (n_and_ion_fracs[i].ion_fracs[j] > 1E-10){
+            if (n_and_ion_fracs[i].ion_fracs[j] > Real(1E-10)){
                 if (residual > X_PCT_RULE){
                     // Reset the success counter
                     state.success_counter = 0;
@@ -1307,29 +1307,29 @@ void ions_gs_element(
         int size = elements[i].n_ions + elements[i].n_mol;
 
         if (i <= 2) {
-            double current_mass_frac = 0.0;
+            Real current_mass_frac = Real(0.0);
             for (int i_tmp = 1; i_tmp < size; i_tmp++) {
                 current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
             }
 
-            n_and_ion_fracs[i].ion_fracs_new[0] = 0.0;
+            n_and_ion_fracs[i].ion_fracs_new[0] = Real(0.0);
 
-            if (current_mass_frac >= 0.0) {
-                if (current_mass_frac <= 1.0) {
-                    n_and_ion_fracs[i].ion_fracs_new[0] = 1.0 - current_mass_frac;
+            if (current_mass_frac >= Real(0.0)) {
+                if (current_mass_frac <= Real(1.0)) {
+                    n_and_ion_fracs[i].ion_fracs_new[0] = Real(1.0) - current_mass_frac;
                 } else {
                     for (int i_tmp = 1; i_tmp < size; i_tmp++) {
                         n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
                     }
                 }
             } else {
-                n_and_ion_fracs[i].ion_fracs_new[0] = 1.0;
+                n_and_ion_fracs[i].ion_fracs_new[0] = Real(1.0);
                 for (int i_tmp = 1; i_tmp < size; i_tmp++) {
-                    n_and_ion_fracs[i].ion_fracs_new[i_tmp] = 0.0;
+                    n_and_ion_fracs[i].ion_fracs_new[i_tmp] = Real(0.0);
                 }
             }
         } else {
-            double current_mass_frac = 0.0;
+            Real current_mass_frac = Real(0.0);
             for (int i_tmp = 0; i_tmp < size; i_tmp++) {
                 current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
             }
@@ -1354,24 +1354,24 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void HandHe_ions_step(
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double UV_background_G0,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const std::array<double, N_GROUPS>& N_phot_new,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real UV_background_G0,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     if (!state.compute_atoms) return;
 
-    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+    const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
 
     for (int i = 1; i <= 2; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
         ions_gs_element<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             i, ddt, elements, n_and_ion_fracs, tabData, flags,
@@ -1398,16 +1398,16 @@ template <
 KOKKOS_INLINE_FUNCTION
 void HandHe_ions_step(
     const TeamMember& team,
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double UV_background_G0,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const std::array<double, N_GROUPS>& N_phot_new,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real UV_background_G0,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     if (!state.compute_atoms) return;
@@ -1440,16 +1440,16 @@ template <
 >
 KOKKOS_INLINE_FUNCTION
 void metal_ions_step(
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double UV_background_G0,
-    [[maybe_unused]] const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const std::array<double, N_GROUPS>& N_phot_new,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real UV_background_G0,
+    [[maybe_unused]] const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state)
 {
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
@@ -1458,19 +1458,19 @@ void metal_ions_step(
     using xion_t = CompactIonData::xion_t;
 
     // See the TODO(code) note in ions_step
-    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+    const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
 
     // Live H fractions (updated in place by HandHe_ions_step) for metal charge exchange
     const xion_t* x_H = n_and_ion_fracs.ion_fracs_new_flat + n_and_ion_fracs.offsets[1];
-    const double HI_number_density  = x_H[0] * n_and_ion_fracs[1].n_element_new;
-    const double HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+    const Real HI_number_density  = x_H[0] * n_and_ion_fracs[1].n_element_new;
+    const Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
 
-    double max_stage_residual = -999.;
+    Real max_stage_residual = -Real(999.);
     int    violated  = 0;
-    double delta_ne  = 0.0;
+    Real delta_ne  = Real(0.0);
 
     for (int i = 3; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
         const int n_ions = elements[i].n_ions;
         const int erow = elem_row(i);
@@ -1491,11 +1491,11 @@ void metal_ions_step(
         // evaluations, which dominate this loop: each costs a pow and one or two
         // exp. Bitwise identical (same function, same arguments), and the saving
         // grows with the ionization ladder, so it scales with the network size.
-        double rec_carry    = 0.0; // recombination(TK, j, i)             , j>0
-        double ci_carry     = 0.0; // collisional_ionization(TK, j-1, i)  , j>0
-        double dust_carry   = 0.0; // dust_recombination_rates(j, i, ...) , j>0
-        double ct_ion_carry = 0.0; // charge_transfer_ionization(j-1, i)  , j>0
-        double ct_rec_carry = 0.0; // charge_transfer_recombination(j, i) , j>0
+        Real rec_carry    = Real(0.0); // recombination(TK, j, i)             , j>0
+        Real ci_carry     = Real(0.0); // collisional_ionization(TK, j-1, i)  , j>0
+        Real dust_carry   = Real(0.0); // dust_recombination_rates(j, i, ...) , j>0
+        Real ct_ion_carry = Real(0.0); // charge_transfer_ionization(j-1, i)  , j>0
+        Real ct_rec_carry = Real(0.0); // charge_transfer_recombination(j, i) , j>0
 
         for (int j = 0; j < n_ions; j++) {
             const xion_t s_p1 = (j + 1 < size) ? n_and_ion_fracs[i].ion_fracs_new[j+1] : xion_t(0);
@@ -1504,10 +1504,10 @@ void metal_ions_step(
             /////////////////////////
             //       Creation      //
             /////////////////////////
-            double cr = 0.E0;
+            Real cr = Real(0.E0);
 
-            double rec_next    = 0.0, ci_next     = 0.0, dust_next = 0.0;
-            double ct_ion_next = 0.0, ct_rec_next = 0.0;
+            Real rec_next    = Real(0.0), ci_next     = Real(0.0), dust_next = Real(0.0);
+            Real ct_ion_next = Real(0.0), ct_rec_next = Real(0.0);
 
             if (j < (n_ions - 1)) {
                 rec_next = recombination(state.TK, j+1, i, tabData);
@@ -1549,7 +1549,7 @@ void metal_ions_step(
             /////////////////////////
             //     Destruction     //
             /////////////////////////
-            double de = 0.E0;
+            Real de = Real(0.E0);
 
             if (flags.include_collisional_ionization) {
                 if (j < (n_ions - 1)) {
@@ -1604,8 +1604,8 @@ void metal_ions_step(
             /////////////////////////
             //       Update        //
             /////////////////////////
-            double x_new = (cr*ddt + XS(j))/(1.0 + de*ddt);
-            n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(x_new,MIN_XION),1.0);
+            Real x_new = (cr*ddt + XS(j))/(Real(1.0) + de*ddt);
+            n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(x_new,MIN_XION),Real(1.0));
 
             s_m1 = s_0;
             s_0  = s_p1;
@@ -1622,20 +1622,20 @@ void metal_ions_step(
         //     Convergence     //
         /////////////////////////
         for (int j = 0; j < n_ions; j++) {
-            const double x_old = n_and_ion_fracs[i].ion_fracs[j];
-            const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-            const double residual = fabs(x_new - x_old) / (x_old + X_FM);
-            max_stage_residual = fmax(max_stage_residual, residual);
-            if (x_old > 1E-10 && residual > X_PCT_RULE) violated = 1;
+            const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
+            const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
+            const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
+            max_stage_residual = rtz_math::fmax(max_stage_residual, residual);
+            if (x_old > Real(1E-10) && residual > X_PCT_RULE) violated = 1;
             delta_ne += ((n_and_ion_fracs[i].n_element_new * x_new)
-                       - (n_and_ion_fracs[i].n_element * x_old)) * (double)j;
+                       - (n_and_ion_fracs[i].n_element * x_old)) * (Real)j;
         }
     }
 
-    const double ne_new = state.ne + delta_ne;
-    const double ne_residual = fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
+    const Real ne_new = state.ne + delta_ne;
+    const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
 
-    state.max_residual_all = fmax(state.max_residual_all, fmax(max_stage_residual, ne_residual));
+    state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
     if (violated > 0 || ne_residual > X_PCT_RULE) {
         state.success_counter = 0;
         state.x_percent_rule = false;
@@ -1644,9 +1644,9 @@ void metal_ions_step(
     // REDUCE SO THAT THE METAL IONIZATION FRACTIONS SUM TO 1
     if (state.x_percent_rule) {
         for (int i = 3; i < MAX_ELEMENTS; i++) {
-            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+            if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
             int size = elements[i].n_ions + elements[i].n_mol;
-            double current_mass_frac = 0.0;
+            Real current_mass_frac = Real(0.0);
             for (int i_tmp = 0; i_tmp < size; i_tmp++)
                 current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
             for (int i_tmp = 0; i_tmp < size; i_tmp++)
@@ -1680,16 +1680,16 @@ template <
 KOKKOS_INLINE_FUNCTION
 void metal_ions_step(
     const TeamMember& team,
-    const double ddt,
+    const Real ddt,
     const Element* elements,
     CompactIonData& n_and_ion_fracs,
     const TabulatedData& tabData,
     const PhysicsFlags& flags,
-    const double dust_to_gas_mass_ratio_over_mw,
-    const double UV_background_G0,
-    const double primary_cosmic_ray_ionization_rate,
-    const double ss_factor,
-    const std::array<double, N_GROUPS>& N_phot_new,
+    const Real dust_to_gas_mass_ratio_over_mw,
+    const Real UV_background_G0,
+    const Real primary_cosmic_ray_ionization_rate,
+    const Real ss_factor,
+    const std::array<Real, N_GROUPS>& N_phot_new,
     const uint16_t* ion_map,
     const int n_ion_work,
     CompactIonData::xion_t* const x_snap,
@@ -1710,7 +1710,7 @@ void metal_ions_step(
     team.team_barrier();
 
     // See the TODO(code) note in ions_step
-    const double dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
+    const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
 
     // Live H fractions (updated in place by HandHe_ions_step) for metal charge exchange
     const xion_t* x_H = n_and_ion_fracs.ion_fracs_new_flat + n_and_ion_fracs.offsets[1];
@@ -1718,7 +1718,7 @@ void metal_ions_step(
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (n_and_ion_fracs.n_element[i] == 0.0) return;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
 
         const int n_ions = elements[i].n_ions;
         const int erow = elem_row(i);
@@ -1728,7 +1728,7 @@ void metal_ions_step(
         /////////////////////////
         //       Creation      //
         /////////////////////////
-        double cr = 0.E0;
+        Real cr = Real(0.E0);
 
         // Recombinations of the more excited ionization state
         if (j < (n_ions - 1)) cr += recombination(state.TK, j+1, i, tabData) * state.ne * xi_snap[j+1];
@@ -1773,7 +1773,7 @@ void metal_ions_step(
         /////////////////////////
         //     Destruction     //
         /////////////////////////
-        double de = 0.E0;
+        Real de = Real(0.E0);
 
         // Collisional ionization
         if (flags.include_collisional_ionization) {
@@ -1820,8 +1820,8 @@ void metal_ions_step(
         /////////////////////////
         // Charge exchange couples each metal to hydrogen via the live H fractions
         if (flags.include_charge_exchange) {
-            double HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
-            double HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+            Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+            Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
 
             if (j > 0) {
                 // Ionization from less excited state
@@ -1845,8 +1845,8 @@ void metal_ions_step(
         /////////////////////////
 
         // The update
-        double x_new = (cr*ddt + xi_snap[j])/(1.0 + de*ddt);
-        n_and_ion_fracs[i].ion_fracs_new[j] = fmin(fmax(x_new,MIN_XION),1.0);
+        Real x_new = (cr*ddt + xi_snap[j])/(Real(1.0) + de*ddt);
+        n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(x_new,MIN_XION),Real(1.0));
     });
     // I think the residual reduces below redistribute indices across threads,
     // so they may read an ion_fracs_new[j] written by a different thread above.
@@ -1858,43 +1858,43 @@ void metal_ions_step(
 
     // X% rule on the metal ion fractions (residual vs the committed values);
     // H/He already folded theirs in HandHe_ions_step
-    double max_stage_residual = -999.;
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, double& lmax) {
+    Real max_stage_residual = -Real(999.);
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lmax) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (n_and_ion_fracs.n_element[i] == 0.0) return;
-        const double x_old = n_and_ion_fracs[i].ion_fracs[j];
-        const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-        lmax = fmax(lmax, fabs(x_new - x_old) / (x_old + X_FM));
-    }, Kokkos::Max<double>(max_stage_residual));
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
+        const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
+        const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
+        lmax = rtz_math::fmax(lmax, rtz_math::fabs(x_new - x_old) / (x_old + X_FM));
+    }, Kokkos::Max<Real>(max_stage_residual));
 
     int violated = 0;
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, int& lviol) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (n_and_ion_fracs.n_element[i] == 0.0) return;
-        const double x_old = n_and_ion_fracs[i].ion_fracs[j];
-        const double x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-        const double residual = fabs(x_new - x_old) / (x_old + X_FM);
-        if (x_old > 1E-10 && residual > X_PCT_RULE) lviol = 1;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
+        const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
+        const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
+        const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
+        if (x_old > Real(1E-10) && residual > X_PCT_RULE) lviol = 1;
     }, Kokkos::Max<int>(violated));
 
     // Electron density from the swept metal fractions; state.ne already carries
     // the H/He contributions from HandHe_ions_step
-    double delta_ne = 0.0;
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, double& lsum) {
+    Real delta_ne = Real(0.0);
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lsum) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
-        if (n_and_ion_fracs.n_element[i] == 0.0) return;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
         lsum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
-               - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (double)j;
+               - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
     }, delta_ne);
 
-    const double ne_new = state.ne + delta_ne;
-    const double ne_residual = fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
+    const Real ne_new = state.ne + delta_ne;
+    const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
 
     Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        state.max_residual_all = fmax(state.max_residual_all, fmax(max_stage_residual, ne_residual));
+        state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
         // The Max reduction identity is INT_MIN, so compare against > 0
         if (violated > 0 || ne_residual > X_PCT_RULE) {
             // Reset the success counter
@@ -1911,11 +1911,11 @@ void metal_ions_step(
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, MAX_ELEMENTS - 1), [&](const int t) {
             const int i = t + 1;
             if (i <= 2) return; // H/He normalized in HandHe_ions_step
-            if (n_and_ion_fracs.n_element[i] == 0.0) return;
+            if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
 
             int size = elements[i].n_ions + elements[i].n_mol;
 
-            double current_mass_frac = 0.0;
+            Real current_mass_frac = Real(0.0);
             for (int i_tmp = 0; i_tmp < size; i_tmp++) {
                 current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
             }
@@ -1947,11 +1947,11 @@ KOKKOS_INLINE_FUNCTION
 void subcycle_prep_iteration(
     const Element* elements,
     CompactIonData &n_and_ion_fracs,
-    const double nCO,
-    const double total_dt,
-    const double total_time,
-    const double primary_cosmic_ray_ionization_rate,
-    double &ddt,
+    const Real nCO,
+    const Real total_dt,
+    const Real total_time,
+    const Real primary_cosmic_ray_ionization_rate,
+    Real &ddt,
     SubcycleState &state)
 {
     state.compute_atoms = true;
@@ -1962,7 +1962,7 @@ void subcycle_prep_iteration(
     //the old ion fracs
     //do the same for the number densities
     for (int i = 1; i < MAX_ELEMENTS; i++) {
-        if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+        if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
         n_and_ion_fracs[i].n_element_new = n_and_ion_fracs[i].n_element;
 
@@ -1983,23 +1983,23 @@ void subcycle_prep_iteration(
     if (constant_temperature) state.TK = state.Tmu_old;
 
     // Measure phi_s for secondary CR ionization
-    double phi_s = secondary_cr_rates(state.xe);
+    Real phi_s = secondary_cr_rates(state.xe);
     // Now calculate the total CR ionization rate
-    state.total_cosmic_ray_ionization_rate = primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
-    state.H2_cosmic_ray_ionization_rate = 2.0 * primary_cosmic_ray_ionization_rate * (1.0 + phi_s);
+    state.total_cosmic_ray_ionization_rate = primary_cosmic_ray_ionization_rate * (Real(1.0) + phi_s);
+    state.H2_cosmic_ray_ionization_rate = Real(2.0) * primary_cosmic_ray_ionization_rate * (Real(1.0) + phi_s);
 
     // Set the cosmic ray scale factor -> only needed for secondary UVs
-    state.cosmic_ray_scale_factor = state.H2_cosmic_ray_ionization_rate / 1E-16;
+    state.cosmic_ray_scale_factor = state.H2_cosmic_ray_ionization_rate / Real(1E-16);
 
     // Initialize the X percent rule
     state.x_percent_rule = true;
 
     // Convergence
-    state.max_residual_all = -999.;
+    state.max_residual_all = -Real(999.);
 
     // Make sure the timestep isn't larger than how long we
     // need to evolve for, otherwise shorten it
-    if (total_dt > 0.0) {
+    if (total_dt > Real(0.0)) {
         if ((total_time+ddt) > total_dt){
             ddt = total_dt - total_time;
         }
@@ -2014,21 +2014,21 @@ void subcycle_prep_iteration(
 KOKKOS_INLINE_FUNCTION
 void subcycle_timestep_control(
     const bool committed,
-    const double max_residual_over_x_pct,
-    double& ddt)
+    const Real max_residual_over_x_pct,
+    Real& ddt)
 {
     if (!committed) {
         // If we broke the 10% rule, divide timestep by 2.0
-        ddt /= 2.0;
+        ddt /= Real(2.0);
     } else {
         // TODO(code): allow for choice of aggressive vs conservative timestep
-        ddt = fmin(0.9 * ddt / pow(0.07+max_residual_over_x_pct,0.3),2.0 * ddt);
+        ddt = rtz_math::fmin(Real(0.9) * ddt / rtz_math::pow(Real(0.07)+max_residual_over_x_pct,Real(0.3)),Real(2.0) * ddt);
     }
     // TODO(code): Make this a parameter for the timestep limiter
-    // double tlimit = -0.57142857 * log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
-    // pow(10, 20) is a compile-time constant that nvcc will not fold
-    constexpr double tlimit = 1E20;
-    ddt = fmin(ddt,tlimit);
+    // double tlimit = -0.57142857 * rtz_math::log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
+    // rtz_math::pow(10, 20) is a compile-time constant that nvcc will not fold
+    constexpr Real tlimit = Real(1E20);
+    ddt = rtz_math::fmin(ddt,tlimit);
 }
 
 
@@ -2046,13 +2046,13 @@ bool subcycle_commit_and_control(
     const Element* elements,
     const TabulatedData& tabData,
     CompactIonData &n_and_ion_fracs,
-    double &nCO,
-    std::array<double, N_GROUPS> &N_PHOT,
+    Real &nCO,
+    std::array<Real, N_GROUPS> &N_PHOT,
     Array2D_RT &F_PHOT,
-    const std::array<double, N_GROUPS> &N_phot_new,
-    const std::array<double, N_GROUPS> &phot_att,
-    double &ddt,
-    double &total_time,
+    const std::array<Real, N_GROUPS> &N_phot_new,
+    const std::array<Real, N_GROUPS> &phot_att,
+    Real &ddt,
+    Real &total_time,
     SubcycleState &state,
     const bool rt_smooth,
     const Array2D_RT& dFpdt)
@@ -2065,11 +2065,11 @@ bool subcycle_commit_and_control(
     if (state.x_percent_rule) {
         if (!constant_temperature) {
             // Update temperature
-            state.Tmu_old = fmin(fmax(state.Tmu_new,T_MIN),T_MAX);
+            state.Tmu_old = rtz_math::fmin(rtz_math::fmax(state.Tmu_new,T_MIN),T_MAX);
         }
         // Update atomic data
         for (int i = 1; i < MAX_ELEMENTS; i++) {
-            if (n_and_ion_fracs.n_element[i] == 0.0) continue;
+            if (n_and_ion_fracs.n_element[i] == Real(0.0)) continue;
 
             n_and_ion_fracs[i].n_element = n_and_ion_fracs[i].n_element_new;
 
@@ -2090,17 +2090,17 @@ bool subcycle_commit_and_control(
                 N_PHOT[k] = N_phot_new[k];
 
                 // Update flux for all dimensions
-                double fred = 0.0;
+                Real fred = Real(0.0);
                 for (int dim = 0; dim < N_DIM; dim++) {
                     if (rt_smooth)
                         F_PHOT[k][dim] += ddt * dFpdt[k][dim];
                     F_PHOT[k][dim] *= phot_att[k];
                     fred += F_PHOT[k][dim] * F_PHOT[k][dim];
                 }
-                fred = sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
+                fred = rtz_math::sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
 
                 // Reduce the flux if needed
-                if (fred > 1.0) {
+                if (fred > Real(1.0)) {
                     for (int dim = 0; dim < N_DIM; dim++) {
                         F_PHOT[k][dim] /= fred;
                     }
@@ -2164,8 +2164,8 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
         initialize_cross_sections(path_to_data, tabData);
 
         // Hardcode some stuff for now
-        UV_background_G0 = 0.0070977; // <-- G0 used in PRISM paper
-        generic_cosmic_ray_ionization_rate = 1E-16;
+        UV_background_G0 = Real(0.0070977); // <-- G0 used in PRISM paper
+        generic_cosmic_ray_ionization_rate = Real(1E-16);
         printf("Using a G0 UV background of %f\nUsing a CR ionization rate of %f\n", UV_background_G0, generic_cosmic_ray_ionization_rate);
 
         // HM-related data
@@ -2209,7 +2209,7 @@ RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shield
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
-void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_UVB(double redshift)
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_UVB(Real redshift)
 {
     update_UVB(redshift);
 
@@ -2219,7 +2219,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
 void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::need_to_update_cross_sections(
-    double T_blackbody,
+    Real T_blackbody,
     const std::vector<double>& sed_frequency,
     const std::vector<double>& sed_fnu)
 {
@@ -2228,7 +2228,7 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
-void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_photon_groups(std::array<double, N_GROUPS> E_min, std::array<double, N_GROUPS> E_max) {
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_photon_groups(std::array<Real, N_GROUPS> E_min, std::array<Real, N_GROUPS> E_max) {
     auto E_min_h = Kokkos::create_mirror_view(tabData.group_E_min);
     auto E_max_h = Kokkos::create_mirror_view(tabData.group_E_max);
     for (size_t i = 0; i < N_GROUPS; i++) {
@@ -2240,14 +2240,14 @@ void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_s
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
-void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_reduced_speed_of_light_factor(double factor) {
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_reduced_speed_of_light_factor(Real factor) {
     auto c_frac_h = Kokkos::create_mirror_view(tabData.c_frac);
     c_frac_h() = factor;
     Kokkos::deep_copy(tabData.c_frac, c_frac_h);
 }
 
 template <bool constant_temperature,bool include_H2,bool include_CO,bool rt_advect,bool include_self_shielding>
-void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_UV_background_G0(double G0) {
+void RTZ<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>::set_UV_background_G0(Real G0) {
     UV_background_G0 = G0;
     printf("Overriding G0 UV background: now %f\n", UV_background_G0);
 }

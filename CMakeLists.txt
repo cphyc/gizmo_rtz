@@ -30,6 +30,7 @@ else()
 endif()
 option(GIZMO_RTZ_FAST_MATH "Enable -ffast-math -march=native for the standalone solver" ON)
 option(GIZMO_RTZ_REDUCED_PRECISION "Store chemistry densities and ion fractions as float (arithmetic remains mixed precision)" OFF)
+option(GIZMO_RTZ_FLOAT32_ARITHMETIC "Experimental float32 device chemistry/cooling arithmetic" OFF)
 set(GIZMO_RTZ_PERF_FLAGS "")
 if(GIZMO_RTZ_STANDALONE AND GIZMO_RTZ_FAST_MATH AND NOT Kokkos_ENABLE_CUDA)
     set(GIZMO_RTZ_PERF_FLAGS -ffast-math -march=native)
@@ -87,6 +88,9 @@ if(GIZMO_RTZ_STANDALONE)
     if(GIZMO_RTZ_REDUCED_PRECISION)
         target_compile_definitions(gizmo PRIVATE RTZ_REDUCED_PRECISION)
     endif()
+    if(GIZMO_RTZ_FLOAT32_ARITHMETIC)
+        target_compile_definitions(gizmo PRIVATE RTZ_FLOAT32_ARITHMETIC)
+    endif()
     set_target_properties(gizmo PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
@@ -121,6 +125,9 @@ if(GIZMO_RTZ_STANDALONE)
         target_link_libraries(_rtz PRIVATE Kokkos::kokkos)
         if(GIZMO_RTZ_REDUCED_PRECISION)
             target_compile_definitions(_rtz PRIVATE RTZ_REDUCED_PRECISION)
+        endif()
+        if(GIZMO_RTZ_FLOAT32_ARITHMETIC)
+            target_compile_definitions(_rtz PRIVATE RTZ_FLOAT32_ARITHMETIC)
         endif()
         target_compile_definitions(_rtz PRIVATE
             GIZMO_RTZ_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"

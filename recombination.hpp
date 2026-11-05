@@ -621,76 +621,76 @@ void init_recombination_rates(TabulatedData &tabData) {
 
 template <int N, int M>
 KOKKOS_INLINE_FUNCTION
-double alpha_RR(const double T, const Kokkos::View<float [N][M], Kokkos::LayoutRight>& RR_rates, const int ion){
+Real alpha_RR(const Real T, const Kokkos::View<float [N][M], Kokkos::LayoutRight>& RR_rates, const int ion){
     static_assert(M == 6, "The second dimension of RR_rates must be 6");
     // #HK NOTE: in many cases C and T2 are 0 so B = B
 
     // Unpack the values
-    double A  = RR_rates(ion, 0);
-    double B  = RR_rates(ion, 1);
-    double T0 = RR_rates(ion, 2);
-    double T1 = RR_rates(ion, 3);
-    double C  = RR_rates(ion, 4);
-    double T2 = RR_rates(ion, 5);
+    Real A  = RR_rates(ion, 0);
+    Real B  = RR_rates(ion, 1);
+    Real T0 = RR_rates(ion, 2);
+    Real T1 = RR_rates(ion, 3);
+    Real C  = RR_rates(ion, 4);
+    Real T2 = RR_rates(ion, 5);
 
-    B = B + (C * exp(-T2/T));
+    B = B + (C * rtz_math::exp(-T2/T));
 
-    double a0 = sqrt(T / T0);
-    double a1 = pow((1. + sqrt(T / T0)),(1. - B));
-    double a2 = pow((1. + sqrt(T / T1)),(1. + B));
+    Real a0 = rtz_math::sqrt(T / T0);
+    Real a1 = rtz_math::pow((Real(1.) + rtz_math::sqrt(T / T0)),(Real(1.) - B));
+    Real a2 = rtz_math::pow((Real(1.) + rtz_math::sqrt(T / T1)),(Real(1.) + B));
 
     return A/(a0 * a1 * a2);
 }
 
 template <int N, int M>
 KOKKOS_INLINE_FUNCTION
-double alpha_DR(const double T, const Kokkos::View<DRTerm [N][M], Kokkos::LayoutRight>& DR_rates, const int ion){
+Real alpha_DR(const Real T, const Kokkos::View<DRTerm [N][M], Kokkos::LayoutRight>& DR_rates, const int ion){
     static_assert(M == 9, "The second dimension of DR_rates must be 9");
     // # ! Dielectronic recombination
-    // # ! T**(-3/2) * sum c_i * exp(-E_i/T)
+    // # ! T**(-3/2) * sum c_i * rtz_math::exp(-E_i/T)
     // Each term is one 16-byte (E_i, c_i) access; zeros are strictly trailing
     // in every table, so the first zero E_i ends the row.
-    const double T_m32 = pow(T,-3./2.);
-    double comp_Alpha = 0.0;
+    const Real T_m32 = rtz_math::pow(T,-Real(3.)/Real(2.));
+    Real comp_Alpha = Real(0.0);
     for (int i = 0; i < 9; i++) {
         const DRTerm term = DR_rates(ion, i);
-        if (!(term.e > 0.0)) break;
-        comp_Alpha += ( T_m32 * term.c * exp(-1. * term.e / T) );
+        if (!(term.e > Real(0.0))) break;
+        comp_Alpha += ( T_m32 * term.c * rtz_math::exp(-Real(1.) * term.e / T) );
     }
     return comp_Alpha;
 }
 
 KOKKOS_INLINE_FUNCTION
-double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
+Real cloudy_rad_rec(int iz, int in_, Real t, const TabulatedData& tabData) {
 	/*
      *** HK NOTE: this function was taken from CLOUDY
 
-	 *** Input parameters:  iz - atomic number 
-	 ***                    in - number of electrons from 1 to iz 
+	 *** Input parameters:  iz - atomic number
+	 ***                    in - number of electrons from 1 to iz
 	 ***                    t  - temperature, K
 	 *** return result:  - rate coefficient, cm^3 s^(-1)
 
 	 */
-    double tt;
-    double rate;
+    Real tt;
+    Real rate;
 
     const int erow = elem_row(iz);
 
     if ((((in_ <= 3 || in_ == 11) || (iz > 5 && iz < 9)) || iz == 10) ||
         (iz == 26 && in_ > 11)) {
-        tt = sqrt(t / tabData.rnew(in_ - 1, erow, 2));
+        tt = rtz_math::sqrt(t / tabData.rnew(in_ - 1, erow, 2));
         rate = tabData.rnew(in_ - 1, erow, 0) /
-               (tt * pow(tt + 1.0, 1.0 - tabData.rnew(in_ - 1, erow, 1)) *
-                pow(1.0 + sqrt(t / tabData.rnew(in_ - 1, erow, 3)),
-                    1.0 + tabData.rnew(in_ - 1, erow, 1)));
+               (tt * rtz_math::pow(tt + Real(1.0), Real(1.0) - tabData.rnew(in_ - 1, erow, 1)) *
+                rtz_math::pow(Real(1.0) + rtz_math::sqrt(t / tabData.rnew(in_ - 1, erow, 3)),
+                    Real(1.0) + tabData.rnew(in_ - 1, erow, 1)));
     } else {
-        tt = t * 1.0e-04;
+        tt = t * Real(1.0e-04);
         if (iz == 26 && in_ <= 13) {
             rate = tabData.fe(in_ - 1, 0) /
-                   pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * log10(tt));
+                   rtz_math::pow(tt, tabData.fe(in_ - 1, 1) + tabData.fe(in_ - 1, 2) * rtz_math::log10(tt));
         } else {
             rate = tabData.rrec(in_ - 1, erow, 0) /
-                   pow(tt, tabData.rrec(in_ - 1, erow, 1));
+                   rtz_math::pow(tt, tabData.rrec(in_ - 1, erow, 1));
         }
     }
 
@@ -699,13 +699,13 @@ double cloudy_rad_rec(int iz, int in_, double t, const TabulatedData& tabData) {
 
 
 KOKKOS_FUNCTION
-double recombination(double T, int ion, int element_idx, const TabulatedData& tabData){
+Real recombination(Real T, int ion, int element_idx, const TabulatedData& tabData){
     /*
     recombination rate [cm^3 s^-1]
     Radiative recombination from Cloudy (rad_rec.dat) + dielectronic recombination
     */
 
-    double rec = 0.0;
+    Real rec = Real(0.0);
 
     // Radiative recombination from Cloudy tables
     rec = cloudy_rad_rec(element_idx, element_idx - ion + 1, T, tabData);
@@ -777,7 +777,7 @@ double recombination(double T, int ion, int element_idx, const TabulatedData& ta
             // } else {
             //     double A = tabData.RR_rates_alt_iron(ion, 0);
             //     double B = tabData.RR_rates_alt_iron(ion, 1);
-            //     rec = A * pow(T/1.0E4,-1.0*B); 
+            //     rec = A * rtz_math::pow(T/1.0E4,-1.0*B);
             // }
 
             // rec = cloudy_rad_rec(26, 26 - ion + 1, T);

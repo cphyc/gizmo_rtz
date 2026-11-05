@@ -239,3 +239,48 @@ and cooling path, audit literals/overloads to prevent promotion back to
 double, and check the same full-dataset <5% ion / <1% temperature limits.
 Host file parsing and Python's float64 API buffers require explicit boundary
 conversions rather than a blanket keyword replacement.
+
+## Trial 05: propagate float32 computation through the cell evolution
+
+Experimental `GIZMO_RTZ_FLOAT32_ARITHMETIC=ON` selects `Real=float`;
+the default is `Real=double`. This includes the tabulated coefficient views,
+element properties, chemistry/radiation/thermal cell state, rate functions,
+cooling and molecular functions, subcycle updates, and their signatures.
+Explicit Real literals and math wrappers prevent integer exponents/global C
+math overloads from promoting the calculations back to double. Python's
+float64 buffers, host text parsing, SED quadrature, and the external time list
+retain explicit double boundaries. No fast-math flags are introduced.
+
+The reference implementation in `dyablo_api.cpp` retains its default double
+build; the experimental macro is set for the GPU solver executable and the
+Python extension. This trial is a separate build option from float32 storage.
+CPU syntax checks pass; CUDA build and numerical validation are in progress.
+The accepted trial04 binary remains preserved for comparisons and fallback.
+
+The initial arithmetic build compiles on both CPU and CUDA but fails to
+finish: CPU exceeds 100,000 iterations on 256 cells; a bounded CUDA check
+also exceeds 3,000 iterations. CPU diagnostics identify cell 5 stuck at
+elapsed=0, dt=0, residual=9.727425. The float32 line Planck prefactor cubes
+~1e13 Hz frequencies, overflowing before multiplication by Planck's constant
+and contaminating fine-structure cooling. Trial05's next revision replaces
+`2*h*nu^3/c^2` with `(2*h*nu)*(nu/c)*(nu/c)` in float mode, retaining the
+original double expression in double mode. This is an algebraic range fix,
+not a changed rate or solver tolerance. Diagnostics now include the first
+unfinished cell's timestep, temperature, electron density, and residual.
+
+Trial05 repaired arithmetic benchmark **completed on the local GPU** over
+all 10,000 cells, 100 years, default 100,000 iteration limit. Warmup 5.809498 s;
+timed samples 4.308273, 4.298244, 4.301146, 4.301546, 4.301220 s.
+Median **4.301220 s**, raw speedup **9.48999x** over the original baseline
+and **8.45569x** over storage-only trial04. No convergence settings changed.
+
+**Experimental, not accuracy-accepted:** 17 of 203,932 checked ion fractions
+exceed relative 5% error (maximum 11.7698%). One temperature exceeds 1%
+(maximum 1.22227%). All solves finish; the harness exits with status 1 only
+after saving the completed timings/output because the accuracy gate fails.
+See `results/trial05.json`. The NPZ output and compiled trial05 binary remain
+local artifacts. The float32 arithmetic option remains OFF by project default;
+the local trial build enables it. The previously accepted storage-only binary
+is preserved as `build/galaxy-gpu/trial04.cpython-314-x86_64-linux-gnu.so`.
+No claim is made that default-backend regression tests have been rerun after
+this experimental computation-type refactor.

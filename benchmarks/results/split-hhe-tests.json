@@ -1,0 +1,11 @@
+{
+  "cpu_passed": 18,
+  "cpu_excluded_long_sweeps": 3,
+  "cpu_seconds": 1.55,
+  "cuda_passed": 18,
+  "cuda_excluded_long_sweeps": 3,
+  "cuda_seconds": 4.43,
+  "precision": "float64 computation/density/ions; both precision switches OFF",
+  "exact_gpu_output": true,
+  "configuration": "RangePolicy cooling-update/molecules/H-He followed by TeamPolicy cached metals/commit"
+}

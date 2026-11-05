@@ -1,0 +1,55 @@
+{
+  "seconds": [
+    14.149835386982886,
+    14.133067659015069,
+    14.130250367015833,
+    14.127166321995901,
+    14.109511482995003
+  ],
+  "median_seconds": 14.130250367015833,
+  "build_info": {
+    "execution_space": "Cuda",
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "ncell": 10000,
+  "dt_yr": 100.0,
+  "warmups": 1,
+  "max_iterations": 100000,
+  "extension_sha256": "c1f3ba94f7463be1dfe7c00e094d29e15a4399b3b6e177dd66cc948bb85085cb",
+  "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
+  "git_revision": "4cefe2cfde00f5d71da0d1d3a9db82040e3e6b4f",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 63, 1530 MHz, 14.37 W",
+  "command": [
+    "benchmarks/galaxy_gpu.py",
+    "--extension",
+    "build/galaxy-gpu/split-hhe-float64.cpython-314-x86_64-linux-gnu.so",
+    "--output",
+    "benchmarks/results/split-hhe-gpu",
+    "--reference",
+    "benchmarks/results/baseline.npz",
+    "--accuracy",
+    "exact",
+    "--require-float64",
+    "--warmups",
+    "1",
+    "--repetitions",
+    "5"
+  ],
+  "max_absolute_difference": {
+    "temperature": 0.0,
+    "densities": 0.0,
+    "ion_fractions": 0.0,
+    "photon_densities": 0.0
+  },
+  "differing_values": {
+    "temperature": 0,
+    "densities": 0,
+    "ion_fractions": 0,
+    "photon_densities": 0
+  },
+  "accuracy_passed": true
+}

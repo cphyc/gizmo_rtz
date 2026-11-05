@@ -1,0 +1,65 @@
+[
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmE3_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:63 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:440 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_12ParallelScanIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmRmbE_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:56 STACK:8 SHARED:0 LOCAL:0 CONSTANT[0]:536 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_14ParallelReduceINS0_22CombinedFunctorReducerIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS5_15SolveParametersESt6vectorINS5_9CellStateESaISD_EERKNS5_12SolveOptionsEEUlmRiE_NS0_15FunctorAnalysisINS0_23FunctorPatternInterface6REDUCEENS_11RangePolicyIJEEESK_iE7ReducerEvEESP_NS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:25 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:520 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_14ParallelReduceINS0_22CombinedFunctorReducerIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS5_15SolveParametersESt6vectorINS5_9CellStateESaISD_EERKNS5_12SolveOptionsEEUlmRmE_NS0_15FunctorAnalysisINS0_23FunctorPatternInterface6REDUCEENS_11RangePolicyIJEEESK_mE7ReducerEvEESP_NS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:25 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:512 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlRKNS0_14CudaTeamMemberEE_NS_10TeamPolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:88 STACK:0 SHARED:112 LOCAL:0 CONSTANT[2]:4920 CONSTANT[0]:848 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmE2_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:92 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:1264 CONSTANT[0]:512 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmE1_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:130 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:4744 CONSTANT[0]:512 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmE0_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:64 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:272 CONSTANT[0]:568 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  },
+  {
+    "name": "_ZN6Kokkos4Impl33cuda_parallel_launch_local_memoryINS0_11ParallelForIZN47_INTERNAL_9a3388fa_16_rtz_bindings_cpp_fb06a20349_GLOBAL__N__9a3388fa_16_rtz_bindings_cpp_fb06a20310run_solverILb0ELb0ELb0ELb1ELb0EEEN8nanobind6objectERKNS4_15SolveParametersESt6vectorINS4_9CellStateESaISC_EERKNS4_12SolveOptionsEEUlmE_NS_11RangePolicyIJEEENS_4CudaEEEEEvT_",
+    "usage": [
+      "  REG:64 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:240 CONSTANT[0]:496 TEXTURE:0 SURFACE:0 SAMPLER:0",
+      " "
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+diff --git a/types.hpp b/types.hpp
+index 616ebd4..7421400 100644
+--- a/types.hpp
++++ b/types.hpp
+@@ -25,6 +25,7 @@ KOKKOS_INLINE_FUNCTION Real sin(Real x) { return Kokkos::sin(x); }
+ KOKKOS_INLINE_FUNCTION Real cos(Real x) { return Kokkos::cos(x); }
+ KOKKOS_INLINE_FUNCTION Real tanh(Real x) { return Kokkos::tanh(x); }
+ KOKKOS_INLINE_FUNCTION Real pow(Real x, Real y) { return Kokkos::pow(x, y); }
++KOKKOS_INLINE_FUNCTION Real pow(Real x, int y) { return ::pow(x, y); }
+ KOKKOS_INLINE_FUNCTION Real fmin(Real x, Real y) { return Kokkos::fmin(x, y); }
+ KOKKOS_INLINE_FUNCTION Real fmax(Real x, Real y) { return Kokkos::fmax(x, y); }
+ KOKKOS_INLINE_FUNCTION Real exp10(Real x) {

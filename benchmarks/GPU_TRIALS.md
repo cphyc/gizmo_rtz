@@ -454,6 +454,44 @@ and therefore must pass the exact gate before being retained.
 Raw profiling summaries: `results/float64-best-profile_cuda_*_sum.csv`.
 The full trace and SQLite export are local ignored artifacts.
 
+### Updated profile after retaining trial 08
+
+The saved `rate-cache-float64` binary is now the best accepted float64
+version. Its cold Nsight Systems run takes 34.980819 s and passes the exact
+10,000-cell reference comparison. It reports CUDA and 8-byte Real/density/ions.
+
+| Kernel/phase | Launches | GPU seconds | Share of kernel time |
+| --- | ---: | ---: | ---: |
+| Molecules / H-He / metal ions / commit | 1505 | 29.621790 | 86.4% |
+| Cooling rates | 1505 | 2.273153 | 6.6% |
+| Prep / radiation | 1505 | 1.128724 | 3.3% |
+| Spectrum/cross-section setup | 3 | 1.237610 | 3.6% |
+| Pending count | 1505 | 0.013993 | <0.1% |
+| Iteration-limit check | 1504 | 0.011364 | <0.1% |
+| Active-index scan | 2150 | 0.010048 | <0.1% |
+| Interval initialization / finish | 1 each | 0.002242 | <0.1% |
+
+Ionization remains the dominant kernel after caching: 89.6% of recurring
+kernel time when the three first-call setup kernels are excluded. Its
+profiled total decreased by 4.500333 s (13.2%); cooling and preparation are
+essentially unchanged. These are separate cold profiles; use the warmed
+trial 08 measurements below for the overall speedup. Further ionization
+work has much more potential than launch/reduction/scan work, which together
+take under 0.04 s. Cooling optimizations have an overall ceiling of about 7%.
+
+Within the dominant kernel, H/He runs serially per cell, while metal stages
+run across team lanes. H/He temperature changes after individual stages, so
+carrying recombination/collisional rates across those stages would alter
+the calculation. The hydrogen charge-exchange partner sum already reuses
+its results between the two H stages. Source inspection also finds
+zero-amplitude charge-transfer fits that still evaluate pow/exp; these are
+a candidate for a separate exact-output trial. The profile does not measure
+these device subfunctions separately.
+
+Artifacts: `results/rate-cache-best-profile.json` and
+`results/rate-cache-best-profile_cuda_*_sum.csv`. The full trace and SQLite
+export are local ignored files.
+
 ## Trial 08: cache neighboring metal rate coefficients (float64)
 
 Two Real scratch arrays cache recombination and collisional coefficients for
@@ -489,3 +527,134 @@ The PROMISE exploration runs separately in `~/tmp/gizmo-rtz-promise`, using
 CPU-only float32/float64 selection with float32 tables/constants. It does not
 change or supply timings for the main float64 optimization branch. `/tmp` is
 RAM-backed on this machine; persistent experiments use `~/tmp`.
+
+## Trial 09: integer-exponent overload (float64)
+
+Added `rtz_math::pow(Real,int)` forwarding to `::pow(x,y)` so existing calls
+such as `pow(two_e4_overT,5)` do not first convert the exponent in our wrapper.
+Full dataset remains bit-for-bit identical to the original float64 GPU
+reference. Five warmed solves: 33.200495, 33.209230, 33.189877, 33.187075,
+33.191554 s; median **33.191554 s**, versus **33.199750 s** for trial 08.
+The 0.025% difference is noise, so the overload is **not retained**.
+
+A direct CUDA probe also compares `::pow(x,3.0)` with `::pow(x,3)` on the
+10,000 input temperatures. Both generate calls to the same accurate power
+routine, produce identical bits, and take about 0.053 ms per launch. With
+this NVCC/GNU C++20 setup, an integer literal alone does not select an integer
+power implementation. Explicit products require a separate rounding check;
+algebraic equality alone does not satisfy the exact-output requirement.
+
+Artifacts: `trial09-integer-power.patch`, `pow_integer_probe.cu`,
+`results/integer-power-preflight.json`, `results/integer-power-gpu.json`,
+and `results/pow3-integer-probe.json`. Both solver precision switches remain
+OFF, and loaded computation/density/ion widths are all 8 bytes.
+
+Explicit cube products were also tested on those inputs: about 0.00406 ms
+per launch versus 0.05261 ms for pow, but **3,469/10,000** results differ in
+their bits (maximum relative difference 3.04e-16). This faster algebraic
+rewrite does not meet the exact no-op requirement and is not applied to
+solver expressions. See `results/pow3-integer-products-probe.json`.
+
+## Trial 10: factor repeated math within functions (float64)
+
+Tested explicit reuse of `pow(T3,1.50)` in H2 cooling,
+`exp(-T_pivot/T)` in CO cooling, the lower-node `log10` values in both
+CO-shielding interpolations, and `sqrt(T/T0)` in alpha_RR. Multiplication
+and interpolation order remain unchanged. Default-double CPU regressions:
+18 passed, three long sweeps excluded (1.25 s). Full CUDA dataset passes
+the exact original float64 reference comparison (one cold solve 34.815228 s).
+
+These are outside the dominant atomic ionization calculation. The dataset
+disables molecular evolution, although all_cooling still calls the molecular
+cooling functions with zero molecular densities. Alpha_RR is currently
+unused (radiative rates use cloudy_rad_rec). The selected template's ionization and prep/radiation
+assembly are unchanged; the cooling assembly changes. No overall speedup
+is claimed from a cold correctness run. The source experiment is preserved
+as `trial10-repeated-math.patch`, not retained in the atomic optimization.
+The patch has zero context; apply with `git apply --unidiff-zero`.
+Artifacts: `results/factor-math-preflight.json`,
+`results/factor-math-sass.json`. This records actual tested factoring rather
+than treating fewer source-level function calls as proof of faster code.
+
+## Trial 11: run sequential H/He across cell lanes (float64)
+
+Move cooling update, molecules, and the sequential H/He sweep from the
+single-thread section of each team into a preceding RangePolicy kernel.
+Each lane then works on a different cell. Metal stages and commit retain
+their existing team kernel and scratch cache. Launch order on the same
+execution stream preserves the H/He-before-metals dependency. Within-cell
+operation order and Gauss-Seidel updates are unchanged. The experiment
+adds one launch per subcycle to avoid idle lanes in the serial phase.
+
+Full 10,000-cell preflight and all timed runs match the original float64 GPU
+reference **bit-for-bit** in temperature, densities, ion fractions, and
+photons. Computation/state widths are 8 bytes; both precision switches OFF.
+Five warmed samples: **14.149835, 14.133068, 14.130250, 14.127166,
+14.109511 s**; median **14.130250 s**, warmup 15.779326 s.
+Versus trial 08's 33.199750 s this is **2.34955x faster**, or **57.44% less
+time**. Versus the original 40.818548 s baseline it is **2.88873x faster**.
+The cold preflight is 15.716552 s and is not included in that median.
+Default-double CPU regressions: 18 passed, three long sweeps excluded (1.55 s).
+Float64 CUDA regressions: 18 passed, three long sweeps excluded (4.43 s).
+**Retained**. No rates, solver tolerances, or physics flags changed.
+
+Compiled resources for this template: H/He 92 registers/thread; metal/commit
+88 (previous fused ion kernel 95); cooling 130; prep/radiation 64. All these
+kernels report zero local memory and stack. These are compilation resource
+counts, not measured occupancy. The main improvement comes from assigning
+serial per-cell work across lanes; no occupancy claim is inferred from the
+register decrease.
+
+Artifacts: `results/split-hhe-gpu.json`, `results/split-hhe-preflight.json`,
+`results/split-hhe-resources.json`, and `results/split-hhe-tests.json`. Preserved binary:
+`build/galaxy-gpu/split-hhe-float64.cpython-314-x86_64-linux-gnu.so`.
+
+### Current best: per-kernel profile after trial 11
+
+One cold Nsight Systems solve completes in 16.098811 s and passes the exact
+original float64 reference. This profile is separate from warmed timing.
+
+| Kernel/phase | Launches | GPU seconds | Share of kernel time |
+| --- | ---: | ---: | ---: |
+| Metal ions / commit | 1505 | 9.035267 | 59.2% |
+| Cooling rates | 1505 | 2.268845 | 14.9% |
+| Cooling update / molecules / H-He | 1505 | 1.496725 | 9.8% |
+| Prep / radiation | 1505 | 1.127635 | 7.4% |
+| Spectrum/cross-section setup | 3 | 1.288043 | 8.4% |
+| Pending count | 1505 | 0.013524 | 0.1% |
+| Iteration-limit check | 1504 | 0.011236 | 0.1% |
+| Active-index scan | 2150 | 0.010059 | 0.1% |
+| Interval initialization / finish | 1 each | 0.002233 | <0.1% |
+
+The formerly fused ion phase took 29.621790 s in trial 08. The two replacement
+kernels total **10.531992 s**, a 2.81x reduction in profiled ion-phase time.
+Cooling and prep remain essentially unchanged. Separating the sequential
+cell work addresses the dominant phase without changing its arithmetic.
+The split also changes code generation/register allocation, so the old
+H/He subphase's isolated time cannot be inferred by subtracting kernel totals.
+
+**The remaining dominant kernel is metal ions / commit**, about 64.7% of
+recurring kernel time excluding first-call spectrum setup. It still contains
+single-thread commit work and repeated charge-transfer coefficients across
+neighboring stages. Potential next experiments are caching charge-transfer
+coefficients at the frozen metal temperature, skipping zero-amplitude fits,
+and measuring commit separately before deciding whether another split helps.
+Hardware counters would distinguish DP instruction throughput, latency, and
+lane underuse; this timeline alone does not establish those limits.
+Cooling is now a meaningful second target (16.2% of recurring time). It
+continues to evaluate H2/CO cooling with zero molecular densities, which
+could be tested with exact floor-preserving early exits. None of these
+additional hypotheses is presented as a measured improvement.
+
+Artifacts: `results/split-hhe-best-profile.json` and
+`results/split-hhe-best-profile_cuda_*_sum.csv`. Full trace and SQLite export
+remain local ignored artifacts.
+
+PROMISE restart checkpoint: the separate CPU-only experiment now uses the
+user-requested GPT-6.1 Sol medium agent. It annotates all Real occurrences
+across the solver rather than one selected rate function. Table storage and
+constants are forced float32 in that experiment. The untouched-double CPU
+control passes the full physical
+oracle against the original GPU reference (maximum ion error 2.03e-10,
+temperature 9.00e-13). Precision selection remains separate and in progress;
+no candidate from it is applied to the main float64 benchmark.

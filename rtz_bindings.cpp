@@ -796,8 +796,59 @@ nb::object run_solver(const SolveParameters &parameters,
                     });
             }
 
-            // Keep Dyablo's team-per-cell ion phases and single-thread
-            // cooling/molecule and commit sections.
+            // H/He is sequential within a cell. Give neighboring cells to
+            // neighboring lanes instead of leaving a team idle during it.
+            // The following kernel observes these updates on the same stream.
+            Kokkos::parallel_for(
+                "rtz_python_molecules_hhe",
+                Kokkos::RangePolicy<>(0, active_count),
+                KOKKOS_LAMBDA(const std::size_t active_index) {
+                    const auto& tab_data = *device_tables;
+                    CellState &cell = device_cells(active_cells(active_index));
+                    if (cell.done)
+                        return;
+
+                    if constexpr (!constant_temperature) {
+                        cooling_update<constant_temperature,
+                                       include_H2,
+                                       include_CO,
+                                       rt_advect,
+                                       include_self_shielding>(
+                            cell.cooling_rates.data(), cell.ddt, cell.loc_rho, cell.subcycle);
+                    }
+
+                    molecular_step<constant_temperature,
+                                   include_H2,
+                                   include_CO,
+                                   rt_advect,
+                                   include_self_shielding>(cell.ddt,
+                                                           device_elements,
+                                                           cell.chemistry,
+                                                           tab_data,
+                                                           cell.nCO,
+                                                           cell.dust_ratio,
+                                                           uv_background,
+                                                           cell.photons_new,
+                                                           cell.subcycle);
+
+                    HandHe_ions_step<constant_temperature,
+                                     include_H2,
+                                     include_CO,
+                                     rt_advect,
+                                     include_self_shielding>(cell.ddt,
+                                                             device_elements,
+                                                             cell.chemistry,
+                                                             tab_data,
+                                                             flags,
+                                                             cell.dust_ratio,
+                                                             uv_background,
+                                                             primary_cr_rate,
+                                                             cell.ss_factor,
+                                                             cell.photons_new,
+                                                             cell.subcycle);
+                });
+
+            // Metal stages retain one team per cell and their frozen snapshot.
 #ifdef KOKKOS_ENABLE_CUDA
             TeamPolicy team_policy(static_cast<int>(active_count), 32);
 #else
@@ -806,7 +857,7 @@ nb::object run_solver(const SolveParameters &parameters,
             team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_scratch_bytes));
 
             Kokkos::parallel_for(
-                "rtz_python_molecules_ions_commit",
+                "rtz_python_metals_commit",
                 team_policy,
                 KOKKOS_LAMBDA(const TeamMember &team) {
                     const auto& tab_data = *device_tables;
@@ -819,49 +870,6 @@ nb::object run_solver(const SolveParameters &parameters,
                         team.team_shmem().get_shmem(ion_snapshot_bytes));
                     auto* rate_cache = static_cast<Real*>(
                         team.team_shmem().get_shmem_aligned(rate_cache_bytes, alignof(Real)));
-
-                    Kokkos::single(Kokkos::PerTeam(team), [&]() {
-                        if constexpr (!constant_temperature) {
-                            cooling_update<constant_temperature,
-                                           include_H2,
-                                           include_CO,
-                                           rt_advect,
-                                           include_self_shielding>(
-                                cell.cooling_rates.data(), cell.ddt, cell.loc_rho, cell.subcycle);
-                        }
-
-                        molecular_step<constant_temperature,
-                                       include_H2,
-                                       include_CO,
-                                       rt_advect,
-                                       include_self_shielding>(cell.ddt,
-                                                               device_elements,
-                                                               cell.chemistry,
-                                                               tab_data,
-                                                               cell.nCO,
-                                                               cell.dust_ratio,
-                                                               uv_background,
-                                                               cell.photons_new,
-                                                               cell.subcycle);
-                    });
-                    team.team_barrier();
-
-                    HandHe_ions_step<constant_temperature,
-                                     include_H2,
-                                     include_CO,
-                                     rt_advect,
-                                     include_self_shielding>(team,
-                                                             cell.ddt,
-                                                             device_elements,
-                                                             cell.chemistry,
-                                                             tab_data,
-                                                             flags,
-                                                             cell.dust_ratio,
-                                                             uv_background,
-                                                             primary_cr_rate,
-                                                             cell.ss_factor,
-                                                             cell.photons_new,
-                                                             cell.subcycle);
 
                     metal_ions_step<constant_temperature,
                                     include_H2,

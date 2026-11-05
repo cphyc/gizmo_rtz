@@ -1,0 +1,9 @@
+{
+  "cpu_passed": 18,
+  "cuda_passed": 18,
+  "excluded_long_sweeps": 3,
+  "cpu_seconds": 1.28,
+  "cuda_seconds": 3.99,
+  "exact_full_dataset": true,
+  "precision": "float64 computation and state"
+}

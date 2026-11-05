@@ -707,3 +707,29 @@ essentially unchanged (9.035267 s previously). Thus this trial improves the
 full solve but does not demonstrate faster metal execution. Profile artifacts:
 `results/zero-ct-profile.json`, `results/zero-ct-profile_cuda_gpu_kern_sum.csv`.
 The binary still uses the same active-cell compaction and kernel split.
+
+## Trial 13: cache metal charge-transfer coefficients (float64)
+
+Extend the existing per-stage recombination/collisional cache with two
+charge-transfer arrays at the frozen post-H/He metal temperature. Neighboring
+stages reuse coefficients while retaining the multiplication and accumulation
+order of their creation/destruction terms. Only valid stages are evaluated,
+and the charge-exchange flag gates all new calculations. The uncached template
+default remains available; Python enables this experiment explicitly.
+Scratch grows by 2*n_ion_work*sizeof(Real), so occupancy costs could offset
+less repeated math. Full-dataset exact comparison and timing decide retention.
+
+
+Five warmed candidate samples: 13.217129, 13.219614, 13.177843, 13.161342, 13.174008 s; median **13.177843 s**. Fresh saved-trial-12 baseline samples: 13.843497, 13.856950, 13.850062, 13.825967, 13.850594 s; median **13.850062 s**. This is **1.05101x faster (4.85% less time)**, or **3.09751x** versus the original baseline. Both full-dataset runs pass the original float64 reference bit-for-bit. Loaded computation/density/ion widths remain 8 bytes. CPU regressions: 18 passed (1.28 s); CUDA: 18 passed (3.99 s); three long sweeps excluded in each.
+
+**Retained**. Current-best cold profile completes in 15.136843 s and also
+passes exact float64 comparison. Metal/commit takes **8.401891 s / 58.9%**,
+down from trial 12's 9.062119 s (7.29% less profiled metal time). Cooling
+2.111844 s, H/He 1.345022 s, and prep 1.128690 s remain essentially unchanged.
+Thus this trial directly improves the dominant kernel. Compiled metal
+registers decrease from 88 to 82/thread, with zero local memory and stack;
+this does not itself prove improved occupancy. Shared scratch increases as
+noted above. Saved binary: `build/galaxy-gpu/ct-cache-float64.cpython-314-x86_64-linux-gnu.so`.
+Artifacts: `results/ct-cache-gpu.json`, `results/ct-cache-baseline-recheck.json`,
+`results/ct-cache-tests.json`, `results/ct-cache-profile.json`, and
+`results/ct-cache-profile_cuda_gpu_kern_sum.csv`. Both precision switches OFF.

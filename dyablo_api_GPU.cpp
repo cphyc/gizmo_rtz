@@ -1677,6 +1677,7 @@ template <
     bool rt_advect,
     bool include_self_shielding,
     bool cache_rates = false,
+    bool cache_charge_transfer = false,
     typename TeamMember
 , typename Table>
 KOKKOS_INLINE_FUNCTION
@@ -1697,8 +1698,11 @@ void metal_ions_step(
     CompactIonData::xion_t* const x_snap,
     SubcycleState& state,
     Real* recombination_cache = nullptr,
-    Real* collisional_cache = nullptr)
+    Real* collisional_cache = nullptr,
+    Real* ct_recombination_cache = nullptr,
+    Real* ct_ionization_cache = nullptr)
 {
+    static_assert(!cache_charge_transfer || cache_rates);
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
     if (!state.compute_atoms || !state.x_percent_rule) return;
 
@@ -1726,6 +1730,14 @@ void metal_ions_step(
                 recombination_cache[t] = recombination(state.TK, stage, element, tabData);
             if (flags.include_collisional_ionization && stage < elements[element].n_ions - 1)
                 collisional_cache[t] = collisional_ionization(state.TK, stage, element, tabData);
+            if constexpr (cache_charge_transfer) {
+                if (flags.include_charge_exchange) {
+                    if (stage > 0)
+                        ct_recombination_cache[t] = charge_transfer_recombination(stage, element, state.TK, tabData);
+                    if (stage < elements[element].n_ions - 1)
+                        ct_ionization_cache[t] = charge_transfer_ionization(stage, element, state.TK, tabData);
+                }
+            }
         });
         team.team_barrier();
     }
@@ -1846,18 +1858,18 @@ void metal_ions_step(
 
             if (j > 0) {
                 // Ionization from less excited state
-                cr += charge_transfer_ionization(j-1,i,state.TK, tabData) * xi_snap[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H
+                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H
 
                 // Charge exchange recombination
-                de += charge_transfer_recombination(j,i,state.TK, tabData) * HI_number_density; //! Example:  O+ + H => O + H+
+                de += (cache_charge_transfer ? ct_recombination_cache[t] : charge_transfer_recombination(j,i,state.TK, tabData)) * HI_number_density; //! Example:  O+ + H => O + H+
             }
 
             if (j < (n_ions - 1)) {
                 // Charge exchange ionization
-                de += charge_transfer_ionization(j,i,state.TK, tabData) * HII_number_density; //! Example:  O + H+ => O+ + H
+                de += (cache_charge_transfer ? ct_ionization_cache[t] : charge_transfer_ionization(j,i,state.TK, tabData)) * HII_number_density; //! Example:  O + H+ => O+ + H
 
                 // Charge exchange recombination from the more excited state
-                cr += charge_transfer_recombination(j+1,i,state.TK, tabData) * xi_snap[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
+                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
             }
         }
 

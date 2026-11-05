@@ -1,0 +1,4 @@
+*.npz
+*.nsys-rep
+*.sqlite
+*.ncu-rep

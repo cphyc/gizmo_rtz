@@ -1,0 +1,55 @@
+[
+  {
+    "functor": [
+      "lambda(unsigned long)#4",
+      "lambda(unsigned long)#4"
+    ],
+    "resources": "REG:64 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:440 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(unsigned long, int&)#1",
+      "lambda(unsigned long, int&)#1",
+      "lambda(unsigned long, int&)#1",
+      "lambda(unsigned long, int&)#1"
+    ],
+    "resources": "REG:25 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:480 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(unsigned long, unsigned long&)#1",
+      "lambda(unsigned long, unsigned long&)#1",
+      "lambda(unsigned long, unsigned long&)#1",
+      "lambda(unsigned long, unsigned long&)#1"
+    ],
+    "resources": "REG:25 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:472 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(Kokkos::Impl::CudaTeamMember const&)#1",
+      "lambda(Kokkos::Impl::CudaTeamMember const&)#1"
+    ],
+    "resources": "REG:95 STACK:0 SHARED:112 LOCAL:0 CONSTANT[2]:640 CONSTANT[0]:3576 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(unsigned long)#3",
+      "lambda(unsigned long)#3"
+    ],
+    "resources": "REG:130 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:2936 CONSTANT[0]:3248 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(unsigned long)#2",
+      "lambda(unsigned long)#2"
+    ],
+    "resources": "REG:64 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:152 CONSTANT[0]:3304 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  },
+  {
+    "functor": [
+      "lambda(unsigned long)#1",
+      "lambda(unsigned long)#1"
+    ],
+    "resources": "REG:64 STACK:0 SHARED:0 LOCAL:0 CONSTANT[2]:240 CONSTANT[0]:456 TEXTURE:0 SURFACE:0 SAMPLER:0"
+  }
+]

@@ -1,0 +1,65 @@
+{
+  "seconds": [
+    13.361736056976952
+  ],
+  "median_seconds": 13.361736056976952,
+  "build_info": {
+    "execution_space": "Cuda",
+    "cosmic_ray_bytes": 4,
+    "recombination_bytes": 8,
+    "charge_transfer_bytes": 4,
+    "collisional_ionization_bytes": 8,
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "ncell": 10000,
+  "dt_yr": 100.0,
+  "warmups": 0,
+  "max_iterations": 100000,
+  "extension_sha256": "711ad052ca86ccc9b54991dfa65add86d72fc4512d926ff274d8f5ed1293f15e",
+  "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
+  "git_revision": "8f0d4cc8ffc6558ce75747c2741df1673bedf5c1",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 62, 1530 MHz, 13.85 W",
+  "command": [
+    "benchmarks/galaxy_gpu.py",
+    "--extension",
+    "build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so",
+    "--output",
+    "benchmarks/results/per-file-cosmic",
+    "--reference",
+    "benchmarks/results/baseline.npz",
+    "--accuracy",
+    "physical",
+    "--ion-rtol",
+    "1e-5",
+    "--temperature-rtol",
+    "1e-5",
+    "--require-float64",
+    "--warmups",
+    "0",
+    "--repetitions",
+    "1"
+  ],
+  "max_absolute_difference": {
+    "temperature": 6.717737414874136e-05,
+    "densities": 0.0,
+    "ion_fractions": 6.037823069848791e-07,
+    "photon_densities": 0.0
+  },
+  "accuracy": {
+    "mode": "physical",
+    "ion_fraction_threshold": 0.0001,
+    "ion_relative_tolerance": 1e-05,
+    "temperature_relative_tolerance": 1e-05,
+    "checked_ion_values": 203932,
+    "max_ion_relative_error": 3.70191040577339e-06,
+    "ion_violations": 0,
+    "max_temperature_relative_error": 4.425549704478726e-09,
+    "temperature_violations": 0,
+    "max_small_ion_absolute_error": 3.0542469176334224e-10
+  },
+  "accuracy_passed": true
+}

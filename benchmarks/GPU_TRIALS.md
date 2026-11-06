@@ -820,3 +820,13 @@ relative error 1.86017e-3, 130 violations; temperature maximum 9.46282e-6,
 zero violations. No warmed speedup claim for this rejected precision.
 Recombination remains float64 in the selected configuration (option OFF).
 Artifact: results/per-file-recombination.json. Cooling remains unchanged.
+
+## Per-file precision, step 4: secondary cosmic-ray arithmetic
+
+CosmicRayReal is independently selectable; cosmic_ray_bytes in rtz_bindings
+confirms 4 bytes. Accepted charge transfer stays float32; collisional and
+recombination calculations stay float64. Full-dataset strict preflight passes:
+max ion relative error 3.70191e-6; temperature 4.42555e-9; zero violations at
+1e-5. Cold solve 13.361736 s; no warmed speedup claim for this step.
+Cosmic-ray arithmetic switch ON by default. Host rate-loading buffers retain
+their original types. Artifact: results/per-file-cosmic.json.

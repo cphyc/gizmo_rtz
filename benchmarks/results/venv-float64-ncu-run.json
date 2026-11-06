@@ -1,0 +1,46 @@
+{
+  "seconds": [
+    45.642865052999696
+  ],
+  "median_seconds": 45.642865052999696,
+  "build_info": {
+    "execution_space": "Cuda",
+    "cooling_bytes": 8,
+    "subcycle_state_bytes": 8,
+    "constants_bytes": 8,
+    "cross_section_bytes": 8,
+    "uvb_bytes": 8,
+    "molecular_bytes": 8,
+    "dust_recombination_bytes": 8,
+    "cosmic_ray_bytes": 8,
+    "recombination_bytes": 8,
+    "charge_transfer_bytes": 8,
+    "collisional_ionization_bytes": 8,
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "ncell": 10000,
+  "dt_yr": 100.0,
+  "warmups": 0,
+  "max_iterations": 100000,
+  "extension_sha256": "0a1d3908fca85c6b9f69bd6f8cb70df0385fc6fe8ac5323d6468c1c6faf0434d",
+  "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
+  "git_revision": "8cfb1618e3222614bef115d53bc215fa388c37b8",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 66, 1530 MHz, 13.51 W",
+  "command": [
+    "benchmarks/galaxy_gpu.py",
+    "--installed-package",
+    "--extension",
+    "/home/cphyc/Documents/prog/gizmo_rtz/.venv/lib/python3.13/site-packages/rtz/_rtz.cpython-313-x86_64-linux-gnu.so",
+    "--output",
+    "/home/cphyc/Documents/prog/gizmo_rtz/benchmarks/results/venv-float64-ncu-run",
+    "--require-float64",
+    "--warmups",
+    "0",
+    "--repetitions",
+    "1"
+  ]
+}

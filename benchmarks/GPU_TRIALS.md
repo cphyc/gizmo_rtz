@@ -1001,3 +1001,28 @@ stochastic run and cached matching native endpoint, then terminated at
 failed_high_precision_feasibility without delta debugging or a selected
 assignment. No redundant restart was performed. Detailed audit remains in
 ~/tmp/gizmo-rtz-promise/promise_experiment/completed-cpu-cadna-audit.json.
+
+## Installed venv float64: NSYS and Nsight Compute
+
+Profiled exact installed CUDA extension SHA0a1d3908fca85c6b9f69bd6f8cb70df0385fc6fe8ac5323d6468c1c6faf0434d;
+all reported arithmetic/state widths8 bytes. Warm NSYS solve13.104266s;
+GPU metal/commit8.399926s(64.65%), cooling2.077167s(15.99%),
+separate H/He + cooling-update1.347653s(10.37%), prep1.131948s(8.71%).
+H/He is generated RangePolicy lambda instance4, not the metal TeamMember
+lambda. Logical Kokkos label rtz_python_molecules_hhe is not its CUDA name.
+
+User supplied privileged NCU capture confirms H/He kernel separate: first
+launch3.86ms,92regs,62.5% theoretical/54.98% achieved occupancy. Metal first
+launch20.00ms,82regs,50% theoretical/43.38% achieved; occupancy is SM block-cap
+limited, not register-limited. Cooling128regs limits occupancy50% (47.07%
+achieved). Metal lane participation11.53 active threads/warp; NCU reports
+70.8% long-scoreboard contribution and0.06 eligible warps/scheduler. These
+first-launch snapshots are combined with NSYS totals for prioritization;
+not representative of every later/sparse iteration. NCU45.642865s wall time
+includes replay/instrumentation/cold setup and is not solver performance.
+
+Complete analysis of all17 captured kernels and source/name mappings:
+VENV_KERNEL_PROFILE.md. Raw section text, CSV, parsed metrics and warm-only
+NSYS breakdown are in results/venv-float64-*. Hardware cache/occupancy values
+are measurements; proposed64-thread metal teams/locality work are hypotheses,
+not implemented changes or speedup claims.

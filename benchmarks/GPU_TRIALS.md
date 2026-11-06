@@ -902,3 +902,14 @@ Constants remain float64 (option OFF). No warmed speedup claim.
 Artifact: results/per-file-constants.json. Accepted mixed configuration with
 constants double passes 18 selected CPU regressions (0.93 s), three long
 sweeps excluded; metadata confirms the selected widths.
+
+## Per-file precision, step 10: chemistry storage in types.hpp
+
+Use the existing GIZMO_RTZ_REDUCED_PRECISION switch with accepted arithmetic
+choices; constants restored to double. Existing rtz_bindings metadata reports
+density_bytes=4, ion_fraction_bytes=4, global Real=8, 1704 bytes/cell.
+Full-dataset preflight 12.009647 s **fails** 1e-5: max ion 2.94172e-2
+(4,770 violations), temperature 6.78213e-4 (15 violations). All arrays finite.
+Chemistry storage stays float64; reduced-storage option OFF. Artifact:
+results/per-file-storage.json. This changes storage in types.hpp, not all
+arithmetic or table types. No warmed speedup claim for the rejected choice.

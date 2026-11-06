@@ -2,23 +2,31 @@
 #pragma once
 
 
+#ifdef RTZ_FLOAT32_UVB
+using UVBReal = float;
+constexpr const char* UVB_SCAN_FORMAT = "%f";
+#else
+using UVBReal = double;
+constexpr const char* UVB_SCAN_FORMAT = "%lf";
+#endif
+
 const int N_UVB_POINTS = 60;
 
 // Initialize the UVB arrays
-double HM12_UVB_redshifts[N_UVB_POINTS];
-double HM12_UVB_hydrogen[N_UVB_POINTS][1][2];
-double HM12_UVB_helium[N_UVB_POINTS][2][2];
-double HM12_UVB_carbon[N_UVB_POINTS][6][2];
-double HM12_UVB_nitrogen[N_UVB_POINTS][7][2];
-double HM12_UVB_oxygen[N_UVB_POINTS][8][2];
-double HM12_UVB_neon[N_UVB_POINTS][10][2];
-double HM12_UVB_magnesium[N_UVB_POINTS][12][2];
-double HM12_UVB_silicon[N_UVB_POINTS][14][2];
-double HM12_UVB_sulfur[N_UVB_POINTS][16][2];
-double HM12_UVB_iron[N_UVB_POINTS][26][2];
+UVBReal HM12_UVB_redshifts[N_UVB_POINTS];
+UVBReal HM12_UVB_hydrogen[N_UVB_POINTS][1][2];
+UVBReal HM12_UVB_helium[N_UVB_POINTS][2][2];
+UVBReal HM12_UVB_carbon[N_UVB_POINTS][6][2];
+UVBReal HM12_UVB_nitrogen[N_UVB_POINTS][7][2];
+UVBReal HM12_UVB_oxygen[N_UVB_POINTS][8][2];
+UVBReal HM12_UVB_neon[N_UVB_POINTS][10][2];
+UVBReal HM12_UVB_magnesium[N_UVB_POINTS][12][2];
+UVBReal HM12_UVB_silicon[N_UVB_POINTS][14][2];
+UVBReal HM12_UVB_sulfur[N_UVB_POINTS][16][2];
+UVBReal HM12_UVB_iron[N_UVB_POINTS][26][2];
 
 // Array that holds the UVB for each ion at a given redshift
-double HM12_UVB_z[27][27][2];
+UVBReal HM12_UVB_z[27][27][2];
 
 void load_UVB_data(std::string path_to_data) {
     // Load in all of the UV background tables
@@ -35,7 +43,7 @@ void load_UVB_data(std::string path_to_data) {
 
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
-        fscanf(file, "%lf", &HM12_UVB_redshifts[i]);
+        fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_redshifts[i]);
     }
     // Close the file
     fclose(file);
@@ -49,7 +57,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 1; j++) {
-            fscanf(file, "%lf", &HM12_UVB_hydrogen[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_hydrogen[i][j][0]);
         }
     }
     // Close the file
@@ -63,7 +71,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 1; j++) {
-            fscanf(file, "%lf", &HM12_UVB_hydrogen[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_hydrogen[i][j][1]);
         }
     }
     // Close the file
@@ -78,7 +86,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 2; j++) {
-            fscanf(file, "%lf", &HM12_UVB_helium[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_helium[i][j][0]);
         }
     }
     // Close the file
@@ -92,7 +100,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 2; j++) {
-            fscanf(file, "%lf", &HM12_UVB_helium[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_helium[i][j][1]);
         }
     }
     // Close the file
@@ -107,7 +115,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 6; j++) {
-            fscanf(file, "%lf", &HM12_UVB_carbon[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_carbon[i][j][0]);
         }
     }
     // Close the file
@@ -121,7 +129,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 6; j++) {
-            fscanf(file, "%lf", &HM12_UVB_carbon[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_carbon[i][j][1]);
         }
     }
     // Close the file
@@ -136,7 +144,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 7; j++) {
-            fscanf(file, "%lf", &HM12_UVB_nitrogen[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_nitrogen[i][j][0]);
         }
     }
     // Close the file
@@ -150,7 +158,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 7; j++) {
-            fscanf(file, "%lf", &HM12_UVB_nitrogen[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_nitrogen[i][j][1]);
         }
     }
     // Close the file
@@ -165,7 +173,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 8; j++) {
-            fscanf(file, "%lf", &HM12_UVB_oxygen[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_oxygen[i][j][0]);
         }
     }
     // Close the file
@@ -179,7 +187,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 8; j++) {
-            fscanf(file, "%lf", &HM12_UVB_oxygen[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_oxygen[i][j][1]);
         }
     }
     // Close the file
@@ -194,7 +202,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 10; j++) {
-            fscanf(file, "%lf", &HM12_UVB_neon[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_neon[i][j][0]);
         }
     }
     // Close the file
@@ -208,7 +216,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 10; j++) {
-            fscanf(file, "%lf", &HM12_UVB_neon[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_neon[i][j][1]);
         }
     }
     // Close the file
@@ -223,7 +231,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 12; j++) {
-            fscanf(file, "%lf", &HM12_UVB_magnesium[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_magnesium[i][j][0]);
         }
     }
     // Close the file
@@ -237,7 +245,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 12; j++) {
-            fscanf(file, "%lf", &HM12_UVB_magnesium[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_magnesium[i][j][1]);
         }
     }
     // Close the file
@@ -252,7 +260,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 14; j++) {
-            fscanf(file, "%lf", &HM12_UVB_silicon[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_silicon[i][j][0]);
         }
     }
     // Close the file
@@ -266,7 +274,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 14; j++) {
-            fscanf(file, "%lf", &HM12_UVB_silicon[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_silicon[i][j][1]);
         }
     }
     // Close the file
@@ -281,7 +289,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 16; j++) {
-            fscanf(file, "%lf", &HM12_UVB_sulfur[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_sulfur[i][j][0]);
         }
     }
     // Close the file
@@ -295,7 +303,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 16; j++) {
-            fscanf(file, "%lf", &HM12_UVB_sulfur[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_sulfur[i][j][1]);
         }
     }
     // Close the file
@@ -310,7 +318,7 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 26; j++) {
-            fscanf(file, "%lf", &HM12_UVB_iron[i][j][0]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_iron[i][j][0]);
         }
     }
     // Close the file
@@ -324,21 +332,21 @@ void load_UVB_data(std::string path_to_data) {
     // Reading data from the file into the 2D array
     for (int i = 0; i < N_UVB_POINTS; i++) {
         for (int j = 0; j < 26; j++) {
-            fscanf(file, "%lf", &HM12_UVB_iron[i][j][1]);
+            fscanf(file, UVB_SCAN_FORMAT, &HM12_UVB_iron[i][j][1]);
         }
     }
     // Close the file
     fclose(file);
 }
 
-void update_UVB(double redshift){
+void update_UVB(UVBReal redshift){
     /*
     interpolates the UVB for all ions
     to a particular redshift
     */
 
-    double scale_low;
-    double scale_high;
+    UVBReal scale_low;
+    UVBReal scale_high;
 
     // No interpolation beyond redshift bounds --> set the UVB to zero
     if (redshift < HM12_UVB_redshifts[0] || redshift >= HM12_UVB_redshifts[N_UVB_POINTS-1]){
@@ -356,7 +364,7 @@ void update_UVB(double redshift){
 
                 // Perform linear interpolation
                 scale_high = (redshift - HM12_UVB_redshifts[i]) / (HM12_UVB_redshifts[i+1] - HM12_UVB_redshifts[i]);
-                scale_low  = 1.0 - scale_high;
+                scale_low  = UVBReal(1.0) - scale_high;
 
                 for (int j = 0; j < 27; j++) {
                     if (j<1){

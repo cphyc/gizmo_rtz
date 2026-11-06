@@ -864,3 +864,13 @@ Reproduce probe inputs with benchmarks/molecular_precision_dataset.py
 results/molecular-precision-reference.json, results/molecular-precision-before.json,
 results/per-file-molecules.json, results/per-file-molecules-probe.json.
 The probe covers these sampled cells and 100 years, not all molecular regimes.
+
+## Per-file precision, step 7: UV background
+
+UVBReal=float converts photoionization_UVB.hpp's loading buffers and redshift
+interpolation together. fscanf uses a matching %f/%lf format selected with
+the type. uvb_bytes=4 is reported in rtz_bindings; this original file used
+explicit double, so OFF retains double even under the global Real option.
+Full-dataset 1e-5 gate passes: max ion 3.70568e-6, temperature 4.41734e-9,
+zero violations (cold 12.243331 s). UVB option ON by default. No warmed
+speedup claimed for this setup-only change. Artifact: results/per-file-uvb.json.

@@ -1209,6 +1209,7 @@ NB_MODULE(_rtz, module) {
     module.def("build_info", []() {
         nb::dict info;
         info["execution_space"] = Kokkos::DefaultExecutionSpace::name();
+        info["cooling_bytes"] = sizeof(prism_gpu::CoolingReal);
         info["subcycle_state_bytes"] = sizeof(prism_gpu::SubcycleReal);
         info["constants_bytes"] = sizeof(prism_gpu::ConstantsReal);
         info["cross_section_bytes"] = sizeof(prism_gpu::CrossSectionReal);

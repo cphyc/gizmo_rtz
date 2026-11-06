@@ -926,3 +926,21 @@ Subcycle fields stay double; option OFF. Cell size is 2760 bytes in the trial
 versus 2824 with double fields. Float64-state benchmark guard now checks the
 reported subcycle width too. Artifact: results/per-file-subcycle.json.
 No warmed speedup claimed. Cooling is the final precision trial next.
+
+## Per-file precision, step 12: cooling (last)
+
+CoolingReal=float covers cooling/heating locals and math, with explicit
+constant/table/state-input casts. Public photon arrays retain global Real.
+The float32 Planck prefactor follows the existing overflow-safe branch;
+CT reaction energies use the selected cooling scalar too. cooling_bytes=4
+is reported by rtz_bindings; solver and chemistry storage are restored double.
+
+Full-dataset preflight completes (11.373323 s), all values finite, but
+**fails** 1e-5: max ion 2.11276e-4 (38 violations); temperature 2.00766e-6
+passes with zero violations. Cooling stays double (option OFF). Artifact:
+results/per-file-cooling.json. No warmed speedup claimed for rejected cooling.
+This was the final physics-file precision trial, as requested. The selected
+float32 files are charge transfer, cosmic rays, dust recombination, molecular
+helpers, and UV background. Other tested precisions remain double. Global
+solver arithmetic remains double; solver-state screen was not a full conversion
+of all locals in dyablo_api_GPU.cpp.

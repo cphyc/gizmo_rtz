@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--accuracy", choices=("exact", "strict", "physical"), default="strict")
     parser.add_argument("--ion-rtol", type=float, default=.05)
+    parser.add_argument("--temperature-rtol", type=float, default=.01)
     parser.add_argument("--max-iterations", type=int, default=100000)
     parser.add_argument("--require-float64", action="store_true")
     args = parser.parse_args()
@@ -94,12 +95,12 @@ def main():
                 temperature_relative = np.abs(arrays["temperature"] / reference["temperature"] - 1)
                 result["accuracy"] = dict(
                     mode="physical", ion_fraction_threshold=1e-4,
-                    ion_relative_tolerance=args.ion_rtol, temperature_relative_tolerance=.01,
+                    ion_relative_tolerance=args.ion_rtol, temperature_relative_tolerance=args.temperature_rtol,
                     checked_ion_values=int(mask.sum()),
                     max_ion_relative_error=float(relative.max(initial=0)),
                     ion_violations=int(np.count_nonzero(relative >= args.ion_rtol)),
                     max_temperature_relative_error=float(temperature_relative.max()),
-                    temperature_violations=int(np.count_nonzero(temperature_relative >= .01)),
+                    temperature_violations=int(np.count_nonzero(temperature_relative >= args.temperature_rtol)),
                     max_small_ion_absolute_error=float(np.abs(arrays["ion_fractions"][~mask] - ion_ref[~mask]).max(initial=0)))
                 accuracy_passed = not (result["accuracy"]["ion_violations"] or
                                        result["accuracy"]["temperature_violations"])

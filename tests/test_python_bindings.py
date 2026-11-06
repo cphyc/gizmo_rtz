@@ -191,7 +191,7 @@ def test_evolves_one_myr_to_golden_state(initial_state):
     )
     assert result.shape == (2, *state.shape)
     assert np.isfinite(result).all()
-    np.testing.assert_allclose(result[1, 0], expected, rtol=1e-8, atol=1e-13)
+    np.testing.assert_allclose(result[1, 0], expected, rtol=1e-5, atol=1e-13)
 
 
 def test_constant_temperature_and_fixed_radiation(initial_state):

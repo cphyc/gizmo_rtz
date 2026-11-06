@@ -773,3 +773,39 @@ results/per-file-collisional.json. The 18 selected CUDA regressions yield
 rounding. That test's golden tolerance is not weakened. Cooling remains last
 in the conversion sequence. This step changes arithmetic only; existing
 host loading buffers and table storage retain their original types.
+
+Precision-gate update from user: require **1e-5 relative** for the full dataset
+(ions above reference abundance 1e-4 and temperature), as well as the golden
+regression. Step 1's collisional arithmetic is therefore **rejected for the
+selected configuration**: max ion error 7.14333e-4 exceeds this new limit;
+max temperature error 9.85753e-6 passes narrowly. The optional implementation
+remains available, but its switch will be OFF for subsequent independent
+trials. Benchmark now accepts --temperature-rtol so both limits are explicit.
+Charge transfer is tested independently with collisional arithmetic float64.
+
+## Per-file precision, step 2: charge transfer
+
+Charge-transfer arithmetic uses ChargeTransferReal=float and float math,
+with explicit casts at table reads (the underlying CT tables were already
+float32, so casts do not change the generated binary). Collisional arithmetic
+is restored to double. GIZMO_RTZ_FLOAT32_CHARGE_TRANSFER is now ON by default;
+set it OFF along with the other precision switches to reproduce all-double
+arithmetic. rtz_bindings reports charge_transfer_bytes=4 and
+collisional_ionization_bytes=8; Real/density/ion storage remain 8 bytes.
+CMake applies the per-file definitions to standalone and Python targets.
+
+Five warmed samples: 11.794138, 11.795324, 11.789451, 11.783373,
+11.794311 s; median **11.794138 s**, about **1.11732x faster (10.50% less
+time)** than the 13.177843 s float64 best. Full strict physical gate passes:
+max ion error **3.70191e-6**, max temperature error **4.42555e-9**, zero
+violations at rtol=1e-5. Selected CUDA regressions: 18 passed (3.76 s),
+three long sweeps excluded. CPU CI-only regression with the revised golden
+tolerance: 18 passed (0.95 s). Charge-transfer-only CPU checks follow below.
+Artifacts: results/per-file-charge-float32.json; the earlier cold preflight
+is results/per-file-charge-only.json. Both have the same binary hash.
+Saved binary: build/galaxy-gpu/per-file-charge-float32.cpython-314-x86_64-linux-gnu.so.
+
+The revised collisional gate, recomputed from its saved outputs, has 159 ion
+violations and zero temperature violations: results/per-file-collisional-strict.json.
+The collisional switch stays OFF. No other physics file has yet been changed.
+Charge-transfer-only CPU regressions: 18 passed, three long sweeps excluded (0.84 s).

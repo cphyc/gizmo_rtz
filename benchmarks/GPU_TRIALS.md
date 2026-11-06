@@ -809,3 +809,14 @@ The revised collisional gate, recomputed from its saved outputs, has 159 ion
 violations and zero temperature violations: results/per-file-collisional-strict.json.
 The collisional switch stays OFF. No other physics file has yet been changed.
 Charge-transfer-only CPU regressions: 18 passed, three long sweeps excluded (0.84 s).
+
+## Per-file precision, step 3: recombination
+
+Add RecombinationReal with explicit float math and coefficient conversion,
+plus GIZMO_RTZ_FLOAT32_RECOMBINATION and recombination_bytes in rtz_bindings.
+Trial keeps accepted charge transfer float32 and all other files float64.
+Full-dataset cold preflight: 9.724720 s, **fails** at rtol=1e-5: maximum ion
+relative error 1.86017e-3, 130 violations; temperature maximum 9.46282e-6,
+zero violations. No warmed speedup claim for this rejected precision.
+Recombination remains float64 in the selected configuration (option OFF).
+Artifact: results/per-file-recombination.json. Cooling remains unchanged.

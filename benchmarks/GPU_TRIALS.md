@@ -913,3 +913,16 @@ Full-dataset preflight 12.009647 s **fails** 1e-5: max ion 2.94172e-2
 Chemistry storage stays float64; reduced-storage option OFF. Artifact:
 results/per-file-storage.json. This changes storage in types.hpp, not all
 arithmetic or table types. No warmed speedup claim for the rejected choice.
+
+## Per-file precision, step 11: solver transient-state fields
+
+Add independently selectable SubcycleReal for the fields of SubcycleState
+in dyablo_api_GPU.cpp, reflected as subcycle_state_bytes in rtz_bindings.
+Restore chemistry storage to double; all accepted file choices stay enabled.
+This is a transient-storage screen, not a claim to convert every solver local.
+Cold preflight completes (12.153487 s), all values finite, but **fails** 1e-5:
+max ion 1.59393e-3 (164 violations), temperature 1.20323e-5 (one violation).
+Subcycle fields stay double; option OFF. Cell size is 2760 bytes in the trial
+versus 2824 with double fields. Float64-state benchmark guard now checks the
+reported subcycle width too. Artifact: results/per-file-subcycle.json.
+No warmed speedup claimed. Cooling is the final precision trial next.

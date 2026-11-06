@@ -41,7 +41,8 @@ def main():
     spec.loader.exec_module(module)
     build_info = module.build_info() if hasattr(module, "build_info") else None
     if (args.require_float64 or args.require_float64_state) and (build_info is None or any(
-            build_info.get(key) != 8 for key in ("real_bytes", "density_bytes", "ion_fraction_bytes"))):
+            build_info.get(key) != 8 for key in ("real_bytes", "density_bytes", "ion_fraction_bytes"))
+            or build_info.get("subcycle_state_bytes", 8) != 8):
         raise RuntimeError(f"float64 global Real/state required; loaded build reports {build_info}")
     if args.require_float64 and any(
             value != 8 for key, value in build_info.items()

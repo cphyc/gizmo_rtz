@@ -471,35 +471,41 @@ Real get_mu(Real ne,
 // iteration; each step reads and updates only the fields it owns, and gates
 // itself on its compute_* flag, so the steps can be called unconditionally
 // (and later launched independently, e.g. from CoolingUpdate_PRISM_GPU.cpp).
+#ifdef RTZ_FLOAT32_SUBCYCLE_STATE
+using SubcycleReal = float;
+#else
+using SubcycleReal = Real;
+#endif
+
 struct SubcycleState {
     // Thermal state
-    Real TK;                  // Temperature [K]
-    Real mu;                  // Mean molecular weight
-    Real Tmu_old;             // T/mu
-    Real Tmu_new;             // T/mu
+    SubcycleReal TK;                  // Temperature [K]
+    SubcycleReal mu;                  // Mean molecular weight
+    SubcycleReal Tmu_old;             // T/mu
+    SubcycleReal Tmu_new;             // T/mu
 
     // Electrons
-    Real ne;                  // Electron number density
-    Real ne_initial;          // Electron number density at iteration start (for convergence)
-    Real xe;                  // Electron fraction (n_electron/nH)
+    SubcycleReal ne;                  // Electron number density
+    SubcycleReal ne_initial;          // Electron number density at iteration start (for convergence)
+    SubcycleReal xe;                  // Electron fraction (n_electron/nH)
 
     // Cosmic rays
-    Real total_cosmic_ray_ionization_rate;
-    Real H2_cosmic_ray_ionization_rate;
-    Real cosmic_ray_scale_factor; // only needed for secondary UVs
+    SubcycleReal total_cosmic_ray_ionization_rate;
+    SubcycleReal H2_cosmic_ray_ionization_rate;
+    SubcycleReal cosmic_ray_scale_factor; // only needed for secondary UVs
 
     // Radiation --> set by radiation_step
-    Real G0_local;
-    Real f_shd_H2;            // H2 self-shielding factor
-    Real f_shd_CO;            // CO self-shielding factor
+    SubcycleReal G0_local;
+    SubcycleReal f_shd_H2;            // H2 self-shielding factor
+    SubcycleReal f_shd_CO;            // CO self-shielding factor
 
     // Molecules --> set by molecular_step, consumed by ions_step
-    Real alpha_H2_loc;        // H2 formation rate [cm3 s-1]
-    Real de_H2;               // H2 destruction rate [s-1]
-    Real nCO_new;
+    SubcycleReal alpha_H2_loc;        // H2 formation rate [cm3 s-1]
+    SubcycleReal de_H2;               // H2 destruction rate [s-1]
+    SubcycleReal nCO_new;
 
     // Convergence
-    Real max_residual_all;
+    SubcycleReal max_residual_all;
     int success_counter;
     bool x_percent_rule;
     bool compute_temperature;

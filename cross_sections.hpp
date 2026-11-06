@@ -140,15 +140,31 @@ void initialize_cross_sections(const std::string& path_to_data, auto &tabData) {
 // -------------------------------------------------------------------------
 // Math Functions (Callable on Device)
 // -------------------------------------------------------------------------
-KOKKOS_INLINE_FUNCTION
-double F_of_y(double y, double yw, double ya, double P, double Q) {
-    return (pow(y - 1.0, 2.0) + pow(yw, 2.0)) * pow(y, -Q) * pow(1.0 + sqrt(y / ya), -P);
+#ifdef RTZ_FLOAT32_CROSS_SECTIONS
+using CrossSectionReal = float;
+#else
+using CrossSectionReal = double;
+#endif
+namespace cross_section_math {
+KOKKOS_INLINE_FUNCTION CrossSectionReal sqrt(CrossSectionReal x) { return Kokkos::sqrt(x); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal exp(CrossSectionReal x) { return Kokkos::exp(x); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal log(CrossSectionReal x) { return Kokkos::log(x); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal log10(CrossSectionReal x) { return Kokkos::log10(x); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal fabs(CrossSectionReal x) { return Kokkos::fabs(x); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal pow(CrossSectionReal x, CrossSectionReal y) { return Kokkos::pow(x,y); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal fmin(CrossSectionReal x, CrossSectionReal y) { return Kokkos::fmin(x,y); }
+KOKKOS_INLINE_FUNCTION CrossSectionReal fmax(CrossSectionReal x, CrossSectionReal y) { return Kokkos::fmax(x,y); }
 }
 
 KOKKOS_INLINE_FUNCTION
-double verner_cs_nl(double E, double sig_0, double E_0, double yw, double ya, double P, double l) {
-    double y = E / E_0;
-    double Q = 5.5 + l - (0.5 * P);
+CrossSectionReal F_of_y(CrossSectionReal y, CrossSectionReal yw, CrossSectionReal ya, CrossSectionReal P, CrossSectionReal Q) {
+    return (cross_section_math::pow(y - CrossSectionReal(1.0), CrossSectionReal(2.0)) + cross_section_math::pow(yw, CrossSectionReal(2.0))) * cross_section_math::pow(y, -Q) * cross_section_math::pow(CrossSectionReal(1.0) + cross_section_math::sqrt(y / ya), -P);
+}
+
+KOKKOS_INLINE_FUNCTION
+CrossSectionReal verner_cs_nl(CrossSectionReal E, CrossSectionReal sig_0, CrossSectionReal E_0, CrossSectionReal yw, CrossSectionReal ya, CrossSectionReal P, CrossSectionReal l) {
+    CrossSectionReal y = E / E_0;
+    CrossSectionReal Q = CrossSectionReal(5.5) + l - (CrossSectionReal(0.5) * P);
     return sig_0 * F_of_y(y, yw, ya, P, Q);
 }
 
@@ -156,62 +172,72 @@ double verner_cs_nl(double E, double sig_0, double E_0, double yw, double ya, do
 // Main Cross Section Calculator (Callable on Device)
 // -------------------------------------------------------------------------
 KOKKOS_INLINE_FUNCTION
-double getCrosssection_rtz(double lambda, int element, int ion, const auto& tabData) {
-    double cross_sec = 0.0;
+CrossSectionReal getCrosssection_rtz(CrossSectionReal lambda, int element, int ion, const auto& tabData) {
+    CrossSectionReal cross_sec = CrossSectionReal(0.0);
 
     // Convert lambda into ev
-    double E = H_PLANCK * C_CGS / (lambda * 1.0e-8) / EV_2_ERG;
+    CrossSectionReal E = CrossSectionReal(H_PLANCK) * CrossSectionReal(C_CGS) / (lambda * CrossSectionReal(1.0e-8)) / CrossSectionReal(EV_2_ERG);
 
     // Deal with molecular hydrogen separately
     if (element == 1 && ion == 3) {
-        if (E > 11.20 && E < 13.59) return 2.47e-18;
-        if (E >= 13.59 && E <= 15.21) return 0.0;
-        if (E > 15.21 && E <= 15.45) return 0.09e-18;
-        if (E > 15.70 && E <= 15.95) return 1.15e-18;
-        if (E > 15.95 && E <= 16.20) return 3.00e-18;
-        if (E > 16.20 && E <= 16.40) return 5.00e-18;
-        if (E > 16.40 && E <= 16.65) return 6.75e-18;
-        if (E > 16.65 && E <= 16.85) return 8.00e-18;
-        if (E > 16.85 && E <= 17.00) return 9.00e-18;
-        if (E > 17.00 && E <= 17.20) return 9.50e-18;
-        if (E > 17.20 && E <= 17.65) return 9.80e-18;
-        if (E > 17.65 && E <= 18.10) return 10.10e-18;
-        if (E > 18.10) return (10.10e-18) * pow(18.10 / E, 3.0);
-        return 0.0;
+        if (E > CrossSectionReal(11.20) && E < CrossSectionReal(13.59)) return CrossSectionReal(2.47e-18);
+        if (E >= CrossSectionReal(13.59) && E <= CrossSectionReal(15.21)) return CrossSectionReal(0.0);
+        if (E > CrossSectionReal(15.21) && E <= CrossSectionReal(15.45)) return CrossSectionReal(0.09e-18);
+        if (E > CrossSectionReal(15.70) && E <= CrossSectionReal(15.95)) return CrossSectionReal(1.15e-18);
+        if (E > CrossSectionReal(15.95) && E <= CrossSectionReal(16.20)) return CrossSectionReal(3.00e-18);
+        if (E > CrossSectionReal(16.20) && E <= CrossSectionReal(16.40)) return CrossSectionReal(5.00e-18);
+        if (E > CrossSectionReal(16.40) && E <= CrossSectionReal(16.65)) return CrossSectionReal(6.75e-18);
+        if (E > CrossSectionReal(16.65) && E <= CrossSectionReal(16.85)) return CrossSectionReal(8.00e-18);
+        if (E > CrossSectionReal(16.85) && E <= CrossSectionReal(17.00)) return CrossSectionReal(9.00e-18);
+        if (E > CrossSectionReal(17.00) && E <= CrossSectionReal(17.20)) return CrossSectionReal(9.50e-18);
+        if (E > CrossSectionReal(17.20) && E <= CrossSectionReal(17.65)) return CrossSectionReal(9.80e-18);
+        if (E > CrossSectionReal(17.65) && E <= CrossSectionReal(18.10)) return CrossSectionReal(10.10e-18);
+        if (E > CrossSectionReal(18.10)) return (CrossSectionReal(10.10e-18)) * cross_section_math::pow(CrossSectionReal(18.10) / E, CrossSectionReal(3.0));
+        return CrossSectionReal(0.0);
     }
 
     // Access global Kokkos views directly
-    auto &[E_th, E_max, E_0_tot, sig_0_tot, y_a, P_tot, y_w, y_0, y_1] = tabData.photoionization_cross_sections_tot(element, ion);
+    const auto& fit = tabData.photoionization_cross_sections_tot(element, ion);
+    const CrossSectionReal E_th = fit.E_th;
+    const CrossSectionReal E_max = fit.E_max;
+    const CrossSectionReal E_0_tot = fit.E_0;
+    const CrossSectionReal sig_0_tot = fit.sig_0;
+    const CrossSectionReal y_a = fit.y_a;
+    const CrossSectionReal P_tot = fit.P;
+    const CrossSectionReal y_w = fit.y_w;
+    const CrossSectionReal y_0 = fit.y_0;
+    const CrossSectionReal y_1 = fit.y_1;
+
 
     if (E < E_th) {
-        return 0.0;
+        return CrossSectionReal(0.0);
     }
 
-    double x = (E / E_0_tot) - y_0;
-    double y = sqrt((x * x) + (y_1 * y_1));
+    CrossSectionReal x = (E / E_0_tot) - y_0;
+    CrossSectionReal y = cross_section_math::sqrt((x * x) + (y_1 * y_1));
 
-    double F = pow(x - 1.0, 2.0) + pow(y_w, 2.0);
-    F *= pow(y, (0.5 * P_tot) - 5.5);
-    F *= pow(1.0 + sqrt(y / y_a), -P_tot);
+    CrossSectionReal F = cross_section_math::pow(x - CrossSectionReal(1.0), CrossSectionReal(2.0)) + cross_section_math::pow(y_w, CrossSectionReal(2.0));
+    F *= cross_section_math::pow(y, (CrossSectionReal(0.5) * P_tot) - CrossSectionReal(5.5));
+    F *= cross_section_math::pow(CrossSectionReal(1.0) + cross_section_math::sqrt(y / y_a), -P_tot);
 
-    cross_sec = sig_0_tot * F * 1.0e-18;
+    cross_sec = sig_0_tot * F * CrossSectionReal(1.0e-18);
 
     // Above E_max, use the n,l resolved cross sections
     if (E > E_max) {
-        cross_sec = 0.0;
+        cross_sec = CrossSectionReal(0.0);
         for (int i = 1; i < 8; ++i) {
-            double l = tabData.photoionization_cross_sections_nl(element, ion, i).l;
-            if (l >= 0.0) {
-                double E_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).E_0;
-                double sig_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).sig_0;
-                double ya_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_a;
-                double P_nl = tabData.photoionization_cross_sections_nl(element, ion, i).P;
-                double yw_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_w;
+            CrossSectionReal l = tabData.photoionization_cross_sections_nl(element, ion, i).l;
+            if (l >= CrossSectionReal(0.0)) {
+                CrossSectionReal E_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).E_0;
+                CrossSectionReal sig_0_nl = tabData.photoionization_cross_sections_nl(element, ion, i).sig_0;
+                CrossSectionReal ya_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_a;
+                CrossSectionReal P_nl = tabData.photoionization_cross_sections_nl(element, ion, i).P;
+                CrossSectionReal yw_nl = tabData.photoionization_cross_sections_nl(element, ion, i).y_w;
                 
                 cross_sec += verner_cs_nl(E, sig_0_nl, E_0_nl, yw_nl, ya_nl, P_nl, l);
             }
         }
-        cross_sec *= 1.0e-18; // Convert to cm^-2
+        cross_sec *= CrossSectionReal(1.0e-18); // Convert to cm^-2
     }
 
     return cross_sec;
@@ -222,7 +248,7 @@ double getCrosssection_rtz(double lambda, int element, int ion, const auto& tabD
 // -------------------------------------------------------------------------
 // Effective per-H dust absorption cross section [cm^2/H] for the BARE-GR-S model
 KOKKOS_INLINE_FUNCTION
-double getCrosssection_dust(double lambda, const auto& tabData) {
+CrossSectionReal getCrosssection_dust(CrossSectionReal lambda, const auto& tabData) {
     const auto& wav      = tabData.dust_wav;
     const auto& cabs     = tabData.dust_cabs;
     const auto& log_wav  = tabData.dust_log_wav;
@@ -243,26 +269,30 @@ double getCrosssection_dust(double lambda, const auto& tabData) {
         else high = mid;
     }
 
-    const double t = (log10(lambda) - log_wav(low)) / (log_wav(low + 1) - log_wav(low));
-    const double log_val = log_cabs(low) + t * (log_cabs(low + 1) - log_cabs(low));
-    return pow(10.0, log_val);
+    const CrossSectionReal t = (cross_section_math::log10(lambda) - log_wav(low)) / (log_wav(low + 1) - log_wav(low));
+    const CrossSectionReal log_val = log_cabs(low) + t * (log_cabs(low + 1) - log_cabs(low));
+    return cross_section_math::pow(CrossSectionReal(10.0), log_val);
 }
 
 KOKKOS_INLINE_FUNCTION
-double blackbody_nu(double T, double nu){
+CrossSectionReal blackbody_nu(CrossSectionReal T, CrossSectionReal nu){
     // Blackbody function B_lam
     // T --> temeprature [K]
     // ni --> frequency [Hz] 
 
     // now compute B_lam
-    double B_nu = 2.0 * H_PLANCK * pow(nu,3.0) / pow(C_CGS,2.0);
-    B_nu = B_nu * (1.0 / (exp(H_PLANCK * nu / (KB * T)) - 1.0));
+#ifdef RTZ_FLOAT32_CROSS_SECTIONS
+    CrossSectionReal B_nu = ((CrossSectionReal(2) * CrossSectionReal(H_PLANCK) / CrossSectionReal(C_CGS)) * nu) * ((nu / CrossSectionReal(C_CGS)) * nu);
+#else
+    CrossSectionReal B_nu = CrossSectionReal(2.0) * CrossSectionReal(H_PLANCK) * cross_section_math::pow(nu,CrossSectionReal(3.0)) / cross_section_math::pow(CrossSectionReal(C_CGS),CrossSectionReal(2.0));
+#endif
+    B_nu = B_nu * (CrossSectionReal(1.0) / (cross_section_math::exp(CrossSectionReal(H_PLANCK) * nu / (CrossSectionReal(KB) * T)) - CrossSectionReal(1.0)));
 
     return B_nu;
 }
 
 KOKKOS_INLINE_FUNCTION
-double spectrum_nu(double T, double nu,
+CrossSectionReal spectrum_nu(CrossSectionReal T, CrossSectionReal nu,
                    const auto& sed_frequency,
                    const auto& sed_fnu) {
     const int n = static_cast<int>(sed_frequency.extent(0));
@@ -273,122 +303,122 @@ double spectrum_nu(double T, double nu,
     int high = n - 1;
     while (high - low > 1) {
         const int mid = (low + high) / 2;
-        if (sed_frequency(mid) <= nu)
+        if (CrossSectionReal(sed_frequency(mid)) <= nu)
             low = mid;
         else
             high = mid;
     }
 
-    const double t = (nu - sed_frequency(low)) /
-                     (sed_frequency(high) - sed_frequency(low));
-    return sed_fnu(low) + t * (sed_fnu(high) - sed_fnu(low));
+    const CrossSectionReal t = (nu - CrossSectionReal(sed_frequency(low))) /
+                     (CrossSectionReal(sed_frequency(high)) - CrossSectionReal(sed_frequency(low)));
+    return CrossSectionReal(sed_fnu(low)) + t * (CrossSectionReal(sed_fnu(high)) - CrossSectionReal(sed_fnu(low)));
 }
 
 KOKKOS_INLINE_FUNCTION
-double simpson_weight(int i) {
+CrossSectionReal simpson_weight(int i) {
     if (i == 0 || i == n_int_points) {
-        return 1.0;
+        return CrossSectionReal(1.0);
     }
 
-    return (i % 2 == 0) ? 2.0 : 4.0;
+    return (i % 2 == 0) ? CrossSectionReal(2.0) : CrossSectionReal(4.0);
 }
 
 KOKKOS_INLINE_FUNCTION
-void integration_bounds(double E0, double E1, double &a, double &b, double &h) {
-    a = (E0 * EV_2_ERG) / H_PLANCK;
-    b = (E1 * EV_2_ERG) / H_PLANCK;
+void integration_bounds(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal &a, CrossSectionReal &b, CrossSectionReal &h) {
+    a = (E0 * CrossSectionReal(EV_2_ERG)) / CrossSectionReal(H_PLANCK);
+    b = (E1 * CrossSectionReal(EV_2_ERG)) / CrossSectionReal(H_PLANCK);
     h = (b - a) / n_int_points;
 }
 
 KOKKOS_INLINE_FUNCTION
-void compute_spectrum_bin_integrals(double E0, double E1, double T,
+void compute_spectrum_bin_integrals(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T,
                                     const auto& sed_frequency,
                                     const auto& sed_fnu,
-                                    double &number_denominator,
-                                    double &energy_denominator,
-                                    double &group_energy) {
-    double a, b, h;
+                                    CrossSectionReal &number_denominator,
+                                    CrossSectionReal &energy_denominator,
+                                    CrossSectionReal &group_energy) {
+    CrossSectionReal a, b, h;
     integration_bounds(E0, E1, a, b, h);
 
-    double weighted_number_sum = 0.0;
-    double weighted_energy_sum = 0.0;
+    CrossSectionReal weighted_number_sum = CrossSectionReal(0.0);
+    CrossSectionReal weighted_energy_sum = CrossSectionReal(0.0);
 
     for (int i = 0; i <= n_int_points; ++i) {
-        const double nu = a + (i * h);
-        const double weight = simpson_weight(i);
-        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
+        const CrossSectionReal nu = a + (i * h);
+        const CrossSectionReal weight = simpson_weight(i);
+        const CrossSectionReal B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
 
-        weighted_number_sum += weight * B_nu / (H_PLANCK * nu);
+        weighted_number_sum += weight * B_nu / (CrossSectionReal(H_PLANCK) * nu);
         weighted_energy_sum += weight * B_nu;
     }
 
-    number_denominator = weighted_number_sum * h / 3.0;
-    energy_denominator = weighted_energy_sum * h / 3.0;
-    group_energy = (energy_denominator / number_denominator) / EV_2_ERG;
+    number_denominator = weighted_number_sum * h / CrossSectionReal(3.0);
+    energy_denominator = weighted_energy_sum * h / CrossSectionReal(3.0);
+    group_energy = (energy_denominator / number_denominator) / CrossSectionReal(EV_2_ERG);
 }
 
 KOKKOS_INLINE_FUNCTION
-void compute_weighted_cross_sections(double E0, double E1, double T,
+void compute_weighted_cross_sections(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T,
                                      int element, int ion,
                                      const auto& tabData,
                                      const auto& sed_frequency,
                                      const auto& sed_fnu,
-                                     double number_denominator,
-                                     double energy_denominator,
-                                     double &sigma_number,
-                                     double &sigma_energy) {
-    double a, b, h;
+                                     CrossSectionReal number_denominator,
+                                     CrossSectionReal energy_denominator,
+                                     CrossSectionReal &sigma_number,
+                                     CrossSectionReal &sigma_energy) {
+    CrossSectionReal a, b, h;
     integration_bounds(E0, E1, a, b, h);
 
-    double weighted_number_sum = 0.0;
-    double weighted_energy_sum = 0.0;
+    CrossSectionReal weighted_number_sum = CrossSectionReal(0.0);
+    CrossSectionReal weighted_energy_sum = CrossSectionReal(0.0);
 
     for (int i = 0; i <= n_int_points; ++i) {
-        const double nu = a + (i * h);
-        const double weight = simpson_weight(i);
-        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
-        const double sigma = getCrosssection_rtz((C_CGS / nu) * 1e8, element, ion, tabData);
+        const CrossSectionReal nu = a + (i * h);
+        const CrossSectionReal weight = simpson_weight(i);
+        const CrossSectionReal B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
+        const CrossSectionReal sigma = getCrosssection_rtz((CrossSectionReal(C_CGS) / nu) * CrossSectionReal(1e8), element, ion, tabData);
 
-        weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
+        weighted_number_sum += weight * sigma * B_nu / (CrossSectionReal(H_PLANCK) * nu);
         weighted_energy_sum += weight * sigma * B_nu;
     }
 
-    sigma_number = (weighted_number_sum * h / 3.0) / number_denominator;
-    sigma_energy = (weighted_energy_sum * h / 3.0) / energy_denominator;
+    sigma_number = (weighted_number_sum * h / CrossSectionReal(3.0)) / number_denominator;
+    sigma_energy = (weighted_energy_sum * h / CrossSectionReal(3.0)) / energy_denominator;
 }
 
 KOKKOS_INLINE_FUNCTION
-double compute_weighted_dust_cross_section(double E0, double E1, double T,
+CrossSectionReal compute_weighted_dust_cross_section(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T,
                                            const auto& tabData,
                                            const auto& sed_frequency,
                                            const auto& sed_fnu,
-                                           double number_denominator) {
-    double a, b, h;
+                                           CrossSectionReal number_denominator) {
+    CrossSectionReal a, b, h;
     integration_bounds(E0, E1, a, b, h);
 
-    double weighted_number_sum = 0.0;
+    CrossSectionReal weighted_number_sum = CrossSectionReal(0.0);
     for (int i = 0; i <= n_int_points; ++i) {
-        const double nu = a + (i * h);
-        const double weight = simpson_weight(i);
-        const double B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
-        const double sigma = getCrosssection_dust((C_CGS / nu) * 1e8, tabData);
+        const CrossSectionReal nu = a + (i * h);
+        const CrossSectionReal weight = simpson_weight(i);
+        const CrossSectionReal B_nu = spectrum_nu(T, nu, sed_frequency, sed_fnu);
+        const CrossSectionReal sigma = getCrosssection_dust((CrossSectionReal(C_CGS) / nu) * CrossSectionReal(1e8), tabData);
 
-        weighted_number_sum += weight * sigma * B_nu / (H_PLANCK * nu);
+        weighted_number_sum += weight * sigma * B_nu / (CrossSectionReal(H_PLANCK) * nu);
     }
 
-    return (weighted_number_sum * h / 3.0) / number_denominator;
+    return (weighted_number_sum * h / CrossSectionReal(3.0)) / number_denominator;
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_N(double E0, double E1, double T, int element, int ion, const auto& tabData,
+CrossSectionReal sigma_N(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T, int element, int ion, const auto& tabData,
                const auto& sed_frequency,
                const auto& sed_fnu){
     // Photon number-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double number_denominator, energy_denominator, group_energy;
-    double sigma_number, sigma_energy;
+    CrossSectionReal number_denominator, energy_denominator, group_energy;
+    CrossSectionReal sigma_number, sigma_energy;
 
     compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
                                    number_denominator, energy_denominator, group_energy);
@@ -401,15 +431,15 @@ double sigma_N(double E0, double E1, double T, int element, int ion, const auto&
 }
 
 KOKKOS_INLINE_FUNCTION
-double sigma_E(double E0, double E1, double T, int element, int ion, const auto& tabData,
+CrossSectionReal sigma_E(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T, int element, int ion, const auto& tabData,
                const auto& sed_frequency,
                const auto& sed_fnu){
     // Photon energy-weighted cross section
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double number_denominator, energy_denominator, group_energy;
-    double sigma_number, sigma_energy;
+    CrossSectionReal number_denominator, energy_denominator, group_energy;
+    CrossSectionReal sigma_number, sigma_energy;
 
     compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
                                    number_denominator, energy_denominator, group_energy);
@@ -422,14 +452,14 @@ double sigma_E(double E0, double E1, double T, int element, int ion, const auto&
 }
 
 KOKKOS_INLINE_FUNCTION
-double e_bar(double E0, double E1, double T,
+CrossSectionReal e_bar(CrossSectionReal E0, CrossSectionReal E1, CrossSectionReal T,
              const auto& sed_frequency,
              const auto& sed_fnu){
     // Mean energy in the bin
     // E0 lower energy of the bin in eV
     // E1 upper energy of the bin in eV
 
-    double number_denominator, energy_denominator, group_energy;
+    CrossSectionReal number_denominator, energy_denominator, group_energy;
     compute_spectrum_bin_integrals(E0, E1, T, sed_frequency, sed_fnu,
                                    number_denominator, energy_denominator, group_energy);
 
@@ -438,7 +468,7 @@ double e_bar(double E0, double E1, double T,
 
 // TODO(code): Declate the 4D array and then copy to the tabdata
 template<class Data>
-void update_cross_sections(double T, Data &tabData,
+void update_cross_sections(CrossSectionReal T, Data &tabData,
                            const std::vector<double>& sed_frequency,
                            const std::vector<double>& sed_fnu) {
     using Space = typename Data::memory_space;
@@ -450,12 +480,12 @@ void update_cross_sections(double T, Data &tabData,
     const auto &group_E_min = tabData.group_E_min;
     const auto &group_E_max = tabData.group_E_max;
     const auto &c_frac = tabData.c_frac;
-    Kokkos::View<double[N_GROUPS][3], Space> group_bin_data {"group_bin_data"};
-    Kokkos::View<double*, Space> sed_frequency_d;
-    Kokkos::View<double*, Space> sed_fnu_d;
+    Kokkos::View<CrossSectionReal[N_GROUPS][3], Space> group_bin_data {"group_bin_data"};
+    Kokkos::View<CrossSectionReal*, Space> sed_frequency_d;
+    Kokkos::View<CrossSectionReal*, Space> sed_fnu_d;
     if (!sed_frequency.empty()) {
-        sed_frequency_d = Kokkos::View<double*, Space>("sed_frequency", sed_frequency.size());
-        sed_fnu_d = Kokkos::View<double*, Space>("sed_fnu", sed_fnu.size());
+        sed_frequency_d = Kokkos::View<CrossSectionReal*, Space>("sed_frequency", sed_frequency.size());
+        sed_fnu_d = Kokkos::View<CrossSectionReal*, Space>("sed_fnu", sed_fnu.size());
         auto sed_frequency_h = Kokkos::create_mirror_view(sed_frequency_d);
         auto sed_fnu_h = Kokkos::create_mirror_view(sed_fnu_d);
         for (std::size_t i = 0; i < sed_frequency.size(); ++i) {
@@ -466,12 +496,12 @@ void update_cross_sections(double T, Data &tabData,
         Kokkos::deep_copy(sed_fnu_d, sed_fnu_h);
     }
 
-    Kokkos::deep_copy(cs_ph, 0.0);
+    Kokkos::deep_copy(cs_ph, CrossSectionReal(0.0));
 
     Kokkos::parallel_for("prepare_cross_section_groups", Kokkos::RangePolicy<Execution>(0, N_GROUPS), KOKKOS_LAMBDA(const int i) {
-        double number_denominator = 0.0;
-        double energy_denominator = 0.0;
-        double group_energy = 0.0;
+        CrossSectionReal number_denominator = CrossSectionReal(0.0);
+        CrossSectionReal energy_denominator = CrossSectionReal(0.0);
+        CrossSectionReal group_energy = CrossSectionReal(0.0);
 
         compute_spectrum_bin_integrals(group_E_min(i), group_E_max(i), T,
                                        sed_frequency_d, sed_fnu_d,
@@ -485,27 +515,27 @@ void update_cross_sections(double T, Data &tabData,
         tabData.group_energy(i) = group_energy;
 
         // Blackbody-averaged dust absorption rate constant [cm^3/s]
-        double sigma_dust = 0.0;
-        if (number_denominator > 0.0) {
+        CrossSectionReal sigma_dust = CrossSectionReal(0.0);
+        if (number_denominator > CrossSectionReal(0.0)) {
             sigma_dust = compute_weighted_dust_cross_section(
                 group_E_min(i), group_E_max(i), T, tabData, sed_frequency_d, sed_fnu_d,
                 number_denominator);
         }
-        tabData.cs_dust(i) = sigma_dust * C_CGS * c_frac();
+        tabData.cs_dust(i) = sigma_dust * CrossSectionReal(C_CGS) * CrossSectionReal(c_frac());
     });
 
     auto grp_pair_policy = Kokkos::MDRangePolicy<Execution, Kokkos::Rank<2>>({0, 0}, {N_GROUPS, n_photo_pairs});
     Kokkos::parallel_for("update_cross_sections", grp_pair_policy, KOKKOS_LAMBDA(const int i, const int pair_index) {
-        const double number_denominator = group_bin_data(i, 0);
-        const double energy_denominator = group_bin_data(i, 1);
-        const double group_energy = group_bin_data(i, 2);
-        const int j = (int)((1.0 + sqrt(1.0 + 8.0 * pair_index)) / 2.0);
+        const CrossSectionReal number_denominator = group_bin_data(i, 0);
+        const CrossSectionReal energy_denominator = group_bin_data(i, 1);
+        const CrossSectionReal group_energy = group_bin_data(i, 2);
+        const int j = (int)((CrossSectionReal(1.0) + cross_section_math::sqrt(CrossSectionReal(1.0) + CrossSectionReal(8.0) * pair_index)) / CrossSectionReal(2.0));
         const int k = pair_index - j * (j - 1) / 2;
         const int erow = elem_row(j);
         if (erow < 0) return;
 
-        double sigma_number = 0.0;
-        double sigma_energy = 0.0;
+        CrossSectionReal sigma_number = CrossSectionReal(0.0);
+        CrossSectionReal sigma_energy = CrossSectionReal(0.0);
 
         compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, j, k+1, tabData,
                                         sed_frequency_d, sed_fnu_d,
@@ -513,23 +543,25 @@ void update_cross_sections(double T, Data &tabData,
                                         sigma_number, sigma_energy);
 
         // Update number-weighted cross section
-        cs_ph(erow, k, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
+        const CrossSectionReal number_rate = sigma_number * CrossSectionReal(C_CGS) * CrossSectionReal(c_frac());
+        const CrossSectionReal energy_rate = sigma_energy * CrossSectionReal(C_CGS) * CrossSectionReal(c_frac());
+        cs_ph(erow, k, i, 0) = number_rate; // cm^3 / s
 
         // Update energy-weighted cross section
-        cs_ph(erow, k, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
+        cs_ph(erow, k, i, 1) = energy_rate; // cm^3 / s
 
         // Update photoheating rates
-        cs_ph(erow, k, i, 2) = (cs_ph(erow, k, i, 1) * group_energy) - (cs_ph(erow, k, i, 0) * verner_cross_sections(j, k + 1).E_th);
-        cs_ph(erow, k, i, 2) = fmax(cs_ph(erow, k, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+        cs_ph(erow, k, i, 2) = (energy_rate * group_energy) - (number_rate * CrossSectionReal(verner_cross_sections(j, k + 1).E_th));
+        cs_ph(erow, k, i, 2) = cross_section_math::fmax(CrossSectionReal(cs_ph(erow, k, i, 2)),CrossSectionReal(0.0)) * CrossSectionReal(EV_2_ERG); // Don't let photoheating go below 0.0
     });
 
     Kokkos::parallel_for("update_cross_sections_h2", Kokkos::RangePolicy<Execution>(0, N_GROUPS), KOKKOS_LAMBDA(const int i) {
-        const double number_denominator = group_bin_data(i, 0);
-        const double energy_denominator = group_bin_data(i, 1);
-        const double group_energy = group_bin_data(i, 2);
+        const CrossSectionReal number_denominator = group_bin_data(i, 0);
+        const CrossSectionReal energy_denominator = group_bin_data(i, 1);
+        const CrossSectionReal group_energy = group_bin_data(i, 2);
 
-        double sigma_number = 0.0;
-        double sigma_energy = 0.0;
+        CrossSectionReal sigma_number = CrossSectionReal(0.0);
+        CrossSectionReal sigma_energy = CrossSectionReal(0.0);
 
         compute_weighted_cross_sections(group_E_min(i), group_E_max(i), T, 1, 2+1, tabData,
                                         sed_frequency_d, sed_fnu_d,
@@ -537,9 +569,11 @@ void update_cross_sections(double T, Data &tabData,
                                         sigma_number, sigma_energy);
 
         constexpr int erow_H = elem_row(1);
-        cs_ph(erow_H, 2, i, 0) = sigma_number * C_CGS * c_frac(); // cm^3 / s
-        cs_ph(erow_H, 2, i, 1) = sigma_energy * C_CGS * c_frac(); // cm^3 / s
-        cs_ph(erow_H, 2, i, 2) = cs_ph(erow_H, 2, i, 1) * group_energy;
-        cs_ph(erow_H, 2, i, 2) = fmax(cs_ph(erow_H, 2, i, 2),0.0) * EV_2_ERG; // Don't let photoheating go below 0.0
+        const CrossSectionReal number_rate = sigma_number * CrossSectionReal(C_CGS) * CrossSectionReal(c_frac());
+        const CrossSectionReal energy_rate = sigma_energy * CrossSectionReal(C_CGS) * CrossSectionReal(c_frac());
+        cs_ph(erow_H, 2, i, 0) = number_rate; // cm^3 / s
+        cs_ph(erow_H, 2, i, 1) = energy_rate; // cm^3 / s
+        cs_ph(erow_H, 2, i, 2) = energy_rate * group_energy;
+        cs_ph(erow_H, 2, i, 2) = cross_section_math::fmax(CrossSectionReal(cs_ph(erow_H, 2, i, 2)),CrossSectionReal(0.0)) * CrossSectionReal(EV_2_ERG); // Don't let photoheating go below 0.0
     });
 }

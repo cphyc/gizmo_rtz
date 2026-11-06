@@ -874,3 +874,19 @@ explicit double, so OFF retains double even under the global Real option.
 Full-dataset 1e-5 gate passes: max ion 3.70568e-6, temperature 4.41734e-9,
 zero violations (cold 12.243331 s). UVB option ON by default. No warmed
 speedup claimed for this setup-only change. Artifact: results/per-file-uvb.json.
+
+## Per-file precision, step 8: spectrum/cross-section integration
+
+CrossSectionReal=float applies to device spectrum/quadrature/cross-section
+arithmetic and its temporary views; public SED input vectors remain double.
+Physical constants, fit coefficients, and SED values are converted before
+arithmetic. Float32 blackbody uses a reordered prefactor avoiding nu^3
+overflow; double keeps the original expression. cross_section_bytes=4 is
+reported in rtz_bindings. Original table-loading buffers remain double.
+
+Full 10,000-cell preflight completes in 11.255806 s but **fails** 1e-5:
+max ion error 2.01018e-3 (31,381 violations), T 7.81806e-5 (2,007 violations).
+All outputs are finite. Cross-section option stays OFF; no warmed speedup
+claim. Artifact: results/per-file-cross.json. The benchmark now rejects
+non-finite values explicitly; all nine earlier per-file snapshots were
+verified finite as well.

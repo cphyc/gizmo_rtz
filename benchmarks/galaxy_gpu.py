@@ -86,6 +86,9 @@ def main():
     accuracy_passed = True
     if args.reference:
         with np.load(args.reference, allow_pickle=False) as reference:
+            result["nonfinite_values"] = {key: int(np.count_nonzero(~np.isfinite(value)))
+                                          for key, value in arrays.items()}
+            reference_finite = all(np.isfinite(reference[key]).all() for key in arrays)
             result["max_absolute_difference"] = {
                 key: float(np.max(np.abs(arrays[key] - reference[key]))) for key in arrays}
             if args.accuracy == "exact":
@@ -114,6 +117,7 @@ def main():
             else:
                 accuracy_passed = all(np.allclose(arrays[key], reference[key], rtol=1e-10, atol=1e-12)
                                       for key in arrays)
+            accuracy_passed &= reference_finite and not any(result["nonfinite_values"].values())
             result["accuracy_passed"] = bool(accuracy_passed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output.with_suffix(".npz"), **arrays)

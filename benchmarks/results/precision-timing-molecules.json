@@ -1,0 +1,77 @@
+{
+  "seconds": [
+    10.76066232600715,
+    10.751198087004013,
+    10.757610823988216,
+    10.740356449998217,
+    10.743952013988746
+  ],
+  "median_seconds": 10.751198087004013,
+  "build_info": {
+    "execution_space": "Cuda",
+    "molecular_bytes": 4,
+    "dust_recombination_bytes": 4,
+    "cosmic_ray_bytes": 4,
+    "recombination_bytes": 8,
+    "charge_transfer_bytes": 4,
+    "collisional_ionization_bytes": 8,
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "ncell": 10000,
+  "dt_yr": 100.0,
+  "warmups": 1,
+  "max_iterations": 100000,
+  "extension_sha256": "b7ef9270c72e2c0c13d92e203bd4dfd33e2e714a37d3116084992d18043744f2",
+  "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
+  "git_revision": "1da2923e7caa7d6c04f367b85f48b7cf354e4a36",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 75, 1530 MHz, 14.63 W",
+  "command": [
+    "/home/cphyc/Documents/prog/gizmo_rtz/benchmarks/galaxy_gpu.py",
+    "--extension",
+    "/home/cphyc/Documents/prog/gizmo_rtz/build/galaxy-gpu/per-file-molecules-float32.cpython-314-x86_64-linux-gnu.so",
+    "--output",
+    "/home/cphyc/Documents/prog/gizmo_rtz/benchmarks/results/precision-timing-molecules",
+    "--reference",
+    "/home/cphyc/Documents/prog/gizmo_rtz/benchmarks/results/baseline.npz",
+    "--accuracy",
+    "physical",
+    "--ion-rtol",
+    "1e-5",
+    "--temperature-rtol",
+    "1e-5",
+    "--warmups",
+    "1",
+    "--repetitions",
+    "5",
+    "--require-float64-state"
+  ],
+  "nonfinite_values": {
+    "temperature": 0,
+    "densities": 0,
+    "ion_fractions": 0,
+    "photon_densities": 0
+  },
+  "max_absolute_difference": {
+    "temperature": 6.717737414874136e-05,
+    "densities": 0.0,
+    "ion_fractions": 6.186886915005019e-07,
+    "photon_densities": 0.0
+  },
+  "accuracy": {
+    "mode": "physical",
+    "ion_fraction_threshold": 0.0001,
+    "ion_relative_tolerance": 1e-05,
+    "temperature_relative_tolerance": 1e-05,
+    "checked_ion_values": 203932,
+    "max_ion_relative_error": 3.701711826398224e-06,
+    "ion_violations": 0,
+    "max_temperature_relative_error": 4.424844712858089e-09,
+    "temperature_violations": 0,
+    "max_small_ion_absolute_error": 3.054838828254959e-10
+  },
+  "accuracy_passed": true
+}

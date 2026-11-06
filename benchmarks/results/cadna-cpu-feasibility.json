@@ -1,0 +1,75 @@
+{
+  "completed_selection": false,
+  "outcome": "failed_high_precision_feasibility",
+  "fixed_constraints": "float32 tables and constants",
+  "gate": "finite; relative1e-5 for temperature and ions with reference abundance>1e-4",
+  "note": "CADNA time is stochastic diagnostic overhead, not a selected native precision speed comparison. Search has no passing starting endpoint under the fixed constraints.",
+  "native": {
+    "source": "/home/cphyc/tmp/gizmo-rtz-promise/benchmarks/results/promise-strict-native-double-cpu.json",
+    "seconds": [
+      39.585388359992066
+    ],
+    "build_info": {
+      "execution_space": "OpenMP",
+      "real_bytes": 8,
+      "density_bytes": 8,
+      "ion_fraction_bytes": 8,
+      "cell_bytes": 2824,
+      "table_descriptor_bytes": 5864
+    },
+    "accuracy": {
+      "mode": "physical",
+      "ion_fraction_threshold": 0.0001,
+      "ion_relative_tolerance": 1e-05,
+      "temperature_relative_tolerance": 1e-05,
+      "checked_ion_values": 203932,
+      "max_ion_relative_error": 0.0018599927441810271,
+      "ion_violations": 30487,
+      "max_temperature_relative_error": 7.310100992641289e-05,
+      "temperature_violations": 1836,
+      "max_small_ion_absolute_error": 9.03703719207352e-08
+    },
+    "accuracy_passed": false
+  },
+  "cadna": {
+    "source": "/home/cphyc/tmp/gizmo-rtz-promise/benchmarks/results/promise-strict-cadna-double-cpu.json",
+    "seconds": [
+      834.4217139440007
+    ],
+    "build_info": {
+      "execution_space": "OpenMP",
+      "real_bytes": 32,
+      "density_bytes": 32,
+      "ion_fraction_bytes": 32,
+      "cell_bytes": 11224,
+      "table_descriptor_bytes": 5864
+    },
+    "accuracy": {
+      "mode": "physical",
+      "ion_fraction_threshold": 0.0001,
+      "ion_relative_tolerance": 1e-05,
+      "temperature_relative_tolerance": 1e-05,
+      "checked_ion_values": 203932,
+      "max_ion_relative_error": 0.0018478952453800934,
+      "ion_violations": 30506,
+      "max_temperature_relative_error": 7.257301937635408e-05,
+      "temperature_violations": 1811,
+      "max_small_ion_absolute_error": 8.970659624741998e-08
+    },
+    "accuracy_passed": false,
+    "cadna_audit": {
+      "temperature": {
+        "count": 10000,
+        "nonfinite": 0,
+        "min_digits": 7,
+        "max_relative_spread": 2.529900054227807e-08
+      },
+      "significant_ions": {
+        "count": 203932,
+        "nonfinite": 0,
+        "min_digits": 6,
+        "max_relative_spread": 2.2190380588125163e-07
+      }
+    }
+  }
+}

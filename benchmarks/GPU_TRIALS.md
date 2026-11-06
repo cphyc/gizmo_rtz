@@ -944,3 +944,60 @@ float32 files are charge transfer, cosmic rays, dust recombination, molecular
 helpers, and UV background. Other tested precisions remain double. Global
 solver arithmetic remains double; solver-state screen was not a full conversion
 of all locals in dyablo_api_GPU.cpp.
+
+
+## Accepted-trial PDF and final precision timing cohort
+
+PDF: `figures/accepted_gpu_trials.pdf`; regenerate with
+`/usr/bin/python3.14 benchmarks/plot_gpu_trials.py`. Plot data:
+`results/accepted_gpu_trials_plot_data.json`. Page1 shows each accepted
+trial against its recorded parent/control, separately marking superseded
+precision paths and retained layout regressions. Page2 shows observed runtime
+and original-baseline speedup. Sample-extrema whiskers are not confidence
+intervals; near-unity changes are not claimed as gains. Precision branches
+are not multiplied together.
+
+Fresh cohort uses the same10000 cells,100yr, one warmup and five timed solves,
+with full finite1e-5 checks at every profile:
+
+| Profile | Median seconds |
+| --- | ---: |
+| float64 | 13.165659 |
+| charge | 11.796289 |
+| cosmic | 11.782902 |
+| dust | 10.728138 |
+| molecules | 10.751198 |
+| uvb | 10.724710 |
+| selected | 10.725865 |
+
+Final selected max ion relative error 3.7056845e-06;
+max temperature 4.41734e-09; zero
+violations. Selected median 10.725865s vs saved optimized
+float64 control 13.165659s: 1.22747x.
+This control is the saved earlier accepted binary, not a same-source rebuild.
+Relative to the original40.818548s baseline: 3.80562x.
+All source and extension hashes are in the timing JSON files. Re-time saved
+local binaries with benchmarks/time_precision_profiles.py. Cold checks are
+not used as warmed speedups. Final selected CUDA regressions:18 passed,
+three long sweeps excluded (4.23 s).
+
+## Genuine CPU CADNA retry
+
+Actual1966-marker full stochastic CPU run completed,10000cells/100yr:
+834.421714s, finite outputs, but **fails1e-5**: max ion1.847895e-3
+(30506 violations), T7.257302e-5 (1811 violations). Matching native CPU
+endpoint also fails (39.585388s, max ion1.859993e-3, T7.310101e-5).
+The fixed tables/constants remain float32. Upstream orchestrator stops at
+failed_high_precision_feasibility; **no completed mixed precision selection**
+is available to claim a passing or faster native candidate. CADNA diagnostic
+time must not be treated as selected production-code speed. Full audit and
+provenance: results/cadna-cpu-feasibility.json; isolated report:
+~/tmp/gizmo-rtz-promise/promise_experiment/README.md. A user constraint decision
+about widening critical table/constants is pending; no relaxation is assumed.
+
+Completed CADNA audit verified all570000 output triplets finite and the
+stochastic extension SHA256. Upstream orchestrator consumed the completed
+stochastic run and cached matching native endpoint, then terminated at
+failed_high_precision_feasibility without delta debugging or a selected
+assignment. No redundant restart was performed. Detailed audit remains in
+~/tmp/gizmo-rtz-promise/promise_experiment/completed-cpu-cadna-audit.json.

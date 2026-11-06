@@ -1,0 +1,270 @@
+{
+  "rows": [
+    {
+      "tag": "T02",
+      "label": "Active-cell compaction",
+      "candidate": "trial02",
+      "parent": "baseline",
+      "category": "float64",
+      "before_seconds": 40.818547827002476,
+      "after_seconds": 36.682301847991766,
+      "speedup": 1.1127586266573715,
+      "range_low": 1.1125165064039861,
+      "range_high": 1.1131254384198856
+    },
+    {
+      "tag": "T03",
+      "label": "32-thread teams",
+      "candidate": "trial03",
+      "parent": "trial02",
+      "category": "float64",
+      "before_seconds": 36.682301847991766,
+      "after_seconds": 36.4674715299916,
+      "speedup": 1.0058910121537625,
+      "range_low": 1.0055151059027314,
+      "range_high": 1.0062073787493933
+    },
+    {
+      "tag": "Layout*",
+      "label": "Compact tables + descriptor, F64",
+      "candidate": "float64-compact-baseline",
+      "parent": "trial03",
+      "category": "float64",
+      "before_seconds": 36.4674715299916,
+      "after_seconds": 37.6927568760002,
+      "speedup": 0.967492816987638,
+      "range_low": 0.9668989846323537,
+      "range_high": 0.9681775539125502
+    },
+    {
+      "tag": "T08",
+      "label": "Cache metal recombination / ionization",
+      "candidate": "rate-cache-gpu",
+      "parent": "float64-compact-baseline",
+      "category": "float64",
+      "before_seconds": 37.6927568760002,
+      "after_seconds": 33.199749911000254,
+      "speedup": 1.1353325545235886,
+      "range_low": 1.1344649662022062,
+      "range_high": 1.1362403829748606
+    },
+    {
+      "tag": "T11",
+      "label": "Separate H/He kernel",
+      "candidate": "split-hhe-gpu",
+      "parent": "rate-cache-gpu",
+      "category": "float64",
+      "before_seconds": 33.199749911000254,
+      "after_seconds": 14.130250367015833,
+      "speedup": 2.349551426809694,
+      "range_low": 2.345373810180623,
+      "range_high": 2.3536710734482793
+    },
+    {
+      "tag": "T12",
+      "label": "Skip zero charge-transfer fits",
+      "candidate": "zero-ct-gpu",
+      "parent": "zero-ct-baseline-recheck",
+      "category": "float64",
+      "before_seconds": 14.118372913013445,
+      "after_seconds": 13.830928242998198,
+      "speedup": 1.0207827461009904,
+      "range_low": 1.0157259648302936,
+      "range_high": 1.0217131208156522
+    },
+    {
+      "tag": "T13",
+      "label": "Cache metal charge-transfer rates",
+      "candidate": "ct-cache-gpu",
+      "parent": "ct-cache-baseline-recheck",
+      "category": "float64",
+      "before_seconds": 13.85006153199356,
+      "after_seconds": 13.177842776000034,
+      "speedup": 1.0510112897399106,
+      "range_low": 1.0458676782749312,
+      "range_high": 1.052852334808347
+    },
+    {
+      "tag": "P02",
+      "label": "Charge transfer \u2192 float32",
+      "candidate": "precision-timing-charge",
+      "parent": "precision-timing-float64",
+      "category": "mixed",
+      "before_seconds": 13.165659460006282,
+      "after_seconds": 11.796288562007248,
+      "speedup": 1.1160848932103458,
+      "range_low": 1.1139810835092845,
+      "range_high": 1.118583404277442
+    },
+    {
+      "tag": "P04",
+      "label": "Cosmic rays \u2192 float32",
+      "candidate": "precision-timing-cosmic",
+      "parent": "precision-timing-charge",
+      "category": "mixed",
+      "before_seconds": 11.796288562007248,
+      "after_seconds": 11.782901680009672,
+      "speedup": 1.001136127785933,
+      "range_low": 0.9985933783738588,
+      "range_high": 1.0028693842168672
+    },
+    {
+      "tag": "P05",
+      "label": "Dust recombination \u2192 float32",
+      "candidate": "precision-timing-dust",
+      "parent": "precision-timing-cosmic",
+      "category": "mixed",
+      "before_seconds": 11.782901680009672,
+      "after_seconds": 10.728138028003741,
+      "speedup": 1.0983174945412404,
+      "range_low": 1.094676043549953,
+      "range_high": 1.1006549883285877
+    },
+    {
+      "tag": "P06",
+      "label": "Molecular helpers \u2192 float32",
+      "candidate": "precision-timing-molecules",
+      "parent": "precision-timing-dust",
+      "category": "mixed",
+      "before_seconds": 10.728138028003741,
+      "after_seconds": 10.751198087004013,
+      "speedup": 0.9978551172796131,
+      "range_low": 0.996533350467975,
+      "range_high": 1.0011653329248336
+    },
+    {
+      "tag": "P07",
+      "label": "UV background \u2192 float32",
+      "candidate": "precision-timing-uvb",
+      "parent": "precision-timing-molecules",
+      "category": "mixed",
+      "before_seconds": 10.751198087004013,
+      "after_seconds": 10.724710258014966,
+      "speedup": 1.0024697943675682,
+      "range_low": 1.0013504538819846,
+      "range_high": 1.0051243811026067
+    },
+    {
+      "tag": "T04\u2020",
+      "label": "Float32 chemistry storage",
+      "candidate": "trial04",
+      "parent": "trial03",
+      "category": "historical",
+      "before_seconds": 36.4674715299916,
+      "after_seconds": 36.36979599499318,
+      "speedup": 1.0026856222952656,
+      "range_low": 1.0023755835952761,
+      "range_high": 1.003316563578228
+    },
+    {
+      "tag": "Layout*\u2020",
+      "label": "Compact table mapping, F32",
+      "candidate": "compact-policy-final-gpu",
+      "parent": "trial05",
+      "category": "historical",
+      "before_seconds": 4.301220269000623,
+      "after_seconds": 6.611023852994549,
+      "speedup": 0.6506133338260957,
+      "range_low": 0.6487482290064531,
+      "range_high": 0.6539571371870835
+    },
+    {
+      "tag": "T06\u2020",
+      "label": "Device-resident descriptor, F32",
+      "candidate": "descriptor-gpu",
+      "parent": "compact-policy-final-gpu",
+      "category": "historical",
+      "before_seconds": 6.611023852994549,
+      "after_seconds": 6.523015054001007,
+      "speedup": 1.0134920429072996,
+      "range_low": 1.0057894804141714,
+      "range_high": 1.016570023771108
+    },
+    {
+      "tag": "P01\u2020",
+      "label": "Collisional ionization \u2192 float32",
+      "candidate": "per-file-collisional",
+      "parent": "ct-cache-gpu",
+      "category": "historical",
+      "before_seconds": 13.177842776000034,
+      "after_seconds": 12.942590473016025,
+      "speedup": 1.018176601003832,
+      "range_low": 1.0074286295901158,
+      "range_high": 1.023183179997123
+    }
+  ],
+  "progression": [
+    {
+      "tag": "Base",
+      "source": "baseline",
+      "median_seconds": 40.818547827002476
+    },
+    {
+      "tag": "T02",
+      "source": "trial02",
+      "median_seconds": 36.682301847991766
+    },
+    {
+      "tag": "T03",
+      "source": "trial03",
+      "median_seconds": 36.4674715299916
+    },
+    {
+      "tag": "Layout64",
+      "source": "float64-compact-baseline",
+      "median_seconds": 37.6927568760002
+    },
+    {
+      "tag": "T08",
+      "source": "rate-cache-gpu",
+      "median_seconds": 33.199749911000254
+    },
+    {
+      "tag": "T11",
+      "source": "split-hhe-gpu",
+      "median_seconds": 14.130250367015833
+    },
+    {
+      "tag": "T12",
+      "source": "zero-ct-gpu",
+      "median_seconds": 13.830928242998198
+    },
+    {
+      "tag": "T13",
+      "source": "ct-cache-gpu",
+      "median_seconds": 13.177842776000034
+    },
+    {
+      "tag": "P02",
+      "source": "precision-timing-charge",
+      "median_seconds": 11.796288562007248
+    },
+    {
+      "tag": "P04",
+      "source": "precision-timing-cosmic",
+      "median_seconds": 11.782901680009672
+    },
+    {
+      "tag": "P05",
+      "source": "precision-timing-dust",
+      "median_seconds": 10.728138028003741
+    },
+    {
+      "tag": "P06",
+      "source": "precision-timing-molecules",
+      "median_seconds": 10.751198087004013
+    },
+    {
+      "tag": "P07",
+      "source": "precision-timing-uvb",
+      "median_seconds": 10.724710258014966
+    },
+    {
+      "tag": "Selected",
+      "source": "precision-timing-selected",
+      "median_seconds": 10.725864975975128
+    }
+  ],
+  "final_saved_float64_control_speedup": 1.2274683197575256,
+  "note": "Historical precision branches are not eligible under the current 1e-5 gate."
+}

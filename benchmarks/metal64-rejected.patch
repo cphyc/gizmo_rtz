@@ -1,0 +1,7 @@
+diff --git a/rtz_bindings.cpp b/rtz_bindings.cpp
+index 2c349b2..420a1fb 100644
+--- a/rtz_bindings.cpp
++++ b/rtz_bindings.cpp
+@@ -853 +853 @@ nb::object run_solver(const SolveParameters &parameters,
+-            TeamPolicy team_policy(static_cast<int>(active_count), 32);
++            TeamPolicy team_policy(static_cast<int>(active_count), 64);

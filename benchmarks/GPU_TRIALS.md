@@ -1026,3 +1026,57 @@ VENV_KERNEL_PROFILE.md. Raw section text, CSV, parsed metrics and warm-only
 NSYS breakdown are in results/venv-float64-*. Hardware cache/occupancy values
 are measurements; proposed64-thread metal teams/locality work are hypotheses,
 not implemented changes or speedup claims.
+
+## Metal optimization A: 64-thread teams (float64; rejected)
+
+Fresh installed float64 baseline:13.066857s median, five samples
+13.072235,13.067901,13.066857,13.058216,13.061985s. All reported arithmetic
+and storage widths8 bytes. Only metal team size changed32→64. Candidate
+five samples13.247874,13.238287,13.231782,13.224103,13.228081s;
+median13.231782s, **1.26% slower**, so reverted. Accuracy passed1e-5 with
+max ion8.99e-12 and T2.88e-14 vs original float64 reference. Source patch:
+metal64-rejected.patch (zero context). Results: metal-opt-baseline.json,
+metal64.json. Baseline uses installed Python3.13; candidate uses explicit
+Python3.14 extension; both CUDA/f64, same dataset and physics. No performance
+improvement inferred across these environments. Larger theoretical occupancy
+alone was not a measured win.
+
+## Metal optimization B: separate commit/control (float64; retained)
+
+Keep32-thread metal teams. Move the existing single-thread team commit/control
+body unchanged into a following RangePolicy kernel, one cell per thread.
+Same-stream ordering retains metals-before-commit dependencies; no cell
+couples to another. This tests lane utilization of the serial ion copying,
+flux updates, electron-density recomputation and timestep control independently
+of the rejected team-size change. Full finite1e-5 gate and warmed timing
+will determine retention.
+
+
+Candidate five warmed samples:12.385186,12.373164,12.372253,12.364542,
+12.371101s; median **12.372253s**. Fresh control recheck after candidate:
+13.057594,13.058404,13.057142,13.055403,13.055222s; median **13.057142s**.
+**1.05536x speedup, 5.25% less time**. Initial control median
+13.066857s agrees with the recheck. Entire candidate output is **bit-for-bit
+identical to the fresh installed control**, all four arrays, all10000cells.
+Against original baseline: max ion8.99e-12, T2.88e-14; finite1e-5 gate passes.
+All reported arithmetic and state widths8bytes; no precision changes.
+
+Warm-only NSYS breakdown (second solve): metals7.132435s, new commit/control
+0.476269s, combined7.608704s versus prior fused8.399926s (9.42% less target
+phase time). Cooling2.108704s, HHe1.345221s, prep1.130039s are essentially
+unchanged. Metal registers drop82→68, commit uses64; no achieved-occupancy
+or stall improvement is claimed without a new NCU capture. Additional launch
+cost is included in end-to-end measurements. CUDA regressions18 passed
+(4.32s), CPU float64 regressions18 passed(0.87s); three long sweeps excluded
+each. **Retained**, only this structural split; team size remains32.
+
+Installed venv package is preserved. Candidate binary is
+build/galaxy-gpu/metal-split-commit-float64.cpython-314-x86_64-linux-gnu.so;
+rebuild the venv to use the source change there. Reports:
+results/metal-split-commit.json, metal-opt-control-recheck.json,
+metal-split-commit-control-exact.json, metal-split-commit-profile.json,
+metal-split-commit-breakdown.json and metal-split-commit-tests.json.
+The profile's whole-trace CSV includes warmup; breakdown JSON selects only
+the second solve. Candidate and control interpreter/build environments differ
+as noted above; target-kernel timing and unchanged other phases support the
+attribution, rather than interpreting Python wall time alone.

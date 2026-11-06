@@ -857,7 +857,7 @@ nb::object run_solver(const SolveParameters &parameters,
             team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_scratch_bytes));
 
             Kokkos::parallel_for(
-                "rtz_python_metals_commit",
+                "rtz_python_metals",
                 team_policy,
                 KOKKOS_LAMBDA(const TeamMember &team) {
                     const auto& tab_data = *device_tables;
@@ -896,38 +896,48 @@ nb::object run_solver(const SolveParameters &parameters,
                                                             rate_cache + 3 * n_ion_work);
                     team.team_barrier();
 
-                    Kokkos::single(Kokkos::PerTeam(team), [&]() {
-                        Real ddt = cell.ddt;
-                        Real total_time = cell.total_time;
-                        subcycle_commit_and_control<constant_temperature,
-                                                    include_H2,
-                                                    include_CO,
-                                                    rt_advect,
-                                                    include_self_shielding>(device_elements,
-                                                                            tab_data,
-                                                                            cell.chemistry,
-                                                                            cell.nCO,
-                                                                            cell.photons,
-                                                                            cell.flux,
-                                                                            cell.photons_new,
-                                                                            cell.photon_attenuation,
-                                                                            ddt,
-                                                                            total_time,
-                                                                            cell.subcycle,
-                                                                            false,
-                                                                            dFpdt);
-                        cell.ddt = ddt;
-                        cell.total_time = total_time;
+                });
 
-                        if (equilibrium) {
-                            if (cell.subcycle.success_counter > conv_its)
-                                cell.done = true;
-                        } else if (rtz_math::fabs(cell.total_time - requested_delta_time) /
-                                       requested_delta_time <
-                                   Real(1e-6)) {
+            // Commit is sequential within each cell; execute different cells
+            // across lanes instead of keeping the other metal-team lanes idle.
+            Kokkos::parallel_for(
+                "rtz_python_commit_control",
+                Kokkos::RangePolicy<>(0, active_count),
+                KOKKOS_LAMBDA(const std::size_t active_index) {
+                    const auto& tab_data = *device_tables;
+                    CellState &cell = device_cells(active_cells(active_index));
+                    if (cell.done)
+                        return;
+                    Real ddt = cell.ddt;
+                    Real total_time = cell.total_time;
+                    subcycle_commit_and_control<constant_temperature,
+                                                include_H2,
+                                                include_CO,
+                                                rt_advect,
+                                                include_self_shielding>(device_elements,
+                                                                        tab_data,
+                                                                        cell.chemistry,
+                                                                        cell.nCO,
+                                                                        cell.photons,
+                                                                        cell.flux,
+                                                                        cell.photons_new,
+                                                                        cell.photon_attenuation,
+                                                                        ddt,
+                                                                        total_time,
+                                                                        cell.subcycle,
+                                                                        false,
+                                                                        dFpdt);
+                    cell.ddt = ddt;
+                    cell.total_time = total_time;
+
+                    if (equilibrium) {
+                        if (cell.subcycle.success_counter > conv_its)
                             cell.done = true;
-                        }
-                    });
+                    } else if (rtz_math::fabs(cell.total_time - requested_delta_time) /
+                                   requested_delta_time <
+                               Real(1e-6)) {
+                        cell.done = true;
+                    }
                 });
 
             Kokkos::parallel_reduce(

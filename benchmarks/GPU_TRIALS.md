@@ -754,3 +754,22 @@ and default extension restored from the saved current float64 best binary.
 Float32 binary preserved as `build/galaxy-gpu/current-float32.cpython-314-x86_64-linux-gnu.so`.
 Results: `results/current-float32.json` (accuracy failure is intentional
 benchmark exit status 1; timings/output were saved).
+
+## Per-file precision, step 1: collisional ionization
+
+Add GIZMO_RTZ_FLOAT32_COLLISIONAL and an independent CollisionalReal scalar
+for device arithmetic in collisional_ionization.hpp, with explicit float
+math overloads. Keep global Real, state, table storage and cooling unchanged.
+The Python extension uses the same definition and reports
+collisional_ionization_bytes=4 alongside Real/density/ion bytes=8.
+Five warmed GPU samples: 12.920085, 12.926781, 13.064292, 12.967459,
+12.942590 s; median **12.942590 s** (prior float64 best 13.177843 s;
+about 1.01818x, 1.79% less time; no fresh-baseline recheck yet).
+Full physical gate passes: max ion relative error **0.0714333%**, max
+T relative error **0.000985753%**, zero violations. Artifact:
+results/per-file-collisional.json. The 18 selected CUDA regressions yield
+17 passed and one strict float64 golden failure (max relative difference
+1.204e-6 against its 1e-8 tolerance), consistent with intentional precision
+rounding. That test's golden tolerance is not weakened. Cooling remains last
+in the conversion sequence. This step changes arithmetic only; existing
+host loading buffers and table storage retain their original types.

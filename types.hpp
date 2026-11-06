@@ -36,6 +36,26 @@ KOKKOS_INLINE_FUNCTION Real exp10(Real x) {
 }
 }
 
+// Explicit float overloads for independently converted physics files.
+namespace rtz_float_math {
+KOKKOS_INLINE_FUNCTION float sqrt(float x) { return Kokkos::sqrt(x); }
+KOKKOS_INLINE_FUNCTION float exp(float x) { return Kokkos::exp(x); }
+KOKKOS_INLINE_FUNCTION float log(float x) { return Kokkos::log(x); }
+KOKKOS_INLINE_FUNCTION float log10(float x) { return Kokkos::log10(x); }
+KOKKOS_INLINE_FUNCTION float exp2(float x) { return Kokkos::exp2(x); }
+KOKKOS_INLINE_FUNCTION float fabs(float x) { return Kokkos::fabs(x); }
+KOKKOS_INLINE_FUNCTION float floor(float x) { return Kokkos::floor(x); }
+KOKKOS_INLINE_FUNCTION float ceil(float x) { return Kokkos::ceil(x); }
+KOKKOS_INLINE_FUNCTION float cbrt(float x) { return Kokkos::cbrt(x); }
+KOKKOS_INLINE_FUNCTION float sin(float x) { return Kokkos::sin(x); }
+KOKKOS_INLINE_FUNCTION float cos(float x) { return Kokkos::cos(x); }
+KOKKOS_INLINE_FUNCTION float tanh(float x) { return Kokkos::tanh(x); }
+KOKKOS_INLINE_FUNCTION float pow(float x, float y) { return Kokkos::pow(x,y); }
+KOKKOS_INLINE_FUNCTION float fmin(float x, float y) { return Kokkos::fmin(x,y); }
+KOKKOS_INLINE_FUNCTION float fmax(float x, float y) { return Kokkos::fmax(x,y); }
+KOKKOS_INLINE_FUNCTION float exp10(float x) { return Kokkos::pow(10.0f,x); }
+}
+
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27
 // Maximum total ion+molecule states across all elements:

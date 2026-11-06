@@ -1209,6 +1209,7 @@ NB_MODULE(_rtz, module) {
     module.def("build_info", []() {
         nb::dict info;
         info["execution_space"] = Kokkos::DefaultExecutionSpace::name();
+        info["collisional_ionization_bytes"] = sizeof(prism_gpu::CollisionalReal);
         info["real_bytes"] = sizeof(prism_gpu::Real);
         info["density_bytes"] = sizeof(prism_gpu::CompactIonData::ndens_t);
         info["ion_fraction_bytes"] = sizeof(prism_gpu::CompactIonData::xion_t);

@@ -56,41 +56,50 @@ void init_collisional_ionization(std::string path_to_data, RawTabulatedData& tab
     Kokkos::deep_copy(tabData.collisional_ionization_data, h);
 };
 
-KOKKOS_INLINE_FUNCTION
-Real coll_ion(Real T, Real dE, Real A, Real X, Real K, Real P){
-    // Eqn 1 of Voronov 1997
-    Real U = dE / (T * Real(8.61732814974056E-05)); // #! K --> eV
+// Per-file arithmetic precision; table loading retains its original storage.
+#ifdef RTZ_FLOAT32_COLLISIONAL
+using CollisionalReal = float;
+namespace collisional_math = rtz_float_math;
+#else
+using CollisionalReal = Real;
+namespace collisional_math = rtz_math;
+#endif
 
-    if (U > Real(80.0)) {
-        return Real(0.0);
+KOKKOS_INLINE_FUNCTION
+CollisionalReal coll_ion(CollisionalReal T, CollisionalReal dE, CollisionalReal A, CollisionalReal X, CollisionalReal K, CollisionalReal P){
+    // Eqn 1 of Voronov 1997
+    CollisionalReal U = dE / (T * CollisionalReal(8.61732814974056E-05)); // #! K --> eV
+
+    if (U > CollisionalReal(80.0)) {
+        return CollisionalReal(0.0);
     }
 
-    return A * (Real(1.) + P * rtz_math::sqrt(U)) * rtz_math::pow(U,K) * rtz_math::exp(-U) / (X + U);
+    return A * (CollisionalReal(1.) + P * collisional_math::sqrt(U)) * collisional_math::pow(U,K) * collisional_math::exp(-U) / (X + U);
 }
 
 template<typename Table>
 KOKKOS_FUNCTION
-Real collisional_ionization(Real T, int ion, int element_idx, const Table& tabData) {
+CollisionalReal collisional_ionization(CollisionalReal T, int ion, int element_idx, const Table& tabData) {
     /*
     collisional ionization rate
     */
 
-    Real col = Real(0.0);
+    CollisionalReal col = CollisionalReal(0.0);
 
     int n_electron = element_idx - ion;
 
     if (n_electron > 0) {
         const int erow = elem_row(element_idx);
-        Real dE = tabData.collisional_ionization_data(erow, n_electron, 0);
-        Real P  = tabData.collisional_ionization_data(erow, n_electron, 1);
-        Real A  = tabData.collisional_ionization_data(erow, n_electron, 2);
-        Real X  = tabData.collisional_ionization_data(erow, n_electron, 3);
-        Real K  = tabData.collisional_ionization_data(erow, n_electron, 4);
+        CollisionalReal dE = tabData.collisional_ionization_data(erow, n_electron, 0);
+        CollisionalReal P  = tabData.collisional_ionization_data(erow, n_electron, 1);
+        CollisionalReal A  = tabData.collisional_ionization_data(erow, n_electron, 2);
+        CollisionalReal X  = tabData.collisional_ionization_data(erow, n_electron, 3);
+        CollisionalReal K  = tabData.collisional_ionization_data(erow, n_electron, 4);
 
         col = coll_ion(T, dE, A, X, K, P);
     }
 
-    col = rtz_math::fmax(col,Real(1e-100));
+    col = collisional_math::fmax(col,CollisionalReal(1e-100));
 
     return col;
 }

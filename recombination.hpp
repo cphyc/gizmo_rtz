@@ -28,7 +28,10 @@ void copy2D_pair (double (&e_src)[N][M], double (&c_src)[N][M], V &data_d) {
     {
         for (int j = 0; j < M; j++)
         {
-            data_h(i, j) = DRTerm{ e_src[i][j], c_src[i][j] };
+            data_h(i, j) = DRTerm{
+                static_cast<Real>(e_src[i][j]),
+                static_cast<Real>(c_src[i][j])
+            };
         }
     }
     Kokkos::deep_copy(data_d, data_h);

@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repetitions", type=int, default=5)
     parser.add_argument("--warmups", type=int, default=1)
+    parser.add_argument("--installed-package", action="store_true", help="Use the installed Python wrapper instead of the repository wrapper")
     parser.add_argument("--ncell", type=int)
     parser.add_argument("--dt-yr", type=float, default=100.)
     parser.add_argument("--reference", type=Path)
@@ -49,7 +50,8 @@ def main():
             if key.endswith("_bytes") and key not in ("cell_bytes", "table_descriptor_bytes")):
         raise RuntimeError(f"fully float64 arithmetic required; loaded build reports {build_info}")
     print(f"Build: {build_info}", flush=True)
-    sys.path.insert(0, str(ROOT / "python"))
+    if not args.installed_package:
+        sys.path.insert(0, str(ROOT / "python"))
     os.environ["RTZ_DATA_DIR"] = str(ROOT / "data")
     import rtz
 

@@ -1696,7 +1696,7 @@ void metal_ions_step(
     const PhysicsFlags& flags,
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
-    const Real primary_cosmic_ray_ionization_rate,
+    [[maybe_unused]] const Real primary_cosmic_ray_ionization_rate,
     const Real ss_factor,
     const std::array<Real, N_GROUPS>& N_phot_new,
     const uint16_t* ion_map,

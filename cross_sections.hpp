@@ -84,15 +84,15 @@ void initialize_cross_sections(const std::string& path_to_data, auto &tabData) {
     while (file_tot >> i1 >> i2 >> E_th >> E_max >> E_0 >> sig_0 >> y_a >> P >> y_w >> y_0 >> y_1) {
         if (i1 < 27) {
             h_tot(i1, i1 - i2 + 1) = {
-                .E_th  = E_th,
-                .E_max = E_max,
-                .E_0   = E_0,
-                .sig_0 = sig_0,
-                .y_a   = y_a,
-                .P     = P,
-                .y_w   = y_w,
-                .y_0   = y_0,
-                .y_1   = y_1
+                .E_th  = static_cast<Real>(E_th),
+                .E_max = static_cast<Real>(E_max),
+                .E_0   = static_cast<Real>(E_0),
+                .sig_0 = static_cast<Real>(sig_0),
+                .y_a   = static_cast<Real>(y_a),
+                .P     = static_cast<Real>(P),
+                .y_w   = static_cast<Real>(y_w),
+                .y_0   = static_cast<Real>(y_0),
+                .y_1   = static_cast<Real>(y_1)
             };
         }
     }
@@ -116,12 +116,12 @@ void initialize_cross_sections(const std::string& path_to_data, auto &tabData) {
 
             if (nl_state != 0) {
                 h_nl(a, a - b + 1, nl_state) = {
-                    .E_th  = E_th,
-                    .E_0   = E_0,
-                    .sig_0 = sig_0,
-                    .y_a   = y_a,
-                    .P     = P,
-                    .y_w   = y_w,
+                    .E_th  = static_cast<Real>(E_th),
+                    .E_0   = static_cast<Real>(E_0),
+                    .sig_0 = static_cast<Real>(sig_0),
+                    .y_a   = static_cast<Real>(y_a),
+                    .P     = static_cast<Real>(P),
+                    .y_w   = static_cast<Real>(y_w),
                     .l     = d
                 };
             }

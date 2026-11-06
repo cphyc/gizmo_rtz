@@ -197,6 +197,7 @@ void solve_one_step(const RTZ<constant_temperature, include_H2, include_CO,
     // and let the lambda capture the plain values / Views by copy.
     auto elements_d = rtz_solver.elements_d;
     const auto tabData = rtz_solver.get_tabData();
+    const int* ion_offsets = tabData.network.offsets.data();
     const Real UV_G0 = rtz_solver.get_UV_background_G0();
     const Real primary_cr_rate = rtz_solver.get_generic_cosmic_ray_ionization_rate();
 
@@ -204,7 +205,7 @@ void solve_one_step(const RTZ<constant_temperature, include_H2, include_CO,
         // Build CompactIonData from views
         const Element* elements = elements_d.data();
         CompactIonData n_and_ion_fracs{};
-        n_and_ion_fracs.init_offsets(elements);
+        n_and_ion_fracs.offsets = ion_offsets;
 
         int iion = 0;
         for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -581,13 +582,14 @@ void solve_photoheat_step(const RTZ<constant_temperature, include_H2, include_CO
 {
     auto elements_d = rtz_solver.elements_d;
     const auto tabData = rtz_solver.get_tabData();
+    const int* ion_offsets = tabData.network.offsets.data();
     const Real UV_G0 = rtz_solver.get_UV_background_G0();
     const Real primary_cr_rate = rtz_solver.get_generic_cosmic_ray_ionization_rate();
 
     Kokkos::parallel_for("photoheat_step", 1, KOKKOS_LAMBDA(int) {
         const Element* elements = elements_d.data();
         CompactIonData n_and_ion_fracs{};
-        n_and_ion_fracs.init_offsets(elements);
+        n_and_ion_fracs.offsets = ion_offsets;
 
         int iion = 0;
         for (int i = 1; i < MAX_ELEMENTS; i++) {

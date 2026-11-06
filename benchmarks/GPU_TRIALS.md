@@ -830,3 +830,19 @@ max ion relative error 3.70191e-6; temperature 4.42555e-9; zero violations at
 1e-5. Cold solve 13.361736 s; no warmed speedup claim for this step.
 Cosmic-ray arithmetic switch ON by default. Host rate-loading buffers retain
 their original types. Artifact: results/per-file-cosmic.json.
+
+## Per-file precision, step 5: dust recombination
+
+DustRecombinationReal=float, with float math and explicit coefficient casts;
+dust_recombination_bytes=4 is reported by rtz_bindings. Charge-transfer and
+cosmic-ray arithmetic remain float32; collisional/recombination and state
+stay float64. Full 10,000-cell gate passes at 1e-5: max ion 3.70171e-6,
+max temperature 4.42484e-9, zero violations. Cold preflight 12.232884 s;
+no warmed speedup claimed for this step alone. Dust option ON by default.
+Artifact: results/per-file-dust.json.
+
+Benchmark precision guard correction: --require-float64 now checks every
+reported arithmetic width, not only global Real/state. Mixed-file runs use
+--require-float64-state. The negative guard was verified on a saved mixed
+binary before any solve; full-float64 mode correctly rejects it. For earlier
+per-file result commands, replace --require-float64 with --require-float64-state.

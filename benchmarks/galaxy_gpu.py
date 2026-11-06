@@ -29,7 +29,8 @@ def main():
     parser.add_argument("--ion-rtol", type=float, default=.05)
     parser.add_argument("--temperature-rtol", type=float, default=.01)
     parser.add_argument("--max-iterations", type=int, default=100000)
-    parser.add_argument("--require-float64", action="store_true")
+    parser.add_argument("--require-float64", action="store_true", help="Require float64 state and all reported arithmetic types")
+    parser.add_argument("--require-float64-state", action="store_true", help="Require float64 global Real and state; permit per-file float32 arithmetic")
     args = parser.parse_args()
     if args.repetitions < 1 or args.warmups < 0:
         parser.error("repetitions must be positive and warmups nonnegative")
@@ -39,9 +40,13 @@ def main():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     build_info = module.build_info() if hasattr(module, "build_info") else None
-    if args.require_float64 and (build_info is None or any(
-            build_info[key] != 8 for key in ("real_bytes", "density_bytes", "ion_fraction_bytes"))):
-        raise RuntimeError(f"float64 extension required; loaded build reports {build_info}")
+    if (args.require_float64 or args.require_float64_state) and (build_info is None or any(
+            build_info.get(key) != 8 for key in ("real_bytes", "density_bytes", "ion_fraction_bytes"))):
+        raise RuntimeError(f"float64 global Real/state required; loaded build reports {build_info}")
+    if args.require_float64 and any(
+            value != 8 for key, value in build_info.items()
+            if key.endswith("_bytes") and key not in ("cell_bytes", "table_descriptor_bytes")):
+        raise RuntimeError(f"fully float64 arithmetic required; loaded build reports {build_info}")
     print(f"Build: {build_info}", flush=True)
     sys.path.insert(0, str(ROOT / "python"))
     os.environ["RTZ_DATA_DIR"] = str(ROOT / "data")

@@ -37,12 +37,20 @@ double dust_rec_coefs[27][7] = {
 
 
 
-KOKKOS_FUNCTION
-Real dust_recombination_rates(int ion, int nelem, Real T, Real G, Real ne, const auto& dust_rec_coefs){
-    Real dust_rec_rate = Real(0.0);
-    Real dr_sf = Real(1.0);
+#ifdef RTZ_FLOAT32_DUST_RECOMBINATION
+using DustRecombinationReal = float;
+namespace dust_recombination_math = rtz_float_math;
+#else
+using DustRecombinationReal = Real;
+namespace dust_recombination_math = rtz_math;
+#endif
 
-    Real loc_T = T;
+KOKKOS_FUNCTION
+DustRecombinationReal dust_recombination_rates(int ion, int nelem, DustRecombinationReal T, DustRecombinationReal G, DustRecombinationReal ne, const auto& dust_rec_coefs){
+    DustRecombinationReal dust_rec_rate = DustRecombinationReal(0.0);
+    DustRecombinationReal dr_sf = DustRecombinationReal(1.0);
+
+    DustRecombinationReal loc_T = T;
 
     // No dust recombination except for the first ionization state.
     // Maybe this will change later...
@@ -51,46 +59,46 @@ Real dust_recombination_rates(int ion, int nelem, Real T, Real G, Real ne, const
         return dust_rec_rate;
     }
 
-    if (T > Real(1E4)) {
+    if (T > DustRecombinationReal(1E4)) {
         // No dust recombination at high temperatures
         return dust_rec_rate;
-    } else if (T > Real(1E3)) {
+    } else if (T > DustRecombinationReal(1E3)) {
         // Scale down if gtr than 1.d3
-        dr_sf = rtz_math::exp(-Real(1.0) * T / Real(1E3)) / rtz_math::exp(-Real(1.0));
+        dr_sf = dust_recombination_math::exp(-DustRecombinationReal(1.0) * T / DustRecombinationReal(1E3)) / dust_recombination_math::exp(-DustRecombinationReal(1.0));
     }
 
-    loc_T = rtz_math::fmax(T,Real(10.0));
+    loc_T = dust_recombination_math::fmax(T,DustRecombinationReal(10.0));
 
     const int erow = elem_row(nelem);
 
     // First check to make sure that all elements are not zero
-    Real row_sum = Real(0.0);
+    DustRecombinationReal row_sum = DustRecombinationReal(0.0);
     for (int i = 0; i < 7; i++) {
-        row_sum += rtz_math::fabs(dust_rec_coefs(erow, i));
+        row_sum += dust_recombination_math::fabs(DustRecombinationReal(dust_rec_coefs(erow, i)));
     }
 
     // In this case there is nothing to compute
-    if (row_sum <= Real(0.0)) {
+    if (row_sum <= DustRecombinationReal(0.0)) {
         return dust_rec_rate;
     }
 
     // Extra fac on the denominator to avoid divide by zero
-    Real phi = (G + Real(1E-8)) * rtz_math::sqrt(loc_T) / (ne + Real(1E-10)); // units K^1/2 cm^3
+    DustRecombinationReal phi = (G + DustRecombinationReal(1E-8)) * dust_recombination_math::sqrt(loc_T) / (ne + DustRecombinationReal(1E-10)); // units K^1/2 cm^3
 
-    Real a1 = dust_rec_coefs(erow, 1) * rtz_math::pow(phi, dust_rec_coefs(erow, 2));
-    Real a2 = dust_rec_coefs(erow, 3) * rtz_math::pow(T, dust_rec_coefs(erow, 4));
-    Real a3 = (-Real(1.0) * dust_rec_coefs(erow, 5)) - (dust_rec_coefs(erow, 6) * rtz_math::log(T));
+    DustRecombinationReal a1 = DustRecombinationReal(dust_rec_coefs(erow, 1)) * dust_recombination_math::pow(phi, DustRecombinationReal(dust_rec_coefs(erow, 2)));
+    DustRecombinationReal a2 = DustRecombinationReal(dust_rec_coefs(erow, 3)) * dust_recombination_math::pow(T, DustRecombinationReal(dust_rec_coefs(erow, 4)));
+    DustRecombinationReal a3 = (-DustRecombinationReal(1.0) * DustRecombinationReal(dust_rec_coefs(erow, 5))) - (DustRecombinationReal(dust_rec_coefs(erow, 6)) * dust_recombination_math::log(T));
 
-    dust_rec_rate = Real(1.E-14) * dust_rec_coefs(erow, 0);
-    dust_rec_rate = dust_rec_rate / (Real(1.0) + (a1 * (Real(1.0) + (a2 * rtz_math::pow(phi, a3)))));
+    dust_rec_rate = DustRecombinationReal(1.E-14) * DustRecombinationReal(dust_rec_coefs(erow, 0));
+    dust_rec_rate = dust_rec_rate / (DustRecombinationReal(1.0) + (a1 * (DustRecombinationReal(1.0) + (a2 * dust_recombination_math::pow(phi, a3)))));
     dust_rec_rate = dust_rec_rate * dr_sf;
 
     //   ! Rescale the dust recombination rates due to a PAH normalization issue
     //   ! Zubko assumes 3.3e-5 C in PAH / H atom
     //   ! Weingartner & Draine assume 6e-5 C in PAH / H atom
-    dust_rec_rate = dust_rec_rate * (Real(3.3E-5) / Real(6.0E-5));
+    dust_rec_rate = dust_rec_rate * (DustRecombinationReal(3.3E-5) / DustRecombinationReal(6.0E-5));
 
-    dust_rec_rate = rtz_math::fmax(dust_rec_rate,Real(1E-100));
+    dust_rec_rate = dust_recombination_math::fmax(dust_rec_rate,DustRecombinationReal(1E-100));
 
     return dust_rec_rate;
 }

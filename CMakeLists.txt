@@ -37,6 +37,7 @@ option(GIZMO_RTZ_FLOAT32_DUST_RECOMBINATION "Use float32 dust-recombination arit
 option(GIZMO_RTZ_FLOAT32_MOLECULES "Use float32 molecular helper arithmetic" ON)
 option(GIZMO_RTZ_FLOAT32_UVB "Use float32 UV background loading/interpolation" ON)
 option(GIZMO_RTZ_FLOAT32_CROSS_SECTIONS "Use float32 spectrum/cross-section integration" OFF)
+option(GIZMO_RTZ_FLOAT32_CONSTANTS "Store physical constants as float32" OFF)
 option(GIZMO_RTZ_FLOAT32_COLLISIONAL "Use float32 collisional ionization arithmetic" OFF)
 option(GIZMO_RTZ_FLOAT32_ARITHMETIC "Experimental float32 device chemistry/cooling arithmetic" OFF)
 set(GIZMO_RTZ_PERF_FLAGS "")
@@ -205,7 +206,7 @@ if(GIZMO_RTZ_STANDALONE)
 endif()
 
 # Per-file precision must match in standalone and Python consumers.
-foreach(rtz_precision_file COLLISIONAL CHARGE_TRANSFER RECOMBINATION COSMIC_RAY DUST_RECOMBINATION MOLECULES UVB CROSS_SECTIONS)
+foreach(rtz_precision_file COLLISIONAL CHARGE_TRANSFER RECOMBINATION COSMIC_RAY DUST_RECOMBINATION MOLECULES UVB CROSS_SECTIONS CONSTANTS)
     if(GIZMO_RTZ_FLOAT32_${rtz_precision_file})
         foreach(rtz_precision_target gizmo gizmo_rtz _rtz)
             if(TARGET ${rtz_precision_target})

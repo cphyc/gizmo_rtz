@@ -890,3 +890,15 @@ All outputs are finite. Cross-section option stays OFF; no warmed speedup
 claim. Artifact: results/per-file-cross.json. The benchmark now rejects
 non-finite values explicitly; all nine earlier per-file snapshots were
 verified finite as well.
+
+## Per-file precision, step 9: physical constants
+
+ConstantsReal=float selects float32 KB/C_CGS/H_PLANCK/EV_2_ERG, reflected as
+constants_bytes=4 in rtz_bindings. Cross-section arithmetic is back to double;
+all previously accepted file choices remain enabled. Full-dataset preflight
+completes (12.256598 s) but **fails** 1e-5: max ion 1.85472e-3, 30,502
+violations; max temperature 7.27288e-5, 1,835 violations. All values finite.
+Constants remain float64 (option OFF). No warmed speedup claim.
+Artifact: results/per-file-constants.json. Accepted mixed configuration with
+constants double passes 18 selected CPU regressions (0.93 s), three long
+sweeps excluded; metadata confirms the selected widths.

@@ -1,0 +1,36 @@
+{
+  "seconds": [
+    3.0062203490233514
+  ],
+  "median_seconds": 3.0062203490233514,
+  "build_info": {
+    "execution_space": "Cuda",
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2824,
+    "table_descriptor_bytes": 6528
+  },
+  "ncell": 42,
+  "dt_yr": 100.0,
+  "warmups": 0,
+  "max_iterations": 100000,
+  "extension_sha256": "9d00e48176190f7e41512217936dc1fdbdad2707d2b266fd84ec89c36167eaa3",
+  "dataset_sha256": "25680b5d1a1c26dc8e7d32bc30bb23bddb437691b6e7b9962db83c88f6d059b3",
+  "git_revision": "264e69b9c8048df1d69dab9d07dbb3366bb2a2f2",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 58, 1530 MHz, 14.24 W",
+  "command": [
+    "benchmarks/galaxy_gpu.py",
+    "--extension",
+    "build/galaxy-gpu/ct-cache-float64.cpython-314-x86_64-linux-gnu.so",
+    "--dataset",
+    "benchmarks/results/molecular-precision-input.npz",
+    "--output",
+    "benchmarks/results/molecular-precision-reference",
+    "--require-float64",
+    "--warmups",
+    "0",
+    "--repetitions",
+    "1"
+  ]
+}

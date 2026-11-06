@@ -846,3 +846,21 @@ reported arithmetic width, not only global Real/state. Mixed-file runs use
 --require-float64-state. The negative guard was verified on a saved mixed
 binary before any solve; full-float64 mode correctly rejects it. For earlier
 per-file result commands, replace --require-float64 with --require-float64-state.
+
+## Per-file precision, step 6: molecular helpers
+
+MolecularReal=float with float math and coefficient casts; molecular_bytes=4
+is reflected in rtz_bindings. Full atomic dataset passes 1e-5: max ion
+3.70171e-6, T 4.42484e-9 (cold 12.258382 s). Since that dataset disables
+molecules, an additional 42-cell T/nH-stratified probe enables H2/CO and
+self-shielding. Its matching all-float64 reference is generated with the saved
+ct-cache-float64 binary. Before this conversion, accepted mixed arithmetic
+passes that probe (max ion 2.30522e-7, T 4.28625e-10). After conversion it
+still passes: max ion 2.30522e-7, T 4.30419e-10, zero violations. Molecular
+option ON by default; no warmed speedup claim from these cold checks.
+
+Reproduce probe inputs with benchmarks/molecular_precision_dataset.py
+--output benchmarks/results/molecular-precision-input.npz. Artifacts:
+results/molecular-precision-reference.json, results/molecular-precision-before.json,
+results/per-file-molecules.json, results/per-file-molecules-probe.json.
+The probe covers these sampled cells and 100 years, not all molecular regimes.

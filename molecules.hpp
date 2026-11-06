@@ -2,61 +2,69 @@
 #pragma once
 #include <Kokkos_Core.hpp>
 
+#ifdef RTZ_FLOAT32_MOLECULES
+using MolecularReal = float;
+namespace molecular_math = rtz_float_math;
+#else
+using MolecularReal = Real;
+namespace molecular_math = rtz_math;
+#endif
+
 KOKKOS_INLINE_FUNCTION
-Real alpha_H2_prim(Real T, Real xe, Real H2_cosmic_ray_ionization_rate, Real G0, Real xHI, Real xHII, Real nH){
+MolecularReal alpha_H2_prim(MolecularReal T, MolecularReal xe, MolecularReal H2_cosmic_ray_ionization_rate, MolecularReal G0, MolecularReal xHI, MolecularReal xHII, MolecularReal nH){
     // H- channel for H2 formation
-    Real formation_rate = Real(0.0);
+    MolecularReal formation_rate = MolecularReal(0.0);
 
     // Primordial channel
-    Real logT = rtz_math::log10(T);
-    Real Te = T * Real(8.621738E-5); // K -> eV
-    Real lnTe = rtz_math::log(Te);
+    MolecularReal logT = molecular_math::log10(T);
+    MolecularReal Te = T * MolecularReal(8.621738E-5); // K -> eV
+    MolecularReal lnTe = molecular_math::log(Te);
 
     // ! Creation and destruction channels of H- included with updated rates from Glover et al. 2010
     // ! H + e- -> H- + gamma
-    Real k1;
-    if (T < Real(6000.0)) {
-        k1 = rtz_math::exp10(-Real(17.845) + logT * (Real(0.762) + logT * (Real(0.1523) - Real(0.03274) * logT)));
+    MolecularReal k1;
+    if (T < MolecularReal(6000.0)) {
+        k1 = molecular_math::exp10(-MolecularReal(17.845) + logT * (MolecularReal(0.762) + logT * (MolecularReal(0.1523) - MolecularReal(0.03274) * logT)));
     } else {
-        Real logT2 = logT * logT;
-        k1 = rtz_math::exp10(-Real(16.420) + logT2 * (Real(0.1998) + logT2 * (-Real(5.447E-3) + Real(4.0415E-5) * logT2)));
+        MolecularReal logT2 = logT * logT;
+        k1 = molecular_math::exp10(-MolecularReal(16.420) + logT2 * (MolecularReal(0.1998) + logT2 * (-MolecularReal(5.447E-3) + MolecularReal(4.0415E-5) * logT2)));
     }
 
     // ! H- + H -> H2 + e
-    Real k2 = Real(4.0E-9)*rtz_math::pow(rtz_math::fmax(T,Real(300.0)),-Real(0.17));
+    MolecularReal k2 = MolecularReal(4.0E-9)*molecular_math::pow(molecular_math::fmax(T,MolecularReal(300.0)),-MolecularReal(0.17));
 
     // ! H- + H+ -> H + H
-    Real k5 = Real(2.4E-6)/rtz_math::sqrt(T)*(Real(1.0) + T/Real(20000.));
+    MolecularReal k5 = MolecularReal(2.4E-6)/molecular_math::sqrt(T)*(MolecularReal(1.0) + T/MolecularReal(20000.));
 
     // ! H- + CR --> H + e-
-    Real k_hm_cr = Real(1.28E-13) * (H2_cosmic_ray_ionization_rate / Real(1.E-16));
+    MolecularReal k_hm_cr = MolecularReal(1.28E-13) * (H2_cosmic_ray_ionization_rate / MolecularReal(1.E-16));
 
     // ! H- + gamma --> H + e-
-    Real k_hm_gamma = Real(5.9E-9) * G0;
+    MolecularReal k_hm_gamma = MolecularReal(5.9E-9) * G0;
 
     // ! H- + e -> H + e + e
-    Real k13 = -Real(1.801849334E1) + lnTe * (Real(2.36085220E0) + lnTe * (-Real(2.82744300E-1) + lnTe * (Real(1.62331664E-2) + lnTe * (-Real(3.36501203E-2) + lnTe * (Real(1.17832978E-2) + lnTe * (-Real(1.65619470E-3) + lnTe * (Real(1.06827520E-4) - Real(2.63128581E-6) * lnTe)))))));
-    k13 = rtz_math::exp(rtz_math::fmax(k13,-Real(92.0)));
+    MolecularReal k13 = -MolecularReal(1.801849334E1) + lnTe * (MolecularReal(2.36085220E0) + lnTe * (-MolecularReal(2.82744300E-1) + lnTe * (MolecularReal(1.62331664E-2) + lnTe * (-MolecularReal(3.36501203E-2) + lnTe * (MolecularReal(1.17832978E-2) + lnTe * (-MolecularReal(1.65619470E-3) + lnTe * (MolecularReal(1.06827520E-4) - MolecularReal(2.63128581E-6) * lnTe)))))));
+    k13 = molecular_math::exp(molecular_math::fmax(k13,-MolecularReal(92.0)));
 
     // ! H- + H --> H + H + e-
     // ! I think this reaction was broken in glover so I took the results from
     // ! https://www.aanda.org/articles/aa/pdf/2016/02/aa27262-15.pdf Table A1
     // ! Harley added the fudge factor for continuity
-    Real k14 = Real(1.357772745525155) * Real(2.5634E-15) * rtz_math::pow(Te, Real(1.78186)); // Note that T must be in eV for this reaction to make sense
-    if (T > Real(1160.0)) {
-        k14 = -Real(3.388464953E1) + lnTe * (Real(1.13944933E0) + lnTe * (-Real(1.4210135E-1) + lnTe * (Real(8.4644554E-3) + lnTe * (-Real(1.4328641E-3) + lnTe * (Real(2.0122503E-4) + lnTe * (Real(8.6639632E-5) + lnTe * (-Real(2.5850097E-5) + lnTe * (Real(2.4555012E-6) - Real(8.0683825E-8) * lnTe))))))));
-        k14 = rtz_math::exp(k14);
+    MolecularReal k14 = MolecularReal(1.357772745525155) * MolecularReal(2.5634E-15) * molecular_math::pow(Te, MolecularReal(1.78186)); // Note that T must be in eV for this reaction to make sense
+    if (T > MolecularReal(1160.0)) {
+        k14 = -MolecularReal(3.388464953E1) + lnTe * (MolecularReal(1.13944933E0) + lnTe * (-MolecularReal(1.4210135E-1) + lnTe * (MolecularReal(8.4644554E-3) + lnTe * (-MolecularReal(1.4328641E-3) + lnTe * (MolecularReal(2.0122503E-4) + lnTe * (MolecularReal(8.6639632E-5) + lnTe * (-MolecularReal(2.5850097E-5) + lnTe * (MolecularReal(2.4555012E-6) - MolecularReal(8.0683825E-8) * lnTe))))))));
+        k14 = molecular_math::exp(k14);
     }
 
     // ! H- + H+ --> H2+ + e- --> H + H (via recombinative dissociation)
-    Real k15 = Real(6.9E-9) * rtz_math::pow(T,-Real(0.35));
-    if (T > Real(8000.0)) {
-        k15 = Real(9.6E-7) * rtz_math::pow(T,-Real(0.90));
+    MolecularReal k15 = MolecularReal(6.9E-9) * molecular_math::pow(T,-MolecularReal(0.35));
+    if (T > MolecularReal(8000.0)) {
+        k15 = MolecularReal(9.6E-7) * molecular_math::pow(T,-MolecularReal(0.90));
     }
 
     // Correct steady state denominator terms scaled to cm^3 s^-1
-    Real cr_photo_destruction = (k_hm_cr + k_hm_gamma) / (nH + Real(1e-40));
-    Real collisional_destruction = k2 * xHI + k5 * xHII + k13 * xe + k14 * xHI + k15 * xHII;
+    MolecularReal cr_photo_destruction = (k_hm_cr + k_hm_gamma) / (nH + MolecularReal(1e-40));
+    MolecularReal collisional_destruction = k2 * xHI + k5 * xHII + k13 * xe + k14 * xHI + k15 * xHII;
 
     formation_rate += k1 * k2 * xe * xHI / (collisional_destruction + cr_photo_destruction);
 
@@ -64,22 +72,22 @@ Real alpha_H2_prim(Real T, Real xe, Real H2_cosmic_ray_ionization_rate, Real G0,
 }
 
 KOKKOS_FUNCTION
-Real alpha_H2_dust(Real T, Real dust_to_gas_mass_ratio_over_mw){
+MolecularReal alpha_H2_dust(MolecularReal T, MolecularReal dust_to_gas_mass_ratio_over_mw){
     // Formation on dust
-    Real clumping_factor = Real(1.0);
-    Real T2 = T / Real(100.0);
-    Real formation_rate = dust_to_gas_mass_ratio_over_mw * (Real(3.5E-17)) * clumping_factor * rtz_math::sqrt(rtz_math::fmin(T2,Real(1e2)));
+    MolecularReal clumping_factor = MolecularReal(1.0);
+    MolecularReal T2 = T / MolecularReal(100.0);
+    MolecularReal formation_rate = dust_to_gas_mass_ratio_over_mw * (MolecularReal(3.5E-17)) * clumping_factor * molecular_math::sqrt(molecular_math::fmin(T2,MolecularReal(1e2)));
 
     return formation_rate;
 }
 
 KOKKOS_FUNCTION
-Real alpha_H2(Real T, Real dust_to_gas_mass_ratio_over_mw, Real xe, Real H2_cosmic_ray_ionization_rate, Real G0, Real xHI, Real xHII, Real nH){
+MolecularReal alpha_H2(MolecularReal T, MolecularReal dust_to_gas_mass_ratio_over_mw, MolecularReal xe, MolecularReal H2_cosmic_ray_ionization_rate, MolecularReal G0, MolecularReal xHI, MolecularReal xHII, MolecularReal nH){
     // Creation rate of molecular hydrogen
     // We consider both the primordial channel (via H-) as well
     // as formation on dust
 
-    Real formation_rate = Real(0.0);
+    MolecularReal formation_rate = MolecularReal(0.0);
 
     // Formation rate on dust. Consider only HI
     formation_rate += alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) * xHI * nH;
@@ -91,85 +99,85 @@ Real alpha_H2(Real T, Real dust_to_gas_mass_ratio_over_mw, Real xe, Real H2_cosm
 }
 
 KOKKOS_INLINE_FUNCTION
-Real beta_H2_krome(Real T, Real nH, Real ne, Real nH2, Real nHe){
+MolecularReal beta_H2_krome(MolecularReal T, MolecularReal nH, MolecularReal ne, MolecularReal nH2, MolecularReal nHe){
     // From Bovino 2016
     // https://www.aanda.org/articles/aa/pdf/2016/06/aa28158-16.pdf
 
-    Real destruction_rate = Real(0.0);
+    MolecularReal destruction_rate = MolecularReal(0.0);
 
     // H2 + H --> H + H + H (k18)
-    destruction_rate += ((Real(6.67E-12) * rtz_math::sqrt(T) * rtz_math::exp(-Real(1.0) * (Real(1.0) + (Real(63593.0)/T)))) * nH);
+    destruction_rate += ((MolecularReal(6.67E-12) * molecular_math::sqrt(T) * molecular_math::exp(-MolecularReal(1.0) * (MolecularReal(1.0) + (MolecularReal(63593.0)/T)))) * nH);
 
     // H2 + H2 --> H2 + H + H (k19)
-    destruction_rate += ((Real(5.996E-30) * rtz_math::pow(T,Real(4.1881)) * rtz_math::pow(Real(1.0) + (Real(6.761E-6) * T),-Real(5.6881)) * rtz_math::exp(-Real(54657.4)/T)) * nH2);
+    destruction_rate += ((MolecularReal(5.996E-30) * molecular_math::pow(T,MolecularReal(4.1881)) * molecular_math::pow(MolecularReal(1.0) + (MolecularReal(6.761E-6) * T),-MolecularReal(5.6881)) * molecular_math::exp(-MolecularReal(54657.4)/T)) * nH2);
 
     // H2 + e- --> H + H + e- (k22)
-    destruction_rate += (Real(4.38E-10) * rtz_math::pow(T,Real(0.35)) * rtz_math::exp(-Real(102000.0)/T) * ne);
+    destruction_rate += (MolecularReal(4.38E-10) * molecular_math::pow(T,MolecularReal(0.35)) * molecular_math::exp(-MolecularReal(102000.0)/T) * ne);
 
     // H2 + He --> H + H + He
-    destruction_rate += (rtz_math::exp10(-Real(27.029) + (Real(3.801) * rtz_math::log10(T)) - (Real(29487.0)/T)) * nHe);
+    destruction_rate += (molecular_math::exp10(-MolecularReal(27.029) + (MolecularReal(3.801) * molecular_math::log10(T)) - (MolecularReal(29487.0)/T)) * nHe);
 
     return destruction_rate;
 }
 
 KOKKOS_INLINE_FUNCTION
-Real comp_Sd(Real nHI, Real nH2, Real dx_SS, Real Z) {
+MolecularReal comp_Sd(MolecularReal nHI, MolecularReal nH2, MolecularReal dx_SS, MolecularReal Z) {
     //   ! Returns the self shielding factor for dust
     //   ! see section 2.2 http://iopscience.iop.org/0004-637X/697/1/55/pdf/apj_697_1_55.pdf
 
-    Real Sdeff = Real(2.34e-21);    // dust cross section cm^2 ! Updated for bare-gr-s
-    Real cNHI = nHI*dx_SS;    // HI column density
-    Real cNH2 = nH2*dx_SS;    // H2 column density
+    MolecularReal Sdeff = MolecularReal(2.34e-21);    // dust cross section cm^2 ! Updated for bare-gr-s
+    MolecularReal cNHI = nHI*dx_SS;    // HI column density
+    MolecularReal cNH2 = nH2*dx_SS;    // H2 column density
 
-    Real ss_factor = rtz_math::exp(-Sdeff*Z*(cNHI + (Real(2.0)*cNH2)));
+    MolecularReal ss_factor = molecular_math::exp(-Sdeff*Z*(cNHI + (MolecularReal(2.0)*cNH2)));
 
     return ss_factor;
 }
 
 KOKKOS_INLINE_FUNCTION
-Real comp_SH2(Real nH2, Real dx_SS) {
+MolecularReal comp_SH2(MolecularReal nH2, MolecularReal dx_SS) {
     // ! Returns the self shielding factor for dust
     // ! see section 2.2 http://iopscience.iop.org/0004-637X/697/1/55/pdf/apj_697_1_55.pdf
 
-    Real cNH2 = nH2*dx_SS;  // H2 column density
-    Real xfac = cNH2/(Real(5e14));
-    Real wH2 = Real(0.2);
+    MolecularReal cNH2 = nH2*dx_SS;  // H2 column density
+    MolecularReal xfac = cNH2/(MolecularReal(5e14));
+    MolecularReal wH2 = MolecularReal(0.2);
 
-    Real Sa = (Real(1.0) - wH2)/((Real(1.0) + xfac)*(Real(1.0) + xfac));
-    Real Sb = wH2/rtz_math::sqrt(Real(1.0) + xfac);
-    Real Sc = rtz_math::exp(-Real(0.00085)*rtz_math::sqrt(Real(1.0) + xfac));
+    MolecularReal Sa = (MolecularReal(1.0) - wH2)/((MolecularReal(1.0) + xfac)*(MolecularReal(1.0) + xfac));
+    MolecularReal Sb = wH2/molecular_math::sqrt(MolecularReal(1.0) + xfac);
+    MolecularReal Sc = molecular_math::exp(-MolecularReal(0.00085)*molecular_math::sqrt(MolecularReal(1.0) + xfac));
 
-    Real ss_factor = Sa + (Sb*Sc);
+    MolecularReal ss_factor = Sa + (Sb*Sc);
 
     return ss_factor;
 }
 
 KOKKOS_INLINE_FUNCTION
-Real alpha_CO(Real G0, Real xi_cr_H2, Real nCII, Real nH2, Real xO, Real nH){
+MolecularReal alpha_CO(MolecularReal G0, MolecularReal xi_cr_H2, MolecularReal nCII, MolecularReal nH2, MolecularReal xO, MolecularReal nH){
 
     //! see glover 2012
-    Real k0 = Real(5.E-16); //! cm^3 s^-1
-    Real k1 = Real(5.E-10); //! Rate coefficient for the formation of CO from O + CHx
+    MolecularReal k0 = MolecularReal(5.E-16); //! cm^3 s^-1
+    MolecularReal k1 = MolecularReal(5.E-10); //! Rate coefficient for the formation of CO from O + CHx
 
     //! Assuming CO formation is modulated by CH2+, https://home.strw.leidenuniv.nl/~ewine/photo/display_ch2+_65e31a07e69e64dbd64d37801983018f.html
-    Real gammaCHx_cr = Real(8.88E-15) * (xi_cr_H2 / Real(1E-16)); //! Cosmic rays
-    Real gammaCHx = (Real(1.41E-10) * G0) + gammaCHx_cr;
+    MolecularReal gammaCHx_cr = MolecularReal(8.88E-15) * (xi_cr_H2 / MolecularReal(1E-16)); //! Cosmic rays
+    MolecularReal gammaCHx = (MolecularReal(1.41E-10) * G0) + gammaCHx_cr;
 
-    Real beta = k1 * xO/(k1*xO + gammaCHx/nH);
-    Real formation_rate = k0 * nCII * nH2 * beta;
+    MolecularReal beta = k1 * xO/(k1*xO + gammaCHx/nH);
+    MolecularReal formation_rate = k0 * nCII * nH2 * beta;
 
-    return rtz_math::fmax(formation_rate,Real(1e-100));
+    return molecular_math::fmax(formation_rate,MolecularReal(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-Real beta_CO(Real G0, Real xi_cr_H2){
+MolecularReal beta_CO(MolecularReal G0, MolecularReal xi_cr_H2){
     //! CO destruction
-    Real gammaCO = Real(2.43E-10) * G0;
-    Real gammaCO_cr = Real(4.62E-15) * (xi_cr_H2 / Real(1E-16));
+    MolecularReal gammaCO = MolecularReal(2.43E-10) * G0;
+    MolecularReal gammaCO_cr = MolecularReal(4.62E-15) * (xi_cr_H2 / MolecularReal(1E-16));
 
-    Real destruction_rate = gammaCO + gammaCO_cr;
+    MolecularReal destruction_rate = gammaCO + gammaCO_cr;
 
-    return rtz_math::fmax(destruction_rate,Real(1e-100));
+    return molecular_math::fmax(destruction_rate,MolecularReal(1e-100));
 }
 
 // sco_table has 52 entries
@@ -223,53 +231,53 @@ constexpr double sh2_col2[43] = {
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-Real comp_SCO(const Table& tabData, Real nco_mol, Real nh2, Real dx_SS) {
+MolecularReal comp_SCO(const Table& tabData, MolecularReal nco_mol, MolecularReal nh2, MolecularReal dx_SS) {
     // initialize to 1.0
-    Real ss_factor = Real(1.0);
+    MolecularReal ss_factor = MolecularReal(1.0);
 
     // CO self-shielding
     // Pinned to table at lower boundary, extrapolated above upper boundary
-    Real effcNCO = rtz_math::fmax(nco_mol*dx_SS, tabData.sco_col1(1));
-    if (effcNCO >= Real(1.578e+20)) {
-        ss_factor *= Real(1.619e-05);
+    MolecularReal effcNCO = molecular_math::fmax(nco_mol*dx_SS, MolecularReal(tabData.sco_col1(1)));
+    if (effcNCO >= MolecularReal(1.578e+20)) {
+        ss_factor *= MolecularReal(1.619e-05);
     } else {
         // Find the lower closest index
         int idxCO = 0;
         for (int i=0; i<51; i++) { // If above upper boundary then extrapolate using the slope
             // between the last two points, so conveniently we set i to not go to 51
-            if (effcNCO >= tabData.sco_col1(i)) idxCO = i;
+            if (effcNCO >= MolecularReal(tabData.sco_col1(i))) idxCO = i;
         }
 
-        Real logeffcNCO = rtz_math::log10(effcNCO);
+        MolecularReal logeffcNCO = molecular_math::log10(effcNCO);
         // Interpolate or extrapolate automatically
-        Real logsCO = rtz_math::log10(tabData.sco_col2(idxCO))
-                        + (rtz_math::log10(tabData.sco_col2(idxCO+1)) - rtz_math::log10(tabData.sco_col2(idxCO)))
-                        * (logeffcNCO - rtz_math::log10(tabData.sco_col1(idxCO)))
-                        / (rtz_math::log10(tabData.sco_col1(idxCO+1)) - rtz_math::log10(tabData.sco_col1(idxCO)));
+        MolecularReal logsCO = molecular_math::log10(MolecularReal(tabData.sco_col2(idxCO)))
+                        + (molecular_math::log10(MolecularReal(tabData.sco_col2(idxCO+1))) - molecular_math::log10(MolecularReal(tabData.sco_col2(idxCO))))
+                        * (logeffcNCO - molecular_math::log10(MolecularReal(tabData.sco_col1(idxCO))))
+                        / (molecular_math::log10(MolecularReal(tabData.sco_col1(idxCO+1))) - molecular_math::log10(MolecularReal(tabData.sco_col1(idxCO))));
 
-        ss_factor *= rtz_math::exp10(logsCO);
+        ss_factor *= molecular_math::exp10(logsCO);
     }
 
     // H2 shielding of CO
     // Pinned to table at lower boundary, extrapolated above upper boundary
-    Real effcNH2 = rtz_math::fmax(nh2*dx_SS, tabData.sh2_col1(1));
-    if (effcNH2 >= Real(1.016e+22)) {
-        ss_factor *= Real(4.666e-03);
+    MolecularReal effcNH2 = molecular_math::fmax(nh2*dx_SS, MolecularReal(tabData.sh2_col1(1)));
+    if (effcNH2 >= MolecularReal(1.016e+22)) {
+        ss_factor *= MolecularReal(4.666e-03);
     } else {
         // Find the lower closest index
         int idxH2 = 0;
         for (int i=1; i<42; i++) {
-            if (effcNH2 >= tabData.sh2_col1(i)) idxH2 = i;
+            if (effcNH2 >= MolecularReal(tabData.sh2_col1(i))) idxH2 = i;
         }
 
-        Real logeffcNH2 = rtz_math::log10(effcNH2);
+        MolecularReal logeffcNH2 = molecular_math::log10(effcNH2);
         // Interpolate or extrapolate automatically
-        Real logsH2 = rtz_math::log10(tabData.sh2_col2(idxH2))
-                        + (rtz_math::log10(tabData.sh2_col2(idxH2+1)) - rtz_math::log10(tabData.sh2_col2(idxH2)))
-                        * (logeffcNH2 - rtz_math::log10(tabData.sh2_col1(idxH2)))
-                        / (rtz_math::log10(tabData.sh2_col1(idxH2+1)) - rtz_math::log10(tabData.sh2_col1(idxH2)));
+        MolecularReal logsH2 = molecular_math::log10(MolecularReal(tabData.sh2_col2(idxH2)))
+                        + (molecular_math::log10(MolecularReal(tabData.sh2_col2(idxH2+1))) - molecular_math::log10(MolecularReal(tabData.sh2_col2(idxH2))))
+                        * (logeffcNH2 - molecular_math::log10(MolecularReal(tabData.sh2_col1(idxH2))))
+                        / (molecular_math::log10(MolecularReal(tabData.sh2_col1(idxH2+1))) - molecular_math::log10(MolecularReal(tabData.sh2_col1(idxH2))));
 
-        ss_factor *= rtz_math::exp10(logsH2);
+        ss_factor *= molecular_math::exp10(logsH2);
     }
 
     return ss_factor;

@@ -1297,3 +1297,84 @@ env PATH=/opt/cuda/bin:/usr/bin:/bin \
   --ion-rtol 1e-5 --temperature-rtol 1e-5 --require-float64 \
   --warmups 1 --repetitions 5
 ```
+
+## Implicit solver: full-dataset accuracy sweep toward a 1% target
+
+After the 20% experiment, optimization was explicitly redirected to the
+implicit solver with a <1% relative-error target versus explicit. The
+unbenchmarked per-element ISRF-cache experiment on the legacy path was undone;
+source and the default CUDA binary were restored before the implicit scans.
+
+Full-float64 CUDA scan, same 10,000-cell dataset and 100 yr endpoint, extension
+SHA `4e4267141f84a24b48d5e20077bc42e92f22531d1a46c64fe0ee7a91f807e036`:
+
+| Implicit ion limit | Single solve s | Max ion error | p99 ion error | Max T error | Max iterations |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 15% | 18.2497 | 102.94% | 3.754% | 5.894% | 894 |
+| 10% | 25.7815 | 111.94% | 2.940% | 6.450% | 1,305 |
+| 7.5% | 33.2966 | 116.45% | 3.217% | 6.720% | 1,711 |
+| 5% | 48.2978 | 120.94% | 3.884% | 7.522% | 2,528 |
+
+These are diagnostic single-run timings, no warmup, with CUDA compilation
+also running during part of the scan; they are not controlled speedup claims.
+Accuracy/counts are the purpose of this scan. The same-build legacy control
+matches the regenerated reference exactly. None of these implicit limits
+passes 1% for every ion above 1e-4 and every temperature. Ion violation counts
+at 1% are respectively 11,201, 10,172, 11,816 and 14,235 (of 203,932);
+temperature violations are 6, 5, 5 and 6 (of 10,000). Strict 1e-5 fields in
+the raw scan remain labeled separately from the added `one_percent_check`.
+
+The worst 20% case is CII in cell 117 (initial T=322454 K, nH=704.35/cm3).
+The first-64-cell CPU subset misses this case, so subset improvements cannot
+establish the full-dataset accuracy target. Additional difficult cells are
+5915, 1819 and 44. Holding T fixed for these four cells reduces worst ion
+disagreement to approximately 2%, but decreasing the implicit limit still
+does not make it monotonic toward the coarse legacy result.
+
+A separate CPU diagnostic gives both integrators the same physical output
+intervals, thereby bounding both internal timesteps without changing either
+temperature equation. Worst discrepancies on the four difficult cells:
+
+| Shared intervals over 100 yr | Max ion difference | Max T difference |
+| --- | ---: | ---: |
+| 1 | 93.94% | 5.324% |
+| 100 | 108.60% | 5.934% |
+| 1,000 | 37.87% | 2.666% |
+| 10,000 | 5.371% | 0.9463% |
+| 100,000 | **0.5595%** | **0.2180%** |
+
+This establishes <1% agreement only for this four-cell diagnostic and its
+refined explicit reference, not the full galaxy or the saved coarse output.
+The refined explicit result itself differs from the saved coarse reference by
+up to 128.81% in ions and 9.107% in T. Thus merely reducing the implicit
+ion-change threshold is not a reliable way to reproduce the finite-step bias
+of the saved legacy result. The requested reference/time interpretation was
+queried before changing the acceptance criterion.
+
+Warm-only NSYS of the original 20% implicit build: implicit atomic kernel
+12.318622 s (691 launches, 88 registers/thread), cooling 1.114944 s,
+prep/radiation 0.607661 s, commit 0.250934 s, molecules/HHe wrapper
+0.014404 s. The implicit kernel is approximately 86% of GPU kernel time.
+This prioritizes its nonlinear/block-solve work for the next performance
+trial; no new NCU occupancy/stall counters were collected.
+
+Artifacts: `implicit-accuracy-focus-gpu.json` (per-cell counts and 1% checks),
+`implicit-accuracy-focus-cpu64.json`, `implicit-cooling-diagnostic.json`,
+`implicit-shared-step-diagnostic.json`, `implicit-refined-reference-diagnostic.json`,
+and `implicit-focus-profile.json` plus NSYS trace/SQLite (under results/).
+`implicit_coupling_diagnostic.py` reproduces the refined-reference test.
+Example commands:
+
+```bash
+/usr/bin/python3.14 benchmarks/implicit_ion_trials.py \
+  --extension build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so \
+  --output benchmarks/results/implicit-accuracy-focus-gpu \
+  --reference benchmarks/results/metal-all-cache-final.npz \
+  --limits 0.15,0.1,0.075,0.05 --repetitions 1 --warmups 0
+
+OMP_NUM_THREADS=1 OMP_PROC_BIND=false /usr/bin/python3.14 \
+  benchmarks/implicit_coupling_diagnostic.py \
+  --extension build/galaxy-cpu-check/_rtz.cpython-314-x86_64-linux-gnu.so \
+  --output benchmarks/results/implicit-refined-reference-diagnostic \
+  --intervals 100000
+```

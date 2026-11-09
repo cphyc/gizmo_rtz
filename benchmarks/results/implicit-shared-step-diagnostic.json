@@ -1,0 +1,80 @@
+{
+  "cell_indices": [
+    117,
+    5915,
+    1819,
+    44
+  ],
+  "trials": [
+    {
+      "intervals": 1,
+      "implicit": false,
+      "seconds": 1.1375289099999009,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0
+    },
+    {
+      "intervals": 1,
+      "implicit": true,
+      "seconds": 0.05717016699986743,
+      "max_ion_relative_error": 0.9393759572507168,
+      "max_temperature_relative_error": 0.05324182517954168
+    },
+    {
+      "intervals": 100,
+      "implicit": false,
+      "seconds": 0.27360316999988754,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0
+    },
+    {
+      "intervals": 100,
+      "implicit": true,
+      "seconds": 0.06644887800007382,
+      "max_ion_relative_error": 1.086045913138045,
+      "max_temperature_relative_error": 0.05934044962722662
+    },
+    {
+      "intervals": 1000,
+      "implicit": false,
+      "seconds": 0.2748822480000399,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0
+    },
+    {
+      "intervals": 1000,
+      "implicit": true,
+      "seconds": 0.22208729299995866,
+      "max_ion_relative_error": 0.37873335279821496,
+      "max_temperature_relative_error": 0.02666259187636444
+    },
+    {
+      "intervals": 10000,
+      "implicit": false,
+      "seconds": 2.1626975120000225,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0
+    },
+    {
+      "intervals": 10000,
+      "implicit": true,
+      "seconds": 1.835755484999936,
+      "max_ion_relative_error": 0.053713803167856344,
+      "max_temperature_relative_error": 0.009462862287329399
+    },
+    {
+      "intervals": 100000,
+      "implicit": false,
+      "seconds": 19.971131184000114,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0
+    },
+    {
+      "intervals": 100000,
+      "implicit": true,
+      "seconds": 16.879196712000066,
+      "max_ion_relative_error": 0.005595040318194577,
+      "max_temperature_relative_error": 0.0021795195051059757
+    }
+  ]
+}

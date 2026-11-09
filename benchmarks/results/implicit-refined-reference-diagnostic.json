@@ -1,0 +1,61 @@
+{
+  "command": [
+    "benchmarks/implicit_coupling_diagnostic.py",
+    "--extension",
+    "build/galaxy-cpu-check/_rtz.cpython-314-x86_64-linux-gnu.so",
+    "--output",
+    "benchmarks/results/implicit-refined-reference-diagnostic",
+    "--intervals",
+    "100000"
+  ],
+  "cell_indices": [
+    117,
+    5915,
+    1819,
+    44
+  ],
+  "constant_temperature": false,
+  "build_info": {
+    "execution_space": "OpenMP",
+    "cooling_bytes": 8,
+    "subcycle_state_bytes": 8,
+    "constants_bytes": 8,
+    "cross_section_bytes": 8,
+    "uvb_bytes": 8,
+    "molecular_bytes": 8,
+    "dust_recombination_bytes": 8,
+    "cosmic_ray_bytes": 8,
+    "recombination_bytes": 8,
+    "charge_transfer_bytes": 8,
+    "collisional_ionization_bytes": 8,
+    "real_bytes": 8,
+    "density_bytes": 8,
+    "ion_fraction_bytes": 8,
+    "cell_bytes": 2832,
+    "table_descriptor_bytes": 5864
+  },
+  "trials": [
+    {
+      "intervals": 100000,
+      "implicit": false,
+      "seconds": 23.429126486000087,
+      "max_ion_relative_error": 0.0,
+      "max_temperature_relative_error": 0.0,
+      "error_vs_original_coarse_legacy": {
+        "max_ion_relative_error": 1.2880844739483828,
+        "max_temperature_relative_error": 0.09107389968709068
+      }
+    },
+    {
+      "intervals": 100000,
+      "implicit": true,
+      "seconds": 19.176609691000067,
+      "max_ion_relative_error": 0.005595040318194577,
+      "max_temperature_relative_error": 0.0021795195051059757,
+      "error_vs_original_coarse_legacy": {
+        "max_ion_relative_error": 1.296091398812059,
+        "max_temperature_relative_error": 0.09135249588191174
+      }
+    }
+  ]
+}

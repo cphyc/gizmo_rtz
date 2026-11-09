@@ -50,7 +50,7 @@ for count in [int(n) for n in args.intervals.split(",")]:
         history = rtz.solve(state, np.linspace(100*365.25*86400/count, 100*365.25*86400, count),
                             meta["elements"], [tuple(x) for x in meta["ions"]],
                             [tuple(x) for x in meta["bands"]], sed=sed, **meta["physics"],
-                            rt_advect=True, implicit_ions=implicit, ion_change_limit=.2,
+                            rt_advect=True, implicit_ions=implicit, x_pct_rule=.2,
                             constant_temperature=args.constant_temperature)
         final = {k: np.array(v[-1], copy=True) for k, v in history.items()}
         del history

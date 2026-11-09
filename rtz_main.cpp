@@ -56,7 +56,7 @@ void solve_chemistry_and_cooling_split(
     // converges to the same unilluminated answer.
     const bool static_radiation = false,
     const bool implicit_ions = false,
-    const Real ion_change_limit = Real(0.2))
+    const Real x_pct_rule = Real(0.2))
 {
     // --- preamble of RTZ::solve_chemistry_and_cooling ---
     const Real dust_ratio = get_dust_mass_and_depletion(
@@ -105,7 +105,7 @@ void solve_chemistry_and_cooling_split(
         radiation_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, nCO, dx, dust_ratio,
             N_PHOT, N_phot_new, phot_att, state,
-            0.0, nullptr, rt_smooth, dNpdt, static_radiation);
+            0.0, nullptr, rt_smooth, dNpdt, static_radiation, x_pct_rule);
 
         // Two evaluations of all_cooling (at T and 1.001*T) for the Newton derivative
         cooling_rate_lane<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
@@ -117,29 +117,29 @@ void solve_chemistry_and_cooling_split(
             nCO, dust_ratio, primary_cr_rate, ss_factor, UV_background_G0,
             N_phot_new, state);
         cooling_update<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
-            cool_rate_pair, ddt, loc_rho, state);
+            cool_rate_pair, ddt, loc_rho, state, x_pct_rule);
 
         molecular_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, nCO, dust_ratio,
-            UV_background_G0, N_phot_new, state, implicit_ions ? ion_change_limit : X_PCT_RULE);
+            UV_background_G0, N_phot_new, state, x_pct_rule);
 
         if (implicit_ions) {
             implicit_ions_step<include_H2, rt_advect>(SerialIonExecutor{}, ddt, elements,
                 n_and_ion_fracs, tabData, flags, dust_ratio, UV_background_G0, ss_factor,
-                N_phot_new, all_ion_map, all_ion_count, implicit_work, state, ion_change_limit);
+                N_phot_new, all_ion_map, all_ion_count, implicit_work, state, x_pct_rule);
         } else {
         HandHe_ions_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, flags, dust_ratio,
-            UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state);
+            UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state, x_pct_rule);
         metal_ions_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, flags, dust_ratio,
-            UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state);
+            UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state, x_pct_rule);
 
         }
         subcycle_commit_and_control<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             elements, tabData, n_and_ion_fracs, nCO, N_PHOT, F_PHOT,
             N_phot_new, phot_att, ddt, total_time, state,
-            rt_smooth, dFpdt);
+            rt_smooth, dFpdt, x_pct_rule);
 
         // Exit conditions of subcycle_chemistry
         if (total_dt > 0.0 && fabs(total_time - total_dt) / total_dt < 1e-6) break;

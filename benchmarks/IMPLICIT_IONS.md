@@ -1,9 +1,9 @@
 # Opt-in implicit atomic ions
 
 The legacy ion integrator remains the default. Select the experimental solver
-with `rtz.solve(..., implicit_ions=True, ion_change_limit=0.2)`. The ion-change
-limit defaults to 20% when this solver is selected. The legacy path retains
-its existing 10% rule and original updates.
+with `rtz.solve(..., implicit_ions=True, x_pct_rule=0.2)`. The X-percent rule
+defaults to 20% and applies to chemistry, temperature, and radiation updates,
+including both ion integration paths.
 
 The new atomic step solves backward Euler for H, He and the configured metals:
 
@@ -24,8 +24,8 @@ analytically. No dense matrix, BLAS or LAPACK is used.
 
 The float64 physical ion step uses a scaled Newton residual tolerance of
 1e-11; standalone sparse-core calls default to 2e-13. The float32 tolerance
-remains 2e-6. These are nonlinear-solve tolerances, separate from the ion
-change limit and from time-integration error against another integrator.
+remains 2e-6. These are nonlinear-solve tolerances, separate from `x_pct_rule`
+and from time-integration error against another integrator.
 
 CUDA assigns one thread to each active cell. Temporary sparse vectors are
 interleaved by active-cell index, so neighboring threads access adjacent
@@ -39,10 +39,11 @@ The pivot recurrence uses positive terms to avoid stiff diagonal subtraction.
 Element mass is repaired for roundoff; abundances remain nonnegative. Molecular
 evolution remains separate. The updated H2 abundance determines how much
 hydrogen remains available to HI/HII. The temperature integrator and its
-acceptance rule are unchanged. Temperature output can nevertheless differ
-because the chemistry changes cooling and molecular weight.
+equations are unchanged; all coupled updates use the same `x_pct_rule`
+acceptance threshold. Temperature output can nevertheless differ because the
+chemistry changes cooling and molecular weight.
 
-The ion-change limit is a timestep heuristic, not an error tolerance. Sparse
+The X-percent rule is a timestep heuristic, not an error tolerance. Sparse
 solve accuracy does not imply agreement with a different finite-step scheme.
 The 20% experiment was explicitly accepted despite discrepancies from the
 legacy reference; it is not claimed to pass the previous 1e-5 regression gate.

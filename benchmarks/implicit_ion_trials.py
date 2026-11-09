@@ -51,7 +51,7 @@ def summary(values):
                 p99=float(np.quantile(values, .99)))
 
 for limit in [None, *[float(x) for x in args.limits.split(",")]]:
-    row = dict(implicit_ions=limit is not None, ion_change_limit=limit or .1)
+    row = dict(implicit_ions=limit is not None, x_pct_rule=limit or .1)
     timings = []
     try:
         for iteration in range(args.warmups + args.repetitions):
@@ -60,7 +60,7 @@ for limit in [None, *[float(x) for x in args.limits.split(",")]]:
                                 metadata["elements"], [tuple(x) for x in metadata["ions"]],
                                 [tuple(x) for x in metadata["bands"]], sed=sed,
                                 **metadata["physics"], rt_advect=True,
-                                implicit_ions=limit is not None, ion_change_limit=limit or .5)
+                                implicit_ions=limit is not None, x_pct_rule=limit or .5)
             elapsed = perf_counter() - start
             if iteration >= args.warmups:
                 timings.append(elapsed)

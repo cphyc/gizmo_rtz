@@ -35,8 +35,7 @@ namespace prism_gpu {
 
 // MAX_ELEMENTS is already defined in types.hpp (included via dyablo_api.hpp)
 const Real MIN_XION = Real(1E-20);         // Minimum ion fraction
-const Real X_PCT_RULE = Real(1E-1);        // Value required for convergence
-const Real X_FM = Real(1E-6);              // Damping value for X_PCT_RULE
+const Real X_FM = Real(1E-6);              // Floor used in fractional residuals
 const Real T_MIN = Real(2.725);
 const Real T_MAX = Real(1E9);
 
@@ -547,7 +546,8 @@ void radiation_step(
     const std::array<Real, N_GROUPS>* N_phot_start,
     const bool rt_smooth,
     const std::array<Real, N_GROUPS>& dNpdt,
-    const bool static_field_test = false)
+    const bool static_field_test = false,
+    const Real x_pct_rule = Real(1E-1))
 {
     // Self-shielding factors
     state.f_shd_H2 = Real(1.0);
@@ -627,7 +627,7 @@ void radiation_step(
                 residual = Real(0.0); // group is spent: it no longer gates the timestep
             state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
-            if (residual > X_PCT_RULE){
+            if (residual > x_pct_rule){
                 // Reset the success counter
                 state.success_counter = 0;
                 // Declare the x-percent rule was violated
@@ -669,7 +669,8 @@ void cooling_step(
     const Real ss_factor,
     const Real UV_background_G0,
     std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     if (constant_temperature || !state.compute_temperature) return;
 
@@ -715,7 +716,7 @@ void cooling_step(
     // Max residual over all elements
     state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
-    if (residual > X_PCT_RULE){
+    if (residual > x_pct_rule){
         // Reset the success counter
         state.success_counter = 0;
         // Declare the x-percent rule was violated
@@ -783,7 +784,8 @@ void cooling_update(
     const Real* rate_pair,
     const Real ddt,
     const Real loc_rho,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     if (constant_temperature || !state.compute_temperature) return;
 
@@ -811,7 +813,7 @@ void cooling_update(
     // Max residual over all elements
     state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
 
-    if (residual > X_PCT_RULE){
+    if (residual > x_pct_rule){
         // Reset the success counter
         state.success_counter = 0;
         // Declare the x-percent rule was violated
@@ -852,7 +854,8 @@ void cooling_step_team(
     const Real ss_factor,
     const Real UV_background_G0,
     std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     if (constant_temperature || !state.compute_temperature) return;
 
@@ -866,7 +869,7 @@ void cooling_step_team(
 
     Kokkos::single(Kokkos::PerTeam(team), [&]() {
         cooling_update<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
-            rate_pair, ddt, loc_rho, state);
+            rate_pair, ddt, loc_rho, state, x_pct_rule);
     });
 }
 
@@ -892,7 +895,7 @@ void molecular_step(
     const Real UV_background_G0,
     const std::array<Real, N_GROUPS>& N_phot_new,
     SubcycleState& state,
-    const Real ion_change_limit = X_PCT_RULE)
+    const Real x_pct_rule = Real(1E-1))
 {
     // Rates consumed by ions_step: reset every iteration, even when this
     // step is skipped, so ions_step sees zero molecular coupling.
@@ -956,9 +959,9 @@ void molecular_step(
         Real residual = rtz_math::fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
 
         // Max residual over all elements
-        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual * X_PCT_RULE / ion_change_limit);
+        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
 
-        if (residual > ion_change_limit && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
+        if (residual > x_pct_rule && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
             // Reset the success counter
             state.success_counter = 0;
             // Declare the x-percent rule was violated
@@ -1033,9 +1036,9 @@ void molecular_step(
                 Real residual = rtz_math::fabs(state.nCO_new - nCO) / (nCO + X_FM);
 
                 // Max residual over all elements
-                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual * X_PCT_RULE / ion_change_limit);
+                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
 
-                if (residual > ion_change_limit && nCO > Real(1E-10)){
+                if (residual > x_pct_rule && nCO > Real(1E-10)){
                     // Reset the success counter
                     state.success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -1076,7 +1079,8 @@ void ions_gs_element(
     const Real ss_factor,
     const std::array<Real, N_GROUPS>& N_phot_new,
     const Real dust_effective_number_density,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule)
 {
     // Gauss-Seidel update of one element's ionization stages followed by its
     // normalization — the body of ions_step's element loop, also called
@@ -1293,7 +1297,7 @@ void ions_gs_element(
 
             // Check if X percent rule is broken
             if (n_and_ion_fracs[i].ion_fracs[j] > Real(1E-10)){
-                if (residual > X_PCT_RULE){
+                if (residual > x_pct_rule){
                     // Reset the success counter
                     state.success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -1373,7 +1377,8 @@ void HandHe_ions_step(
     const Real primary_cosmic_ray_ionization_rate,
     const Real ss_factor,
     const std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     if (!state.compute_atoms) return;
 
@@ -1386,7 +1391,7 @@ void HandHe_ions_step(
             i, ddt, elements, n_and_ion_fracs, tabData, flags,
             UV_background_G0,
             primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new,
-            dust_effective_number_density, state);
+            dust_effective_number_density, state, x_pct_rule);
 
         if (!state.x_percent_rule) break;
     }
@@ -1417,7 +1422,8 @@ void HandHe_ions_step(
     const Real primary_cosmic_ray_ionization_rate,
     const Real ss_factor,
     const std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     if (!state.compute_atoms) return;
 
@@ -1425,7 +1431,7 @@ void HandHe_ions_step(
         HandHe_ions_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, flags,
             dust_to_gas_mass_ratio_over_mw, UV_background_G0,
-            primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new, state);
+            primary_cosmic_ray_ionization_rate, ss_factor, N_phot_new, state, x_pct_rule);
     });
     team.team_barrier();
 }
@@ -1459,7 +1465,8 @@ void metal_ions_step(
     [[maybe_unused]] const Real primary_cosmic_ray_ionization_rate,
     const Real ss_factor,
     const std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real x_pct_rule = Real(1E-1))
 {
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
     if (!state.compute_atoms || !state.x_percent_rule) return;
@@ -1635,7 +1642,7 @@ void metal_ions_step(
             const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
             const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
             max_stage_residual = rtz_math::fmax(max_stage_residual, residual);
-            if (x_old > Real(1E-10) && residual > X_PCT_RULE) violated = 1;
+            if (x_old > Real(1E-10) && residual > x_pct_rule) violated = 1;
             delta_ne += ((n_and_ion_fracs[i].n_element_new * x_new)
                        - (n_and_ion_fracs[i].n_element * x_old)) * (Real)j;
         }
@@ -1645,7 +1652,7 @@ void metal_ions_step(
     const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
 
     state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
-    if (violated > 0 || ne_residual > X_PCT_RULE) {
+    if (violated > 0 || ne_residual > x_pct_rule) {
         state.success_counter = 0;
         state.x_percent_rule = false;
     }
@@ -1712,7 +1719,8 @@ void metal_ions_step(
     Real* ct_recombination_cache = nullptr,
     Real* ct_ionization_cache = nullptr,
     Real* normalization_sums = nullptr,
-    Real* auxiliary_cache = nullptr)
+    Real* auxiliary_cache = nullptr,
+    const Real x_pct_rule = Real(1E-1))
 {
     // Cache pointers address stage zero after a leading zero sentinel;
     // each array also has a trailing sentinel. auxiliary_cache holds dust,
@@ -2027,7 +2035,7 @@ void metal_ions_step(
         const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
         const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
         lmax = rtz_math::fmax(lmax, residual);
-        if (x_old > Real(1e-10) && residual > X_PCT_RULE) lviol = 1;
+        if (x_old > Real(1e-10) && residual > x_pct_rule) lviol = 1;
         if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
         dne_sum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
                   - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
@@ -2040,7 +2048,7 @@ void metal_ions_step(
     //     const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
     //     const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
     //     const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
-    //     if (x_old > Real(1E-10) && residual > X_PCT_RULE) lviol = 1;
+    //     if (x_old > Real(1E-10) && residual > x_pct_rule) lviol = 1;
     // }, Kokkos::Max<int>(violated));
 
     // // Electron density from the swept metal fractions; state.ne already carries
@@ -2059,7 +2067,7 @@ void metal_ions_step(
     Kokkos::single(Kokkos::PerTeam(team), [&]() {
         state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
         // The Max reduction identity is INT_MIN, so compare against > 0
-        if (violated > 0 || ne_residual > X_PCT_RULE) {
+        if (violated > 0 || ne_residual > x_pct_rule) {
             // Reset the success counter
             state.success_counter = 0;
             // Declare the x-percent rule was violated
@@ -2208,7 +2216,7 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
     CompactIonData& ions, const Table& tables, const PhysicsFlags& flags,
     Real dust_ratio, Real uv_g0, Real ss_factor,
     const std::array<Real, N_GROUPS>& photons, const uint16_t* ion_map,
-    int n_ion_work, Real* work, SubcycleState& state, Real ion_change_limit,
+    int n_ion_work, Real* work, SubcycleState& state, Real x_pct_rule,
     std::size_t work_stride = 1)
 {
     if (!state.compute_atoms || !state.x_percent_rule) return;
@@ -2276,8 +2284,8 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
         // Keep temperature/radiation's existing 10% controller unchanged;
         // express the separate ion limit in that controller's residual units.
         state.max_residual_all = rtz_math::fmax(state.max_residual_all,
-                                              ion_residual * X_PCT_RULE / ion_change_limit);
-        if (ion_residual > ion_change_limit) {
+                                              ion_residual);
+        if (ion_residual > x_pct_rule) {
             state.x_percent_rule = false;
             state.success_counter = 0;
         }
@@ -2294,8 +2302,8 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
 
 // Timestep-control law shared by subcycle_commit_and_control and the
 // group-synchronized driver in CoolingUpdate_PRISM_GPU.cpp (which applies it
-// once per sync group, with the group-max residual already divided by
-// X_PCT_RULE).
+// once per sync group, with the group-max residual already divided by the
+// X-percent limit).
 KOKKOS_INLINE_FUNCTION
 void subcycle_timestep_control(
     const bool committed,
@@ -2303,7 +2311,7 @@ void subcycle_timestep_control(
     Real& ddt)
 {
     if (!committed) {
-        // If we broke the 10% rule, divide timestep by 2.0
+        // If we broke the X-percent rule, divide timestep by 2.0
         ddt /= Real(2.0);
     } else {
         // TODO(code): allow for choice of aggressive vs conservative timestep
@@ -2340,7 +2348,8 @@ bool subcycle_commit_and_control(
     Real &total_time,
     SubcycleState &state,
     const bool rt_smooth,
-    const Array2D_RT& dFpdt)
+    const Array2D_RT& dFpdt,
+    const Real x_pct_rule = Real(1E-1))
 {
     const bool committed = state.x_percent_rule;
 
@@ -2405,7 +2414,7 @@ bool subcycle_commit_and_control(
     }
 
     // Set new dt
-    state.max_residual_all /= (X_PCT_RULE);
+    state.max_residual_all /= x_pct_rule;
     subcycle_timestep_control(state.x_percent_rule, state.max_residual_all, ddt);
 
     return committed;

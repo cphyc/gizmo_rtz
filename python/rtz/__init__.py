@@ -187,7 +187,7 @@ def solve(
     include_dust_recombination=True,
     include_charge_exchange=True,
     implicit_ions=False,
-    ion_change_limit=0.2,
+    x_pct_rule=0.2,
 ):
     """Evolve cell states at each requested time.
 
@@ -195,8 +195,8 @@ def solve(
     keeps photon densities constant without disabling their effect on chemistry.
     ``implicit_ions`` solves the coupled atomic backward-Euler problem with
     frozen electron density (opt-in; legacy is the accuracy reference).
-    ``ion_change_limit`` limits fractional population
-    changes (default 0.2); temperature/radiation retain their existing limits.
+    ``x_pct_rule`` limits fractional changes across the coupled chemistry,
+    temperature, and radiation updates (default 0.2).
     Set ``implicit_ions=False`` to reproduce the legacy ion integrator.
     ``equilibrium`` evolves each requested interval until the solver's
     convergence counter exceeds ``conv_its``. ``rt_advect`` and
@@ -262,7 +262,7 @@ def solve(
         include_dust_recombination,
         include_charge_exchange,
         implicit_ions,
-        ion_change_limit,
+        x_pct_rule,
     )
     return _group_history(history, element_list, ion_list, photon_bands)
 

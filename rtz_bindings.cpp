@@ -393,7 +393,7 @@ struct SolveOptions {
     bool use_default_depletion;
     PhysicsFlags physics_flags;
     bool implicit_ions;
-    double ion_change_limit;
+    double x_pct_rule;
 };
 
 template <bool include_CO>
@@ -405,8 +405,8 @@ SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndi
                                     const SolveOptions &options) {
     if (input.shape(0) == 0)
         throw std::invalid_argument("state must contain at least one cell");
-    if (!std::isfinite(options.ion_change_limit) || options.ion_change_limit <= 0 || options.ion_change_limit > 1)
-        throw std::invalid_argument("ion_change_limit must be in (0, 1]");
+    if (!std::isfinite(options.x_pct_rule) || options.x_pct_rule <= 0 || options.x_pct_rule > 1)
+        throw std::invalid_argument("x_pct_rule must be in (0, 1]");
     if (options.max_iterations <= 0)
         throw std::invalid_argument("max_iterations must be positive");
     if (options.conv_its <= 0)
@@ -640,7 +640,7 @@ nb::object run_solver(const SolveParameters &parameters,
     const auto* device_all_ions = all_ion_map_d.data();
     const int n_all_ions = static_cast<int>(all_ion_map.size());
     const bool implicit_ions = options.implicit_ions;
-    const Real ion_change_limit = implicit_ions ? Real(options.ion_change_limit) : X_PCT_RULE;
+    const Real x_pct_rule = Real(options.x_pct_rule);
 #ifdef KOKKOS_ENABLE_CUDA
     // Per-step transient workspace: columns are compact active indices, so
     // consecutive CUDA threads access consecutive cells at each vector index.
@@ -800,7 +800,8 @@ nb::object run_solver(const SolveParameters &parameters,
                                                            nullptr,
                                                            false,
                                                            dNpdt,
-                                                           fixed_radiation);
+                                                           fixed_radiation,
+                                                           x_pct_rule);
                 });
 
             if constexpr (!constant_temperature) {
@@ -846,14 +847,13 @@ nb::object run_solver(const SolveParameters &parameters,
                     if (cell.done)
                         return;
 
-                    if constexpr (!constant_temperature) {
-                        cooling_update<constant_temperature,
-                                       include_H2,
-                                       include_CO,
-                                       rt_advect,
-                                       include_self_shielding>(
-                            cell.cooling_rates.data(), cell.ddt, cell.loc_rho, cell.subcycle);
-                    }
+                    cooling_update<constant_temperature,
+                                   include_H2,
+                                   include_CO,
+                                   rt_advect,
+                                   include_self_shielding>(
+                        cell.cooling_rates.data(), cell.ddt, cell.loc_rho, cell.subcycle,
+                        x_pct_rule);
 
                     molecular_step<constant_temperature,
                                    include_H2,
@@ -867,7 +867,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                                            cell.dust_ratio,
                                                            uv_background,
                                                            cell.photons_new,
-                                                           cell.subcycle, ion_change_limit);
+                                                           cell.subcycle, x_pct_rule);
 
                     if (!implicit_ions) HandHe_ions_step<constant_temperature,
                                      include_H2,
@@ -883,7 +883,8 @@ nb::object run_solver(const SolveParameters &parameters,
                                                              primary_cr_rate,
                                                              cell.ss_factor,
                                                              cell.photons_new,
-                                                             cell.subcycle);
+                                                             cell.subcycle,
+                                                             x_pct_rule);
                 });
 
             // Metal stages retain one team per cell and their frozen snapshot.
@@ -908,7 +909,7 @@ nb::object run_solver(const SolveParameters &parameters,
                             cell.ddt, device_elements, cell.chemistry, *device_tables, flags,
                             cell.dust_ratio, uv_background, cell.ss_factor, cell.photons_new,
                             device_all_ions, n_all_ions, implicit_work_data + active_index,
-                            cell.subcycle, ion_change_limit, implicit_work_columns);
+                            cell.subcycle, x_pct_rule, implicit_work_columns);
                     });
                 }
 #else
@@ -920,7 +921,7 @@ nb::object run_solver(const SolveParameters &parameters,
                         implicit_ions_step<include_H2, rt_advect>(TeamIonExecutor<TeamMember>{team},
                             cell.ddt, device_elements, cell.chemistry, *device_tables, flags,
                             cell.dust_ratio, uv_background, cell.ss_factor, cell.photons_new,
-                            device_all_ions, n_all_ions, work, cell.subcycle, ion_change_limit);
+                            device_all_ions, n_all_ions, work, cell.subcycle, x_pct_rule);
                     });
 #endif
             } else {
@@ -964,7 +965,8 @@ nb::object run_solver(const SolveParameters &parameters,
                                                             rate_cache + 2 * rate_cache_stride + 1,
                                                             rate_cache + 3 * rate_cache_stride + 1,
                                                             rate_cache + (9 + N_GROUPS) * rate_cache_stride,
-                                                            rate_cache + 4 * rate_cache_stride);
+                                                            rate_cache + 4 * rate_cache_stride,
+                                                            x_pct_rule);
                     // team.team_barrier();
 
                 });
@@ -999,7 +1001,8 @@ nb::object run_solver(const SolveParameters &parameters,
                                                                         total_time,
                                                                         cell.subcycle,
                                                                         false,
-                                                                        dFpdt);
+                                                                        dFpdt,
+                                                                        x_pct_rule);
                     if (accepted) ++cell.accepted_steps;
                     cell.ddt = ddt;
                     cell.total_time = total_time;
@@ -1161,7 +1164,7 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                  bool include_dust_recombination,
                  bool include_charge_exchange,
                  bool implicit_ions,
-                 double ion_change_limit) {
+                 double x_pct_rule) {
     PhysicsFlags physics_flags;
     physics_flags.include_collisional_ionization = include_collisional_ionization;
     physics_flags.include_photoionization = include_photoionization;
@@ -1181,7 +1184,7 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                                equilibrium,
                                temperature_is_Tmu,
                                use_default_depletion,
-                               physics_flags, implicit_ions, ion_change_limit};
+                               physics_flags, implicit_ions, x_pct_rule};
     auto run_variant = [&]<bool constant_temperature_variant,
                            bool include_H2_variant,
                            bool include_CO_variant,
@@ -1294,6 +1297,6 @@ NB_MODULE(_rtz, module) {
                nb::arg("include_dust_recombination") = true,
                nb::arg("include_charge_exchange") = true,
                nb::arg("implicit_ions") = false,
-               nb::arg("ion_change_limit") = 0.2,
+               nb::arg("x_pct_rule") = 0.2,
                "Evolve each state row from t=0 through the requested 1D NumPy time array.");
 }

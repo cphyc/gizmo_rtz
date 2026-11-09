@@ -191,8 +191,10 @@ def test_evolves_one_myr_to_golden_state(initial_state):
         ions,
         bands,
         max_iterations=100000,
+        implicit_ions=False,
+        x_pct_rule=1e-4,
     ))
-    # Generated with the current OpenMP solver; CPU and CUDA subcycling differ slightly.
+    # Generated with explicit stepping and x_pct_rule=1e-4; CPU and CUDA differ slightly.
     expected = np.array(
         [
             3.8931047515583123e4,

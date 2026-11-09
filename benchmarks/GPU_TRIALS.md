@@ -1412,3 +1412,75 @@ sparse-core tests pass; the default legacy CUDA binding regressions pass
 implicit-newton-validation.json. **Retained** for its measured implicit-only
 gain; implicit remains opt-in. The accepted-trial PDF now identifies this
 comparison as an implicit branch with its own accuracy reference.
+
+
+## Implicit optimization: one CUDA thread per cell (retained)
+
+The implicit tridiagonal element solves are sequential within each block.
+Replace one 32-thread team per cell with a CUDA RangePolicy, one thread per
+active cell. Process the same sparse system through SerialIonExecutor and
+interleave workspace vectors by compact active index so neighboring threads
+access adjacent entries. A common strided-vector contract retains contiguous
+team scratch on CPU and supports the new CUDA layout. Equations, frozen ne/T,
+20% ion-change rule, Newton tolerance and legacy path are unchanged.
+
+Workspace is reused across same-stream batches of at most 16,384 cells,
+bounding extra allocation to 119,537,664 bytes; 10,000 cells use 72,960,000
+bytes. It is allocated only for implicit CUDA solves. This avoids unbounded
+extra per-cell workspace allocation for larger batches. A new 16,387-cell,
+multi-interval test crosses the cap and compares with individual-cell solves.
+
+Five warmed final samples: 5.001018, 4.977643, 4.973936, 4.980159, 4.976981 s;
+median **4.977643 s**. Fresh saved-parent recheck samples:
+13.852453, 13.844799, 13.843394, 13.856514, 13.849174 s;
+median **13.849174 s**. Same Python 3.14, same local CUDA GPU,
+all float64, same 10,000 cells and 100 yr endpoint, one warmup and five timed
+solves per build: **2.78228x speedup,
+64.06% less time**. The initial
+unbounded-workspace trial median was 4.971672 s; bounding its storage preserves
+the gain. This is also faster than the 11.360899 s legacy run, but the
+outstanding <1% coarse-explicit agreement target is NOT thereby satisfied.
+
+All four final output arrays are **bit-identical** to the previous implicit
+20% reference on all 10,000 cells. All 1,346,410 outer attempts, p99=613.02
+and max=691 remain unchanged. The speedup is execution/layout, not relaxed
+timestep acceptance, altered physics or changed precision. The implicit
+solver remains opt-in and the legacy update remains the default.
+
+Warm-only paired NSYS, same Newton tolerance and 691 phase launches each:
+
+| Phase | Parent GPU s | Final GPU s |
+| --- | ---: | ---: |
+| Implicit ions | 11.738843 | 2.862002 |
+| Cooling | 1.118442 | 1.119444 |
+| Prep/radiation | 0.608126 | 0.609148 |
+| Commit | 0.252567 | 0.252701 |
+| Molecular wrapper | 0.014369 | 0.014406 |
+
+The implicit kernel drops **75.62%**. Its registers
+increase 88→128 per thread, while dynamic shared bytes/block drop 7,568→0.
+Other phases remain essentially unchanged. No achieved occupancy, cache-hit,
+or stall improvement is claimed without new NCU counters; the measured
+kernel-time reduction establishes the gain despite increased registers.
+
+CPU/CUDA sparse-core tests pass for contiguous and interleaved workspaces,
+including guard checks against overwriting neighboring cells. CUDA binding
+checks: default/legacy suite **19 passed**, three long sweeps excluded
+(5.90 s); implicit invariant suite **17 passed**, five legacy-golden/long
+sweeps excluded. The batch-boundary test is included. Validation record:
+implicit-range-validation.json; exact-array record: implicit-range-exact.json.
+
+Final extension SHA `c82dbd985d1dae3a23f184c5ec6880329ba78feb28ca2fcaaf97dcfad46de90c`; parent SHA
+`9ffdbffeab99ca56cb5eed84756905a247777942a7c28e2578bbc410973442de`. Final timings/output:
+implicit-range-final.json/.npz; saved control: implicit-range-control.json.
+Initial trial: implicit-range.json. Paired NSYS traces, SQLite exports and
+warm-only breakdowns: implicit-range-parent-profile and
+implicit-range-final-profile (results/). The intermediate unbounded profile
+uses implicit-range-profile. The accepted-trials PDF now includes this
+implicit-only comparison, explicitly separate from the legacy/mixed branches.
+**Retained**; the installed venv package is not replaced.
+
+Reproduction uses benchmarks/galaxy_gpu.py with the new extension,
+--implicit-ions --ion-change-limit 0.2 --require-float64 --warmups 1
+--repetitions 5 and --reference benchmarks/results/implicit-newton-tolerance.npz
+--accuracy physical --ion-rtol 1e-5 --temperature-rtol 1e-5.

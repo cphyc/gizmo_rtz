@@ -27,6 +27,14 @@ The float64 physical ion step uses a scaled Newton residual tolerance of
 remains 2e-6. These are nonlinear-solve tolerances, separate from the ion
 change limit and from time-integration error against another integrator.
 
+CUDA assigns one thread to each active cell. Temporary sparse vectors are
+interleaved by active-cell index, so neighboring threads access adjacent
+workspace entries. The workspace is capped at 16,384 columns (119,537,664
+bytes for float64) and reused across ordered batches; 10,000 cells use
+72,960,000 bytes. CPU retains the team executor and contiguous scratch.
+The same sparse-vector contract supports either stride, without changing
+the equations. The CUDA legacy path does not allocate this workspace.
+
 The pivot recurrence uses positive terms to avoid stiff diagonal subtraction.
 Element mass is repaired for roundoff; abundances remain nonnegative. Molecular
 evolution remains separate. The updated H2 abundance determines how much

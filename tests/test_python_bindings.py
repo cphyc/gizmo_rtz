@@ -80,6 +80,24 @@ def test_solve_returns_unitful_grouped_history(initial_state):
     np.testing.assert_array_equal(_matrix(history)[0], state)
 
 
+def test_implicit_workspace_batches_match_individuals(initial_state):
+    initial, elements, ions, bands = initial_state
+    patterns = np.repeat(initial, 3, axis=0)
+    patterns[:, 0] = [1e4, 1e5, 1e6]
+    # Cross the CUDA workspace's 16,384-column bound, with different cells on
+    # both sides. Two intervals also exercise workspace reuse after compaction.
+    indices = np.arange(16387) % len(patterns)
+    times = np.array([0., 1e4, 1e6])
+    batch = _matrix(rtz.solve(patterns[indices], times, elements, ions, bands,
+                              implicit_ions=True))
+    for index, pattern in enumerate(patterns):
+        individual = _matrix(rtz.solve(pattern[None, :], times, elements, ions, bands,
+                                       implicit_ions=True))
+        selected = batch[:, indices == index]
+        np.testing.assert_allclose(selected, np.broadcast_to(individual, selected.shape),
+                                   rtol=1e-10, atol=1e-12)
+
+
 def test_grouped_unyt_state_and_sed(initial_state):
     state, elements, ions, bands = initial_state
     grouped_state = {

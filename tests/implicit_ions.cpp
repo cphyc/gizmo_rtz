@@ -29,21 +29,23 @@ struct Fixture {
         s.old[ions.offsets[1]+1] = Real(0.2);
         s.old[ions.offsets[2]] = Real(1);
     }
-    std::array<Real, IMPLICIT_ION_WORK> run(Real dt, Real hydrogen_mass = 1, bool serial = false) {
+    std::array<Real, IMPLICIT_ION_WORK> run(Real dt, Real hydrogen_mass = 1, bool serial = false, int stride = 1) {
         Kokkos::View<Element*> e("implicit_elements", MAX_ELEMENTS);
         auto eh = Kokkos::create_mirror_view(e);
         for (int i = 0; i < MAX_ELEMENTS; ++i) eh(i) = elements[i];
         Kokkos::deep_copy(e, eh);
         Kokkos::View<CompactIonData*> n("implicit_ions", 1);
         auto nh = Kokkos::create_mirror_view(n); nh(0) = ions; Kokkos::deep_copy(n, nh);
-        Kokkos::View<Real*> w("implicit_work", IMPLICIT_ION_WORK);
+        const int column = stride - 1;
+        Kokkos::View<Real*> w("implicit_work", IMPLICIT_ION_WORK * stride);
         auto wh = Kokkos::create_mirror_view(w);
-        for (int i = 0; i < IMPLICIT_ION_WORK; ++i) wh(i) = data[i];
+        Kokkos::deep_copy(wh, Real(-555));
+        for (int i = 0; i < IMPLICIT_ION_WORK; ++i) wh(i * stride + column) = data[i];
         Kokkos::deep_copy(w, wh);
         Kokkos::View<int*> ok("implicit_result", 1);
         if (serial) {
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), KOKKOS_LAMBDA(int) {
-                ok(0) = SparseIonSystem(w.data()).solve(SerialIonExecutor{}, e.data(), n(0), dt, hydrogen_mass);
+                ok(0) = SparseIonSystem(w.data() + column, stride).solve(SerialIonExecutor{}, e.data(), n(0), dt, hydrogen_mass);
             });
         } else {
             using Policy = Kokkos::TeamPolicy<>;
@@ -53,7 +55,7 @@ struct Fixture {
             Policy policy(1, Kokkos::AUTO());
 #endif
             Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const Policy::member_type& team) {
-                const bool result = SparseIonSystem(w.data()).solve(
+                const bool result = SparseIonSystem(w.data() + column, stride).solve(
                     TeamIonExecutor<Policy::member_type>{team}, e.data(), n(0), dt, hydrogen_mass);
                 Kokkos::single(Kokkos::PerTeam(team), [&]() { ok(0) = result; });
             });
@@ -62,7 +64,10 @@ struct Fixture {
         require(result(0) == 1, "sparse nonlinear solve failed");
         Kokkos::deep_copy(wh, w);
         std::array<Real, IMPLICIT_ION_WORK> answer{};
-        for (int i = 0; i < IMPLICIT_ION_WORK; ++i) answer[i] = wh(i);
+        for (int i = 0; i < IMPLICIT_ION_WORK; ++i) answer[i] = wh(i * stride + column);
+        for (int i = 0; i < IMPLICIT_ION_WORK; ++i)
+            for (int j = 0; j < column; ++j)
+                require(wh(i * stride + j) == Real(-555), "strided solve overwrote a neighboring cell");
         return answer;
     }
 };
@@ -91,7 +96,7 @@ void linear_and_stiff() {
             require(out.x[k] >= 0, "negative abundance"); mass += out.x[k];
         }
         require(std::abs(mass-1) < 3e-12, "element mass not conserved");
-        auto serial = f.run(dt, 1, true); SparseIonSystem serial_out(serial.data());
+        auto serial = f.run(dt, 1, true, 3); SparseIonSystem serial_out(serial.data());
         for (int k = h; k < b+3; ++k)
             require(std::abs(out.x[k]-serial_out.x[k]) < 3e-12, "team and serial solvers disagree");
     }

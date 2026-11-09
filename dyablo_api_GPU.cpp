@@ -2208,10 +2208,11 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
     CompactIonData& ions, const Table& tables, const PhysicsFlags& flags,
     Real dust_ratio, Real uv_g0, Real ss_factor,
     const std::array<Real, N_GROUPS>& photons, const uint16_t* ion_map,
-    int n_ion_work, Real* work, SubcycleState& state, Real ion_change_limit)
+    int n_ion_work, Real* work, SubcycleState& state, Real ion_change_limit,
+    std::size_t work_stride = 1)
 {
     if (!state.compute_atoms || !state.x_percent_rule) return;
-    const SparseIonSystem system(work);
+    const SparseIonSystem system(work, work_stride);
     const Real temperature = state.TK, ne = state.ne;
     const Real dust_density = ions.n_element_new[1] * dust_ratio;
     exec.each(n_ion_work, [&](int t) {

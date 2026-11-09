@@ -133,6 +133,18 @@
       "range_high": 1.0423040743901413
     },
     {
+      "tag": "I02",
+      "label": "Implicit opt-in: thread-per-cell",
+      "candidate": "implicit-range-final",
+      "parent": "implicit-range-control",
+      "category": "implicit",
+      "before_seconds": 13.849173612999948,
+      "after_seconds": 4.977642603000277,
+      "speedup": 2.7822756106781052,
+      "range_low": 2.768115367139936,
+      "range_high": 2.7858244898638302
+    },
+    {
       "tag": "P02",
       "label": "Charge transfer \u2192 float32",
       "candidate": "precision-timing-charge",

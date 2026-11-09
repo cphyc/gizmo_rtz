@@ -30,6 +30,7 @@ TRIALS = [
     ("M02", "Normalize metal stages in parallel", "metal-normalize", "metal-normalize-control-recheck", "float64"),
     ("M03", "Complete caches + residual merge", "metal-all-cache-final", "metal-cache-parent-recheck", "float64"),
     ("I01", "Implicit opt-in: Newton tolerance", "implicit-newton-tolerance", "implicit-newton-control", "implicit"),
+    ("I02", "Implicit opt-in: thread-per-cell", "implicit-range-final", "implicit-range-control", "implicit"),
     ("P02", "Charge transfer → float32", "precision-timing-charge", "precision-timing-float64", "mixed"),
     ("P04", "Cosmic rays → float32", "precision-timing-cosmic", "precision-timing-charge", "mixed"),
     ("P05", "Dust recombination → float32", "precision-timing-dust", "precision-timing-cosmic", "mixed"),
@@ -90,7 +91,8 @@ def main():
                           f"{row['before_seconds']:.3f} → {row['after_seconds']:.3f} s")
         ax.axvline(1, color="#333333", linewidth=1)
         ax.axhline(3.8, color="#bbbbbb", linestyle="--", linewidth=0.8)
-        ax.set(yticks=positions, yticklabels=labels, xlim=(0.5, 2.65),
+        ax.set(yticks=positions, yticklabels=labels,
+               xlim=(0.5, max(2.65, max(r["range_high"] for r in rows) * 1.15)),
                xlabel="Speedup vs measured parent (parent median / trial median)",
                title="Accepted GPU trials — incremental comparisons")
         ax.tick_params(axis="y", length=0, labelsize=8.5)

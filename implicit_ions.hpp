@@ -50,13 +50,26 @@ template<class Team> struct TeamIonExecutor {
     KOKKOS_INLINE_FUNCTION void barrier() const { team.team_barrier(); }
 };
 
+// A contiguous team workspace uses stride 1. A CUDA thread-per-cell workspace
+// interleaves cells so neighboring threads access adjacent entries at each
+// sparse-vector index. The sparse equations are identical in both layouts.
+struct IonWorkVector {
+    Real* data;
+    std::size_t stride;
+    KOKKOS_INLINE_FUNCTION Real& operator[](int index) const { return data[index * stride]; }
+};
+
 struct SparseIonSystem {
-    Real *up, *down, *ct_up, *ct_down, *old, *x, *dx, *pivot, *control;
-    KOKKOS_INLINE_FUNCTION explicit SparseIonSystem(Real* work)
-        : up(work), down(up + MAX_TOTAL_IONS), ct_up(down + MAX_TOTAL_IONS),
-          ct_down(ct_up + MAX_TOTAL_IONS), old(ct_down + MAX_TOTAL_IONS),
-          x(old + MAX_TOTAL_IONS), dx(x + MAX_TOTAL_IONS),
-          pivot(dx + MAX_TOTAL_IONS), control(pivot + MAX_TOTAL_IONS) {}
+    IonWorkVector up, down, ct_up, ct_down, old, x, dx, pivot, control;
+    KOKKOS_INLINE_FUNCTION explicit SparseIonSystem(Real* work, std::size_t stride = 1)
+        : up{work, stride}, down{work + MAX_TOTAL_IONS * stride, stride},
+          ct_up{work + 2 * MAX_TOTAL_IONS * stride, stride},
+          ct_down{work + 3 * MAX_TOTAL_IONS * stride, stride},
+          old{work + 4 * MAX_TOTAL_IONS * stride, stride},
+          x{work + 5 * MAX_TOTAL_IONS * stride, stride},
+          dx{work + 6 * MAX_TOTAL_IONS * stride, stride},
+          pivot{work + 7 * MAX_TOTAL_IONS * stride, stride},
+          control{work + 8 * MAX_TOTAL_IONS * stride, stride} {}
 
     // (I-dt*A_i(h)) x_i = old_i. Reuse the factorization to compute dx_i/dh.
     // The positive pivot recurrence avoids subtracting nearly equal stiff

@@ -641,6 +641,16 @@ nb::object run_solver(const SolveParameters &parameters,
     const int n_all_ions = static_cast<int>(all_ion_map.size());
     const bool implicit_ions = options.implicit_ions;
     const Real ion_change_limit = implicit_ions ? Real(options.ion_change_limit) : X_PCT_RULE;
+#ifdef KOKKOS_ENABLE_CUDA
+    // Per-step transient workspace: columns are compact active indices, so
+    // consecutive CUDA threads access consecutive cells at each vector index.
+    constexpr std::size_t implicit_workspace_capacity = 16384;
+    const std::size_t implicit_work_columns = std::min(n_cells, implicit_workspace_capacity);
+    Kokkos::View<Real*> implicit_workspace("rtz_python_implicit_workspace",
+        implicit_ions ? std::size_t(IMPLICIT_ION_WORK) * implicit_work_columns : 0);
+    Real* implicit_work_data = implicit_workspace.data();
+#endif
+
     const int n_ion_work = static_cast<int>(ion_map.size());
     Kokkos::View<std::uint16_t *> ion_map_d("rtz_python_ion_map", n_ion_work);
     auto host_ion_map = Kokkos::create_mirror_view(ion_map_d);
@@ -885,6 +895,23 @@ nb::object run_solver(const SolveParameters &parameters,
             team_policy.set_scratch_size(0, Kokkos::PerTeam(implicit_ions ? IMPLICIT_ION_WORK * sizeof(Real) : ion_scratch_bytes));
 
             if (implicit_ions) {
+#ifdef KOKKOS_ENABLE_CUDA
+                // Reuse the bounded workspace across same-stream batches.
+                for (std::size_t batch_start = 0; batch_start < active_count;
+                     batch_start += implicit_work_columns) {
+                const std::size_t batch_count = std::min(implicit_work_columns, active_count - batch_start);
+                Kokkos::parallel_for("rtz_python_implicit_ions", Kokkos::RangePolicy<>(0, batch_count),
+                    KOKKOS_LAMBDA(const std::size_t active_index) {
+                        CellState& cell = device_cells(active_cells(batch_start + active_index));
+                        if (cell.done) return;
+                        implicit_ions_step<include_H2, rt_advect>(SerialIonExecutor{},
+                            cell.ddt, device_elements, cell.chemistry, *device_tables, flags,
+                            cell.dust_ratio, uv_background, cell.ss_factor, cell.photons_new,
+                            device_all_ions, n_all_ions, implicit_work_data + active_index,
+                            cell.subcycle, ion_change_limit, implicit_work_columns);
+                    });
+                }
+#else
                 Kokkos::parallel_for("rtz_python_implicit_ions", team_policy,
                     KOKKOS_LAMBDA(const TeamMember& team) {
                         CellState& cell = device_cells(active_cells(team.league_rank()));
@@ -895,6 +922,7 @@ nb::object run_solver(const SolveParameters &parameters,
                             cell.dust_ratio, uv_background, cell.ss_factor, cell.photons_new,
                             device_all_ions, n_all_ions, work, cell.subcycle, ion_change_limit);
                     });
+#endif
             } else {
 
             Kokkos::parallel_for(
@@ -1104,92 +1132,6 @@ nb::object solve_impl(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                       include_self_shielding>(parameters, std::move(cells), options);
 }
 
-template <bool constant_temperature, bool include_H2, bool include_CO, bool rt_advect>
-nb::object dispatch_self_shielding(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
-                                   nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
-                                   nb::sequence elements,
-                                   nb::sequence ions,
-                                   nb::sequence photon_bands,
-                                   const SolveOptions &options,
-                                   bool include_self_shielding) {
-    if (include_self_shielding)
-        return solve_impl<constant_temperature, include_H2, include_CO, rt_advect, true>(
-            state, times, elements, ions, photon_bands, options);
-    return solve_impl<constant_temperature, include_H2, include_CO, rt_advect, false>(
-        state, times, elements, ions, photon_bands, options);
-}
-
-template <bool constant_temperature, bool include_H2, bool rt_advect>
-nb::object dispatch_CO(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
-                       nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
-                       nb::sequence elements,
-                       nb::sequence ions,
-                       nb::sequence photon_bands,
-                       const SolveOptions &options,
-                       bool include_CO,
-                       bool include_self_shielding) {
-    if (include_CO)
-        return dispatch_self_shielding<constant_temperature, include_H2, true, rt_advect>(
-            state, times, elements, ions, photon_bands, options, include_self_shielding);
-    return dispatch_self_shielding<constant_temperature, include_H2, false, rt_advect>(
-        state, times, elements, ions, photon_bands, options, include_self_shielding);
-}
-
-template <bool constant_temperature, bool rt_advect>
-nb::object dispatch_H2(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
-                       nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
-                       nb::sequence elements,
-                       nb::sequence ions,
-                       nb::sequence photon_bands,
-                       const SolveOptions &options,
-                       bool include_H2,
-                       bool include_CO,
-                       bool include_self_shielding) {
-    if (include_H2)
-        return dispatch_CO<constant_temperature, true, rt_advect>(state,
-                                                                  times,
-                                                                  elements,
-                                                                  ions,
-                                                                  photon_bands,
-                                                                  options,
-                                                                  include_CO,
-                                                                  include_self_shielding);
-    return dispatch_CO<constant_temperature, false, rt_advect>(
-        state, times, elements, ions, photon_bands, options, include_CO, include_self_shielding);
-}
-
-template <bool constant_temperature>
-nb::object dispatch_rt_advection(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
-                                 nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
-                                 nb::sequence elements,
-                                 nb::sequence ions,
-                                 nb::sequence photon_bands,
-                                 const SolveOptions &options,
-                                 bool include_H2,
-                                 bool include_CO,
-                                 bool include_self_shielding,
-                                 bool rt_advect) {
-    if (rt_advect)
-        return dispatch_H2<constant_temperature, true>(state,
-                                                       times,
-                                                       elements,
-                                                       ions,
-                                                       photon_bands,
-                                                       options,
-                                                       include_H2,
-                                                       include_CO,
-                                                       include_self_shielding);
-    return dispatch_H2<constant_temperature, false>(state,
-                                                    times,
-                                                    elements,
-                                                    ions,
-                                                    photon_bands,
-                                                    options,
-                                                    include_H2,
-                                                    include_CO,
-                                                    include_self_shielding);
-}
-
 nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                  nb::ndarray<nb::numpy, const double, nb::ndim<1>> times,
                  nb::sequence elements,
@@ -1240,27 +1182,48 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                                temperature_is_Tmu,
                                use_default_depletion,
                                physics_flags, implicit_ions, ion_change_limit};
-    if (constant_temperature)
-        return dispatch_rt_advection<true>(state,
-                                           times,
-                                           elements,
-                                           ions,
-                                           photon_bands,
-                                           options,
-                                           include_H2,
-                                           include_CO,
-                                           include_self_shielding,
-                                           rt_advect);
-    return dispatch_rt_advection<false>(state,
-                                        times,
-                                        elements,
-                                        ions,
-                                        photon_bands,
-                                        options,
-                                        include_H2,
-                                        include_CO,
-                                        include_self_shielding,
-                                        rt_advect);
+    auto run_variant = [&]<bool constant_temperature_variant,
+                           bool include_H2_variant,
+                           bool include_CO_variant,
+                           bool rt_advect_variant,
+                           bool self_shielding_variant>() {
+        return solve_impl<constant_temperature_variant,
+                          include_H2_variant,
+                          include_CO_variant,
+                          rt_advect_variant,
+                          self_shielding_variant>(
+            state, times, elements, ions, photon_bands, options);
+    };
+
+    // Keep only variants used by the recombination-lag notebook and the
+    // binding regression tests; the recursive dispatcher instantiated all 32.
+    if (rt_advect && !include_self_shielding) {
+        if (include_H2 && include_CO) {
+            if (constant_temperature)
+                return run_variant.template operator()<true, true, true, true, false>();
+            return run_variant.template operator()<false, true, true, true, false>();
+        }
+        if (!include_H2 && !include_CO) {
+            if (constant_temperature)
+                return run_variant.template operator()<true, false, false, true, false>();
+            return run_variant.template operator()<false, false, false, true, false>();
+        }
+        if (!include_H2 && include_CO && !constant_temperature)
+            return run_variant.template operator()<false, false, true, true, false>();
+    }
+    if (constant_temperature && include_H2 && include_CO && rt_advect &&
+        include_self_shielding)
+        return run_variant.template operator()<true, true, true, true, true>();
+    if (constant_temperature && include_H2 && !include_CO && !rt_advect &&
+        !include_self_shielding)
+        return run_variant.template operator()<true, true, false, false, false>();
+
+    std::ostringstream message;
+    message << "solver option combination was not compiled: constant_temperature="
+            << std::boolalpha << constant_temperature << ", include_H2=" << include_H2
+            << ", include_CO=" << include_CO << ", rt_advect=" << rt_advect
+            << ", include_self_shielding=" << include_self_shielding;
+    throw std::invalid_argument(message.str());
 }
 
 } // namespace

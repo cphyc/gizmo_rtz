@@ -124,7 +124,8 @@ struct SparseIonSystem {
     template<class Executor>
     KOKKOS_INLINE_FUNCTION bool solve(const Executor& exec, const Element* elements,
                                       const CompactIonData& ions, Real dt,
-                                      Real atomic_hydrogen) const {
+                                      Real atomic_hydrogen,
+                                      Real nonlinear_tolerance = sizeof(Real) == 8 ? Real(2e-13) : Real(2e-6)) const {
         const int hi = ions.offsets[1];
         const Real nh = ions.n_element_new[1];
         exec.single([&]() {
@@ -179,7 +180,7 @@ struct SparseIonSystem {
                 const Real f = h - old[hi+1] + charge - dt * (u * neutral - d * h);
                 const Real derivative = Real(1) + dcharge + dt * (u + d);
                 const Real scale = rtz_math::fmax(Real(1), rtz_math::fabs(derivative));
-                const Real tolerance = sizeof(Real) == 8 ? Real(2e-13) : Real(2e-6);
+                const Real tolerance = nonlinear_tolerance;
                 control[5] = Real(iteration + 1);
                 if (failed != 0 || !Kokkos::isfinite(f)) control[4] = 1;
                 else if (rtz_math::fabs(f) / scale <= tolerance) control[3] = 1;

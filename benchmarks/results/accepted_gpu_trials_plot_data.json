@@ -110,15 +110,27 @@
     },
     {
       "tag": "M03",
-      "label": "Cache all metal coefficients",
+      "label": "Complete caches + residual merge",
       "candidate": "metal-all-cache-final",
       "parent": "metal-cache-parent-recheck",
       "category": "float64",
       "before_seconds": 12.038629638002021,
-      "after_seconds": 11.482720355998026,
-      "speedup": 1.0484126813829107,
-      "range_low": 1.0463534013564493,
-      "range_high": 1.0499950723694982
+      "after_seconds": 11.360898685000052,
+      "speedup": 1.0596546956181192,
+      "range_low": 1.0566350528048472,
+      "range_high": 1.060418072767271
+    },
+    {
+      "tag": "I01",
+      "label": "Implicit opt-in: Newton tolerance",
+      "candidate": "implicit-newton-tolerance",
+      "parent": "implicit-newton-control",
+      "category": "implicit",
+      "before_seconds": 14.430421571000124,
+      "after_seconds": 13.857554241000116,
+      "speedup": 1.0413397140676581,
+      "range_low": 1.0406693925286985,
+      "range_high": 1.0423040743901413
     },
     {
       "tag": "P02",

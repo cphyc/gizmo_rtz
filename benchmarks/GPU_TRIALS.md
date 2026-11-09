@@ -1378,3 +1378,37 @@ OMP_NUM_THREADS=1 OMP_PROC_BIND=false /usr/bin/python3.14 \
   --output benchmarks/results/implicit-refined-reference-diagnostic \
   --intervals 100000
 ```
+
+## Implicit optimization: Newton tolerance (float64; retained)
+
+The implicit kernel dominates the profile above. Test a looser scaled Newton
+root tolerance, 2e-13→1e-11, only in the float64 physical ion step. The
+ion-change limit remains 20%, the equations/block solve and temperature code
+are unchanged, and the legacy path is unaffected. The generic sparse core's
+default tolerance remains 2e-13 for analytic tests; float32 retains 2e-6.
+
+Five warmed candidate samples: 13.854666, 13.861930, 13.857554, 13.862487,
+13.857244 s; median **13.857554 s**. Fresh original-binary control recheck:
+14.440774, 14.426266, 14.429352, 14.430422, 14.433943 s; median
+**14.430422 s**. Same Python 3.14/CUDA/f64 build environment, same 10,000
+cells and 100 yr endpoint, one warmup each: **3.97% less time (1.04134x)**.
+Original five-run implicit median 14.440940 s agrees with the recheck.
+
+Full-dataset comparison to the previous implicit 20% result passes a 1e-5
+gate: max ion error **3.95e-6** for abundances >1e-4; max T error **1.27e-8**;
+all values finite. All 1,346,410 attempted outer steps remain unchanged,
+including p99=613.02 and maximum=691. This changes nonlinear solve cost,
+not timestep acceptance. It does **not** solve the outstanding <1% agreement
+target against the coarse explicit reference or make implicit faster than
+legacy overall.
+
+Candidate SHA `9ffdbffeab99ca56cb5eed84756905a247777942a7c28e2578bbc410973442de`.
+Records: implicit-newton-tolerance.json and implicit-newton-control.json in
+results/. The final source also explicitly retains the float32 tolerance;
+the measured float64 branch is unchanged by that compile-time selection.
+The rebuilt final binary is byte-identical to the timed candidate. CPU/CUDA
+sparse-core tests pass; the default legacy CUDA binding regressions pass
+18 tests (4.11 s; three long sweeps excluded). Validation is recorded in
+implicit-newton-validation.json. **Retained** for its measured implicit-only
+gain; implicit remains opt-in. The accepted-trial PDF now identifies this
+comparison as an implicit branch with its own accuracy reference.

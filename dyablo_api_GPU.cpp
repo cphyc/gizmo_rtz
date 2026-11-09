@@ -2251,7 +2251,8 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
     // H2 has already advanced. Its net formation/destruction changes the
     // available neutral hydrogen, exactly conserving H+HI+2H2 in this split.
     const Real hydrogen_mass = include_H2 ? Real(1) - ions[1].ion_fracs_new[2] : Real(1);
-    const bool solved = system.solve(exec, elements, ions, dt, hydrogen_mass);
+    const bool solved = system.solve(exec, elements, ions, dt, hydrogen_mass,
+                                     sizeof(Real) == 8 ? Real(1e-11) : Real(2e-6));
     if (!solved) {
         exec.single([&]() { state.x_percent_rule = false; state.success_counter = 0; });
         exec.barrier();

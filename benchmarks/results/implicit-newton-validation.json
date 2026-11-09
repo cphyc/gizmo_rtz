@@ -1,0 +1,15 @@
+{
+  "cpu_sparse_core": "passed",
+  "cuda_sparse_core": "passed",
+  "cuda_legacy_binding_tests": 18,
+  "excluded_long_sweeps": 3,
+  "cuda_binding_seconds": 4.11,
+  "final_binary_sha256": "9ffdbffeab99ca56cb5eed84756905a247777942a7c28e2578bbc410973442de",
+  "final_binary_identical_to_timed_candidate": true,
+  "coarse_explicit_comparison": {
+    "max_ion_relative_error": 0.9393759574183413,
+    "max_temperature_relative_error": 0.053241825178685365,
+    "ion_violations_1percent": 13865,
+    "temperature_violations_1percent": 136
+  }
+}

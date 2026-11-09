@@ -16,7 +16,7 @@ from matplotlib.patches import Patch
 import numpy as np
 
 RESULTS = ROOT / "benchmarks/results"
-COLORS = {"float64": "#2878a0", "mixed": "#2c8b57", "historical": "#ba812b"}
+COLORS = {"float64": "#2878a0", "implicit": "#7b4aa6", "mixed": "#2c8b57", "historical": "#ba812b"}
 # Each entry names its own measured parent; ratios are not multiplied across branches.
 TRIALS = [
     ("T02", "Active-cell compaction", "trial02", "baseline", "float64"),
@@ -28,7 +28,8 @@ TRIALS = [
     ("T13", "Cache metal charge-transfer rates", "ct-cache-gpu", "ct-cache-baseline-recheck", "float64"),
     ("M01", "Separate metal commit/control", "metal-split-commit", "metal-opt-control-recheck", "float64"),
     ("M02", "Normalize metal stages in parallel", "metal-normalize", "metal-normalize-control-recheck", "float64"),
-    ("M03", "Cache all metal coefficients", "metal-all-cache-final", "metal-cache-parent-recheck", "float64"),
+    ("M03", "Complete caches + residual merge", "metal-all-cache-final", "metal-cache-parent-recheck", "float64"),
+    ("I01", "Implicit opt-in: Newton tolerance", "implicit-newton-tolerance", "implicit-newton-control", "implicit"),
     ("P02", "Charge transfer → float32", "precision-timing-charge", "precision-timing-float64", "mixed"),
     ("P04", "Cosmic rays → float32", "precision-timing-cosmic", "precision-timing-charge", "mixed"),
     ("P05", "Dust recombination → float32", "precision-timing-dust", "precision-timing-cosmic", "mixed"),
@@ -98,6 +99,7 @@ def main():
         ax.spines[["top", "right", "left"]].set_visible(False)
         handles = [Patch(facecolor=COLORS[k], label=v) for k, v in [
             ("float64", "Float64; exact-output branch"),
+            ("implicit", "Implicit opt-in; 1e-5 vs implicit parent"),
             ("mixed", "Current mixed precision; 1e-5 gate"),
             ("historical", "Historical precision / superseded acceptance†")]]
         fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.53, 0.975), fontsize=8, ncol=1)
@@ -105,7 +107,8 @@ def main():
                  "10,000 cells · 100 yr · Quadro T1000 Max-Q · medians of five warmed solves.\n"
                  "Whiskers span sample-extrema ratios, not confidence intervals; near-1 values can be timing noise.\n"
                  "* Retained layout functionality, including measured regressions. † Historical paths do not pass today's 1e-5 gate.\n"
-                 "Parents differ by branch; do not multiply all bars. Rejected trials are omitted. JSON sources accompany this PDF.",
+                 "Parents differ by branch; do not multiply all bars. Rejected trials are omitted. JSON sources accompany this PDF.\n"
+                 "Implicit accuracy here is relative to its implicit parent; <1% vs the coarse explicit reference remains unresolved.",
                  fontsize=7.5, va="bottom")
         fig.subplots_adjust(left=0.43, right=0.97, top=0.90, bottom=0.09)
         pdf.savefig(fig)

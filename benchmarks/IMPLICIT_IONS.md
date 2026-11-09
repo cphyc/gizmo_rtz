@@ -22,6 +22,11 @@ scalar border (the sparse Schur complement). The hydrogen residual uses total
 charge balance so stiff forward/reverse charge-exchange fluxes cancel
 analytically. No dense matrix, BLAS or LAPACK is used.
 
+The float64 physical ion step uses a scaled Newton residual tolerance of
+1e-11; standalone sparse-core calls default to 2e-13. The float32 tolerance
+remains 2e-6. These are nonlinear-solve tolerances, separate from the ion
+change limit and from time-integration error against another integrator.
+
 The pivot recurrence uses positive terms to avoid stiff diagonal subtraction.
 Element mass is repaired for roundoff; abundances remain nonnegative. Molecular
 evolution remains separate. The updated H2 abundance determines how much

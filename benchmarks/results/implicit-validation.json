@@ -1,0 +1,30 @@
+{
+  "cpu_binding_tests": {
+    "passed": 18,
+    "excluded_long_sweeps": 3,
+    "seconds": 2.38
+  },
+  "cuda_binding_tests": {
+    "passed": 18,
+    "excluded_long_sweeps": 3,
+    "seconds": 4.84
+  },
+  "sparse_core_tests": {
+    "cpu": "passed",
+    "cuda": "passed",
+    "coverage": [
+      "analytic backward Euler",
+      "stiff tridiagonal residual",
+      "positivity",
+      "element conservation",
+      "manufactured nonlinear charge exchange",
+      "stiff charge conservation/detailed balance",
+      "H2 mass",
+      "serial/team agreement"
+    ]
+  },
+  "default_integrator": "legacy",
+  "implicit_opt_in": true,
+  "implicit_default_ion_change_limit": 0.2,
+  "temperature_integrator_changed": false
+}

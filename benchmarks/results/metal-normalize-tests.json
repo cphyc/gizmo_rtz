@@ -1,0 +1,10 @@
+{
+  "cpu_passed": 18,
+  "cuda_passed": 18,
+  "cpu_seconds": 1.38,
+  "cuda_seconds": 4.06,
+  "excluded_long_sweeps": 3,
+  "full_10000cell_gate": true,
+  "precision": "all reported fields float64",
+  "bit_exact_vs_fresh_control": true
+}

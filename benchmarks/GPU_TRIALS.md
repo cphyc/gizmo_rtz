@@ -1080,3 +1080,220 @@ The profile's whole-trace CSV includes warmup; breakdown JSON selects only
 the second solve. Candidate and control interpreter/build environments differ
 as noted above; target-kernel timing and unchanged other phases support the
 attribution, rather than interpreting Python wall time alone.
+
+## Metal optimization C: normalize stages in parallel (float64; retained)
+
+The user rebuilt the installed venv after the commit split and reran NCU.
+Updated all 18 kernel entries in VENV_KERNEL_PROFILE.md from that capture,
+and refreshed NSYS: warm solve 12.309391 s, metals 7.136411 s (58.47% of
+GPU time), cooling 2.076791 s, H/He 1.346249 s, prep 1.131231 s,
+commit 0.477142 s. Installed SHA
+0bb1c6e126be102bb3f4dd5e034b382e051dc456a36dcb87d00f9dd27eef0e06;
+all arithmetic/state widths 8 bytes. NCU metal snapshot: 68 registers,
+50% theoretical / 48.50% achieved occupancy, 13.07 active threads/warp,
+0.06 eligible warps/scheduler. These counters suggested more useful work
+per lane rather than a register-only or team-size change.
+
+Preserve each element's sequential float64 normalization sum; store it in
+216 bytes of extra team scratch. After a barrier, distribute independent
+ion divisions across the existing ion map. Keep molecular-entry handling
+and the original legacy caller path. Python bindings enable the new path
+and allocate its scratch. No rate, equation, precision or team-size change.
+
+Five candidate samples: 12.005988, 11.991798, 11.981645, 11.980499,
+11.985800 s; median **11.985800 s**. Fresh installed five-run median
+**12.267860 s** (2.30% less time). Rechecked saved pre-trial binary in the
+same Python 3.14 environment: 12.393116, 12.390266, 12.388376,
+12.375196, 12.366633 s; median **12.388376 s**. Thus the same-environment
+comparison is **1.03359x speedup, 3.25% less solve time**. Its earlier
+median was 12.372253 s. The installed Python 3.13 comparison is supplementary.
+Final candidate recheck after control/profile/tests: 11.985468, 11.987000,
+11.987407 s; median 11.987000 s, confirming the gain.
+
+Warm-only NSYS: metals **6.754642 s**, down **5.30%** from the saved
+Python 3.14 control's 7.132435 s. Cooling 2.114809 s, H/He 1.347165 s,
+prep 1.130793 s, commit 0.476734 s, essentially unchanged against that
+control. Candidate total solve 12.019237 s; GPU sum 11.860777 s. Metal
+register count remains 68; no new candidate NCU occupancy/stall claim.
+
+All four arrays bit-identical to the fresh installed control on all 10,000
+cells. Original-reference maxima: ions above 1e-4, relative 8.99e-12;
+temperature, relative 2.88e-14. Finite 1e-5 gate passes. CPU tests 18 passed
+in 1.38 s; CUDA tests 18 passed in 4.06 s; three long sweeps excluded each.
+**Retained**. Candidate SHA
+b1a7dabb7caccd3ca4f0f2533afb58d463e3d507d06763443c8c81dd3b3cea23;
+binary build/galaxy-gpu/metal-normalize-float64.cpython-314-x86_64-linux-gnu.so.
+The installed venv binary is preserved and needs a rebuild to use this path.
+
+Results: metal-normalize{,-baseline,-control-recheck,-control-exact,-recheck,-tests,
+-profile,-breakdown}.json in results/, plus NSYS trace, SQLite and CSVs.
+VENV_KERNEL_PROFILE.md separates installed-build NCU measurements from the
+new candidate's measured timing; full-trace CSVs include warmup, breakdown
+JSON uses only the second solve.
+
+## Metal trials D–G: neighbors, zero boundaries, all coefficients, static flags
+
+All trials use fully float64 arithmetic/state and the same Python 3.14 CUDA
+build environment, 10,000 cells, 100 yr, one warmup and five timed solves.
+Parent is the retained parallel-normalization binary, SHA b1a7dabb….
+The trials were run in the requested reverse priority order. Runtime physics
+flags are all true in this dataset; both existing rate-cache switches were
+already true at the Python call site.
+
+| Trial | Median solve, s | Decision |
+| --- | ---: | --- |
+| Parent, fresh recheck | 12.038630 | Control (earlier recheck 11.987000) |
+| Neighbor fractions loaded once, zero at boundaries | 12.000238 | No significant standalone gain |
+| Above + zero-sentinel RR/CI/CT caches, no cached-rate stage guards | 12.000839 | No significant standalone gain |
+| All coefficients cached with zero sentinels, runtime flags | 11.450372 | Retain full caching |
+| Same complete caches, hard-coded `if constexpr (true)` flags | 11.487743 | No incremental gain; diagnostic only |
+| Final rebuilt complete-cache version, runtime flags | 11.482720 | Retained, 4.62% less time vs fresh parent |
+
+The partial-cache trial adds one zero entry on either side of each of the four
+existing caches, initializes forbidden endpoint rates to zero, and removes
+stage guards from cached RR/CI/CT consumption. Full caching additionally stores
+dust recombination, UV background, direct cosmic rays, induced UV, ISRF and
+each of the seven photon-group cross-sections. All twelve auxiliary arrays
+(five scalar sources plus seven photon groups) use the same sentinel
+convention. There are sixteen rate arrays total:
+four original plus twelve auxiliary. The binding allocates all arrays and
+enables the complete-cache path. Coefficients and ion fractions are frozen
+before the Jacobi sweep. The original accumulation order and individual
+photon-group products are retained.
+
+The active fully cached sweep contains no `if (j > 0)` or
+`if (j < n_ions - 1)` rate guards or direct table accesses. Boundary tests occur
+when filling caches; neighboring fractions use safe, zero-valued boundary
+selection. The legacy fallback remains available. Runtime physics switches
+remain supported. Full caching is present both before the static-flags test
+and in the restored dynamic source afterward; the hard-coded diagnostic is
+saved as metal-static-flags-trial.patch, not selected in production.
+
+The initial full-cache median is **4.89% less time (1.05137x)** versus the
+fresh parent, or 4.48% versus the earlier parent recheck. Parent timing drift
+is approximately 0.43%; the two small trials are within that variation.
+Static flags are 0.33% slower than complete caching with dynamic flags, so
+there is no evidence of a useful flag-removal gain on this workload.
+Final rebuilt dynamic source was rechecked with five samples: 11.489393,
+11.482720, 11.482965, 11.470538, 11.475116 s; median **11.482720 s**.
+This confirms **4.62% less time (1.04841x)** vs the fresh parent, or 4.21%
+vs the earlier parent. Final binary SHA
+531b7855f3bce024e517886b8fcde6aa3d0104038a2a054600fb32dbf7368ee2;
+saved as build/galaxy-gpu/metal-all-cache-final-float64.cpython-314-x86_64-linux-gnu.so.
+
+All four full-dataset arrays are bit-identical to the parent for every trial,
+including static flags. Original-reference maxima: relative ion error 8.99e-12
+for abundances above 1e-4; relative temperature error 2.88e-14. No nonfinite
+values; the 1e-5 gate passes. Eight additional 64-cell configurations (all on,
+each of six switches disabled separately, all off) are bit-identical to the
+parent in every output array. Reproducer: check_metal_cache_flags.py.
+Final rebuilt CPU and CUDA regressions: **18 passed each** (2.04 s / 4.27 s),
+three long sweeps excluded each. The PDF accepted_gpu_trials.pdf and its
+source JSON now include commit separation, parallel normalization and full
+metal coefficient caching, each against its own measured parent.
+
+Final warm NSYS: solve 11.539300 s; GPU sum 11.343592 s. Metals
+**6.217209 s** vs the normalization parent's **6.754642 s**, **7.96% less
+target-kernel time**. Cooling 2.116312 s, H/He 1.350590 s, prep 1.138260 s,
+commit 0.484474 s; other phases essentially unchanged. Main-phase launch
+counts remain 1,505. Metal registers rise 68→90 and dynamic shared bytes
+3,031→8,183; this cost is included in the measured gain. No candidate NCU
+achieved-occupancy/stall improvement is claimed. See metal-all-cache-profile
+trace/SQLite/CSVs and metal-all-cache-breakdown.json. The final rebuild also
+repeats all eight flag configurations with bit-identical outputs, recorded
+in metal-cache-flags-final.json.
+
+Raw measurements: results/metal-neighbors.json, metal-boundary-cache.json,
+metal-all-cache.json, metal-static-flags.json, metal-cache-parent-recheck.json;
+exact comparisons in metal-cache-control-exact.json and flag configuration
+results in metal-cache-flags-{parent,candidate}.json. Trial patches are saved
+at benchmarks/metal-{neighbors,boundary-cache,all-cache,static-flags}-trial.patch.
+Saved CUDA binaries use the corresponding names under build/galaxy-gpu/.
+The installed venv package is preserved.
+
+## Metal trials: merging X% rule violation + ne update
+Warm time is **11.367737s** compared to the previous 11.482720s, so that's **1.01**× faster and cleaner. Let's keep it!
+
+## Opt-in implicit atomic solver, 20% rule (full GPU benchmark, 2026-11-09)
+
+Retain the legacy integrator as the default (`implicit_ions=False`). The new
+sparse backward-Euler solver is selected with `implicit_ions=True`; its default
+ion-change limit is now **0.2**, as requested. H/He and metals are solved
+together with frozen ne/temperature; charge exchange is treated nonlinearly
+using tridiagonal block elimination and the hydrogen Schur complement.
+Temperature integration/radiation limits are unchanged. Details and usage:
+IMPLICIT_IONS.md. This is an opt-in experiment, not a replacement performance
+win or a claim to meet the historical 1e-5 accuracy gate.
+
+The overwritten metal-all-cache-final JSON/NPZ were first preserved locally
+with the suffix -overwritten. Regenerated **metal-all-cache-final.json/.npz**
+using the current legacy path, then ran **implicit-gpu-20.json/.npz** against
+that regenerated output. Historical timings above describe their original
+builds; the regenerated artifact includes the subsequent merged residual/ne
+update. Both new runs use the **same extension**, SHA256
+`4e4267141f84a24b48d5e20077bc42e92f22531d1a46c64fe0ee7a91f807e036`,
+CUDA Quadro T1000 Max-Q, all reported arithmetic/state widths 8 bytes,
+10,000 cells, dt=100 yr, one warmup and five measured solves. Dataset SHA
+`b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd`.
+
+| Metric | Legacy | Implicit, 20% |
+| --- | ---: | ---: |
+| Median solve, seconds | 11.360899 | 14.440940 |
+| Attempted steps, sum over cells | 2,389,309 | 1,346,410 |
+| Attempted steps, median cell | 139 | 77.5 |
+| Attempted steps, p90 | 587.10 | 337 |
+| Attempted steps, p99 | 1,185.01 | 613.02 |
+| Attempted steps, maximum cell | 1,505 | 691 |
+| Accepted steps, total | 2,278,676 | 1,242,961 |
+| Rejected steps, total | 110,633 | 103,449 |
+
+Legacy samples: 11.357928, 11.357793, 11.360899, 11.373161, 11.377595 s.
+Implicit samples: 14.435065, 14.448218, 14.446255, 14.440940, 14.439463 s.
+The implicit solver reduces total attempted steps by **43.65%**, p99 by
+**48.27%**, and the longest tail by **54.09%**, but takes **27.11% longer**
+overall (0.7867x speedup). The fewer outer iterations do not offset the
+higher per-step solve cost on this GPU. No kernel-level attribution is made
+without a profile of this build.
+
+Regenerated legacy output passes the original reference's 1e-5 gate:
+max relative ion error 8.99e-12 (abundance >1e-4), temperature 2.88e-14.
+The implicit output is finite, but differs from regenerated legacy by up to
+**93.94%** for ions above 1e-4 and **5.324%** for temperature. The strict
+gate flags **89,242 / 203,932** checked ion values and **3,403 / 10,000**
+temperatures. Densities and the fixed photon field agree. The benchmark
+exits with status 1 *after saving the completed timings/output* because of
+these accuracy violations, not because integration failed. The user accepted
+the 20% experiment and its accuracy tradeoff; it remains opt-in. Sparse solve
+accuracy is distinct from the error of time integration relative to legacy.
+
+Validation: sparse analytic/stiff/nonlinear CT/conservation/positivity tests
+pass on CPU and CUDA. Legacy binding regressions: **18 passed each**, three
+long sweeps excluded (CPU 2.38 s, CUDA 4.84 s). See implicit-validation.json.
+Per-cell attempted/accepted/rejected counts and build metadata are embedded
+in both benchmark JSON files. Preliminary CPU limit sweeps are retained in
+implicit-limit-scan-cpu64.json and implicit-tail-scan-cpu64.json; full-dataset
+numbers above supersede subset estimates.
+
+Commands, from the repository root:
+
+```bash
+env PATH=/opt/cuda/bin:/usr/bin:/bin \
+  NVCC_WRAPPER_DEFAULT_COMPILER=/usr/bin/g++ \
+  NVCC_APPEND_FLAGS='--threads=4 --split-compile=4' \
+  cmake --build build/galaxy-gpu --target _rtz implicit_ions_test -j2
+
+/usr/bin/python3.14 benchmarks/galaxy_gpu.py \
+  --extension build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so \
+  --output benchmarks/results/metal-all-cache-final \
+  --reference benchmarks/results/baseline.npz --accuracy physical \
+  --ion-rtol 1e-5 --temperature-rtol 1e-5 --require-float64 \
+  --warmups 1 --repetitions 5
+
+/usr/bin/python3.14 benchmarks/galaxy_gpu.py \
+  --extension build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so \
+  --output benchmarks/results/implicit-gpu-20 \
+  --reference benchmarks/results/metal-all-cache-final.npz \
+  --implicit-ions --ion-change-limit 0.2 --accuracy physical \
+  --ion-rtol 1e-5 --temperature-rtol 1e-5 --require-float64 \
+  --warmups 1 --repetitions 5
+```

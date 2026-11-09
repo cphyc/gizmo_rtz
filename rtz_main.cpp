@@ -54,7 +54,9 @@ void solve_chemistry_and_cooling_split(
     // letting the cell deplete it. Required to run to equilibrium at a fixed G0:
     // with depletion on, the subcycle just drains the reservoir and every G0
     // converges to the same unilluminated answer.
-    const bool static_radiation = false)
+    const bool static_radiation = false,
+    const bool implicit_ions = false,
+    const Real ion_change_limit = Real(0.2))
 {
     // --- preamble of RTZ::solve_chemistry_and_cooling ---
     const Real dust_ratio = get_dust_mass_and_depletion(
@@ -83,6 +85,14 @@ void solve_chemistry_and_cooling_split(
     std::array<Real, N_GROUPS> phot_att{};
     Real cool_rate_pair[2] = {0.0, 0.0};
 
+    Real implicit_work[IMPLICIT_ION_WORK];
+    uint16_t all_ion_map[MAX_TOTAL_IONS];
+    int all_ion_count = 0;
+    for (int i = 1; i < MAX_ELEMENTS; ++i) {
+        if (n_and_ion_fracs.n_element[i] == 0) continue;
+        for (int j = 0; j < elements[i].n_ions; ++j)
+            all_ion_map[all_ion_count++] = static_cast<uint16_t>((i << 8) | j);
+    }
     while (true) {
         iterations += 1;
 
@@ -111,8 +121,13 @@ void solve_chemistry_and_cooling_split(
 
         molecular_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, nCO, dust_ratio,
-            UV_background_G0, N_phot_new, state);
+            UV_background_G0, N_phot_new, state, implicit_ions ? ion_change_limit : X_PCT_RULE);
 
+        if (implicit_ions) {
+            implicit_ions_step<include_H2, rt_advect>(SerialIonExecutor{}, ddt, elements,
+                n_and_ion_fracs, tabData, flags, dust_ratio, UV_background_G0, ss_factor,
+                N_phot_new, all_ion_map, all_ion_count, implicit_work, state, ion_change_limit);
+        } else {
         HandHe_ions_step<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             ddt, elements, n_and_ion_fracs, tabData, flags, dust_ratio,
             UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state);
@@ -120,6 +135,7 @@ void solve_chemistry_and_cooling_split(
             ddt, elements, n_and_ion_fracs, tabData, flags, dust_ratio,
             UV_background_G0, primary_cr_rate, ss_factor, N_phot_new, state);
 
+        }
         subcycle_commit_and_control<constant_temperature, include_H2, include_CO, rt_advect, include_self_shielding>(
             elements, tabData, n_and_ion_fracs, nCO, N_PHOT, F_PHOT,
             N_phot_new, phot_att, ddt, total_time, state,

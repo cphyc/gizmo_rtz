@@ -1,0 +1,146 @@
+{
+  "all_on": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_collisional_ionization_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_HM12_UVB_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_photoionization_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_cosmic_ray_ionization_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_dust_recombination_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "include_charge_exchange_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  },
+  "all_off": {
+    "temperature": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "ion_fractions": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    },
+    "photon_densities": {
+      "max_relative_error": 0.0,
+      "bit_identical": true
+    }
+  }
+}

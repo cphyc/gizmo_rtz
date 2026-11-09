@@ -1,0 +1,32 @@
+{
+  "metal-neighbors": {
+    "temperature": true,
+    "densities": true,
+    "ion_fractions": true,
+    "photon_densities": true
+  },
+  "metal-boundary-cache": {
+    "temperature": true,
+    "densities": true,
+    "ion_fractions": true,
+    "photon_densities": true
+  },
+  "metal-all-cache": {
+    "temperature": true,
+    "densities": true,
+    "ion_fractions": true,
+    "photon_densities": true
+  },
+  "metal-static-flags": {
+    "temperature": true,
+    "densities": true,
+    "ion_fractions": true,
+    "photon_densities": true
+  },
+  "metal-all-cache-final": {
+    "temperature": true,
+    "densities": true,
+    "ion_fractions": true,
+    "photon_densities": true
+  }
+}

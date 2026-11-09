@@ -30,6 +30,8 @@ def main():
     parser.add_argument("--ion-rtol", type=float, default=.05)
     parser.add_argument("--temperature-rtol", type=float, default=.01)
     parser.add_argument("--max-iterations", type=int, default=100000)
+    parser.add_argument("--implicit-ions", action="store_true", help="Test the sparse backward-Euler ion solver")
+    parser.add_argument("--ion-change-limit", type=float, default=0.2)
     parser.add_argument("--require-float64", action="store_true", help="Require float64 state and all reported arithmetic types")
     parser.add_argument("--require-float64-state", action="store_true", help="Require float64 global Real and state; permit per-file float32 arithmetic")
     args = parser.parse_args()
@@ -68,7 +70,8 @@ def main():
                             meta["elements"], [tuple(v) for v in meta["ions"]],
                             [tuple(v) for v in meta["bands"]], sed=sed,
                             **meta["physics"], rt_advect=True, constant_temperature=False,
-                            max_iterations=args.max_iterations)
+                            max_iterations=args.max_iterations, implicit_ions=args.implicit_ions,
+                            ion_change_limit=args.ion_change_limit)
         duration = perf_counter() - start
         print(f"{'warmup' if i < args.warmups else i - args.warmups + 1}: {duration:.6f} s", flush=True)
         if i >= args.warmups:
@@ -79,16 +82,25 @@ def main():
     result = dict(seconds=timings, median_seconds=float(np.median(timings)),
                   build_info=build_info,
                   ncell=len(state["temperature"]), dt_yr=args.dt_yr,
-                  warmups=args.warmups,
+                  warmups=args.warmups, implicit_ions=args.implicit_ions,
+                  ion_change_limit=args.ion_change_limit if args.implicit_ions else 0.1,
                   max_iterations=args.max_iterations,
                   extension_sha256=hashlib.sha256(extension.read_bytes()).hexdigest(),
                   dataset_sha256=hashlib.sha256(args.dataset.read_bytes()).hexdigest(),
                   git_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                   gpu=subprocess.check_output(["nvidia-smi", "--query-gpu=name,driver_version,temperature.gpu,clocks.sm,power.draw", "--format=csv"], text=True).strip(),
                   command=sys.argv)
+    if hasattr(module, "last_solve_statistics"):
+        counts = module.last_solve_statistics()
+        result["per_cell_statistics"] = counts
+        result["iteration_summary"] = {
+            key: dict(total=int(np.sum(value)), maximum=int(np.max(value)),
+                      p50=float(np.quantile(value, .5)), p90=float(np.quantile(value, .9)),
+                      p99=float(np.quantile(value, .99))) for key, value in counts.items()}
     accuracy_passed = True
     if args.reference:
         with np.load(args.reference, allow_pickle=False) as reference:
+            reference = {key: reference[key][:, :len(state["temperature"])] for key in arrays}
             result["nonfinite_values"] = {key: int(np.count_nonzero(~np.isfinite(value)))
                                           for key, value in arrays.items()}
             reference_finite = all(np.isfinite(reference[key]).all() for key in arrays)

@@ -1,0 +1,10 @@
+{
+  "all_on": {},
+  "include_collisional_ionization_off": {},
+  "include_HM12_UVB_off": {},
+  "include_photoionization_off": {},
+  "include_cosmic_ray_ionization_off": {},
+  "include_dust_recombination_off": {},
+  "include_charge_exchange_off": {},
+  "all_off": {}
+}

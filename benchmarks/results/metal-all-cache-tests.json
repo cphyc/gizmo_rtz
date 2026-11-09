@@ -1,0 +1,16 @@
+{
+  "cpu_passed": 18,
+  "cuda_passed": 18,
+  "cpu_seconds": 2.04,
+  "cuda_seconds": 4.27,
+  "excluded_long_sweeps": 3,
+  "full_10000cell_gate": true,
+  "precision": "all reported widths float64",
+  "full_output_bit_identical": true,
+  "flag_configurations": 8,
+  "flag_configurations_ncell": 64,
+  "flag_configuration_bit_identical": true,
+  "flag_configuration_binary": "531b7855f3bce024e517886b8fcde6aa3d0104038a2a054600fb32dbf7368ee2",
+  "final_binary": "531b7855f3bce024e517886b8fcde6aa3d0104038a2a054600fb32dbf7368ee2",
+  "flag_configuration_final_recheck": true
+}

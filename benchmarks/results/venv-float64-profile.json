@@ -1,8 +1,8 @@
 {
   "seconds": [
-    13.104265783011215
+    12.309391123999376
   ],
-  "median_seconds": 13.104265783011215,
+  "median_seconds": 12.309391123999376,
   "build_info": {
     "execution_space": "Cuda",
     "cooling_bytes": 8,
@@ -26,10 +26,10 @@
   "dt_yr": 100.0,
   "warmups": 1,
   "max_iterations": 100000,
-  "extension_sha256": "0a1d3908fca85c6b9f69bd6f8cb70df0385fc6fe8ac5323d6468c1c6faf0434d",
+  "extension_sha256": "0bb1c6e126be102bb3f4dd5e034b382e051dc456a36dcb87d00f9dd27eef0e06",
   "dataset_sha256": "b8c7f9d67dba1811212d101dce7b99b3dd6d339dd7e6189dabd07a03889475cd",
-  "git_revision": "8cfb1618e3222614bef115d53bc215fa388c37b8",
-  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 65, 1530 MHz, 13.36 W",
+  "git_revision": "70d93683a484fbee7048d50a10733a97656d5493",
+  "gpu": "name, driver_version, temperature.gpu, clocks.current.sm [MHz], power.draw [W]\nQuadro T1000 with Max-Q Design, 615.78.08, 68, 1530 MHz, 13.65 W",
   "command": [
     "benchmarks/galaxy_gpu.py",
     "--installed-package",

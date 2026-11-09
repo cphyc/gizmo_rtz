@@ -26,6 +26,9 @@ TRIALS = [
     ("T11", "Separate H/He kernel", "split-hhe-gpu", "rate-cache-gpu", "float64"),
     ("T12", "Skip zero charge-transfer fits", "zero-ct-gpu", "zero-ct-baseline-recheck", "float64"),
     ("T13", "Cache metal charge-transfer rates", "ct-cache-gpu", "ct-cache-baseline-recheck", "float64"),
+    ("M01", "Separate metal commit/control", "metal-split-commit", "metal-opt-control-recheck", "float64"),
+    ("M02", "Normalize metal stages in parallel", "metal-normalize", "metal-normalize-control-recheck", "float64"),
+    ("M03", "Cache all metal coefficients", "metal-all-cache-final", "metal-cache-parent-recheck", "float64"),
     ("P02", "Charge transfer → float32", "precision-timing-charge", "precision-timing-float64", "mixed"),
     ("P04", "Cosmic rays → float32", "precision-timing-cosmic", "precision-timing-charge", "mixed"),
     ("P05", "Dust recombination → float32", "precision-timing-dust", "precision-timing-cosmic", "mixed"),
@@ -70,9 +73,10 @@ def main():
         raise ValueError("Final selected/control accuracy must pass")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with PdfPages(args.output, metadata={"Title": "Accepted galaxy GPU trials and relative speedups"}) as pdf:
-        fig, ax = plt.subplots(figsize=(10.5, 13))
+        fig, ax = plt.subplots(figsize=(10.5, max(13, len(rows) * 0.75)))
         positions = np.arange(len(rows))[::-1].astype(float)
-        positions[:12] += 0.6  # Visual separation of superseded precision paths.
+        current_count = sum(row["category"] != "historical" for row in rows)
+        positions[:current_count] += 0.6  # Separate superseded precision paths.
         labels = []
         for y, row in zip(positions, rows):
             x = row["speedup"]

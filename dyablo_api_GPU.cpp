@@ -31,6 +31,7 @@ namespace prism_gpu {
 #include "dyablo_api.hpp"
 #include "cross_sections.hpp"
 #include "table_verify.hpp"
+#include "implicit_ions.hpp"
 
 // MAX_ELEMENTS is already defined in types.hpp (included via dyablo_api.hpp)
 const Real MIN_XION = Real(1E-20);         // Minimum ion fraction
@@ -890,7 +891,8 @@ void molecular_step(
     const Real dust_to_gas_mass_ratio_over_mw,
     const Real UV_background_G0,
     const std::array<Real, N_GROUPS>& N_phot_new,
-    SubcycleState& state)
+    SubcycleState& state,
+    const Real ion_change_limit = X_PCT_RULE)
 {
     // Rates consumed by ions_step: reset every iteration, even when this
     // step is skipped, so ions_step sees zero molecular coupling.
@@ -954,9 +956,9 @@ void molecular_step(
         Real residual = rtz_math::fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
 
         // Max residual over all elements
-        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
+        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual * X_PCT_RULE / ion_change_limit);
 
-        if (residual > X_PCT_RULE && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
+        if (residual > ion_change_limit && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
             // Reset the success counter
             state.success_counter = 0;
             // Declare the x-percent rule was violated
@@ -1031,9 +1033,9 @@ void molecular_step(
                 Real residual = rtz_math::fabs(state.nCO_new - nCO) / (nCO + X_FM);
 
                 // Max residual over all elements
-                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
+                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual * X_PCT_RULE / ion_change_limit);
 
-                if (residual > X_PCT_RULE && nCO > Real(1E-10)){
+                if (residual > ion_change_limit && nCO > Real(1E-10)){
                     // Reset the success counter
                     state.success_counter = 0;
                     // Declare the x-percent rule was violated
@@ -1684,6 +1686,8 @@ template <
     bool include_self_shielding,
     bool cache_rates = false,
     bool cache_charge_transfer = false,
+    bool parallel_normalization = false,
+    bool cache_all_rates = false,
     typename TeamMember
 , typename Table>
 KOKKOS_INLINE_FUNCTION
@@ -1706,9 +1710,18 @@ void metal_ions_step(
     Real* recombination_cache = nullptr,
     Real* collisional_cache = nullptr,
     Real* ct_recombination_cache = nullptr,
-    Real* ct_ionization_cache = nullptr)
+    Real* ct_ionization_cache = nullptr,
+    Real* normalization_sums = nullptr,
+    Real* auxiliary_cache = nullptr)
 {
+    // Cache pointers address stage zero after a leading zero sentinel;
+    // each array also has a trailing sentinel. auxiliary_cache holds dust,
+    // UVB, cosmic-ray, induced-UV, ISRF, then N_GROUPS cross-section arrays,
+    // each with stride n_ion_work + 2. normalization_sums is separate.
     static_assert(!cache_charge_transfer || cache_rates);
+    static_assert(!cache_all_rates || (cache_rates && cache_charge_transfer));
+    const int cache_stride = n_ion_work + 2;
+    const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
     // Skip if an earlier step (or the H/He phase) already broke the X% rule
     if (!state.compute_atoms || !state.x_percent_rule) return;
 
@@ -1731,6 +1744,27 @@ void metal_ions_step(
             const int stage = ion_map[t] & 0xFF;
             recombination_cache[t] = Real(0);
             collisional_cache[t] = Real(0);
+            if constexpr (cache_charge_transfer) {
+                ct_recombination_cache[t] = Real(0);
+                ct_ionization_cache[t] = Real(0);
+            }
+            // Caches have one zero sentinel on either side. At internal
+            // element boundaries, the adjacent endpoint coefficient is zero.
+            if (t == 0) {
+                recombination_cache[-1] = recombination_cache[n_ion_work] = Real(0);
+                collisional_cache[-1] = collisional_cache[n_ion_work] = Real(0);
+                if constexpr (cache_charge_transfer) {
+                    ct_recombination_cache[-1] = ct_recombination_cache[n_ion_work] = Real(0);
+                    ct_ionization_cache[-1] = ct_ionization_cache[n_ion_work] = Real(0);
+                }
+            }
+            if constexpr (cache_all_rates) {
+                for (int k = 0; k < 5 + N_GROUPS; ++k) {
+                    Real* cache = auxiliary_cache + k * cache_stride + 1;
+                    cache[t] = Real(0);
+                    if (t == 0) cache[-1] = cache[n_ion_work] = Real(0);
+                }
+            }
             if (n_and_ion_fracs.n_element[element] == Real(0)) return;
             if (stage > 0)
                 recombination_cache[t] = recombination(state.TK, stage, element, tabData);
@@ -1744,12 +1778,41 @@ void metal_ions_step(
                         ct_ionization_cache[t] = charge_transfer_ionization(stage, element, state.TK, tabData);
                 }
             }
+            if constexpr (cache_all_rates) {
+                const int row = elem_row(element);
+                if (row < 0) return;
+                Real* dust = auxiliary_cache + 1;
+                Real* uvb = dust + cache_stride;
+                Real* cosmic = uvb + cache_stride;
+                Real* induced = cosmic + cache_stride;
+                Real* isrf = induced + cache_stride;
+                if (flags.include_dust_recombination) {
+                    if (stage > 0)
+                        dust[t] = dust_recombination_rates(stage, element, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs);
+                }
+                if (flags.include_HM12_UVB) {
+                    if (stage < elements[element].n_ions - 1)
+                        uvb[t] = tabData.HM12_UVB_z(row, stage, 0);
+                }
+                if (flags.include_cosmic_ray_ionization) {
+                    if (stage < elements[element].n_ions - 1)
+                        cosmic[t] = tabData.cosmic_ray_ionization_rates(row, stage);
+                    if (stage == 0)
+                        induced[t] = tabData.cosmic_ray_ionization_rates_induced_UV(row);
+                }
+                if (flags.include_photoionization) {
+                    if (stage == 0) isrf[t] = elements[element].G0_photo_rate;
+                }
+                if constexpr (rt_advect) {
+                    if (stage < elements[element].n_ions - 1) {
+                        for (int k = 0; k < N_GROUPS; ++k)
+                            auxiliary_cache[(5 + k) * cache_stride + 1 + t] = tabData.cs_ph(row, stage, k, 0);
+                    }
+                }
+            }
         });
         team.team_barrier();
     }
-
-    // See the TODO(code) note in ions_step
-    const Real dust_effective_number_density = n_and_ion_fracs[1].n_element_new * dust_to_gas_mass_ratio_over_mw;
 
     // Live H fractions (updated in place by HandHe_ions_step) for metal charge exchange
     const xion_t* x_H = n_and_ion_fracs.ion_fracs_new_flat + n_and_ion_fracs.offsets[1];
@@ -1763,120 +1826,175 @@ void metal_ions_step(
         const int erow = elem_row(i);
         if (erow < 0) return;     // not a tabulated element: no rates exist for it
         const xion_t* xi_snap = x_snap + n_and_ion_fracs.offsets[i];
+        const xion_t xi_snap_lower = j > 0 ? xi_snap[j-1] : xion_t(0);
+        const xion_t xi_snap_higher = j < n_ions - 1 ? xi_snap[j+1] : xion_t(0);
 
-        /////////////////////////
-        //       Creation      //
-        /////////////////////////
-        Real cr = Real(0.E0);
-
-        // Recombinations of the more excited ionization state
-        if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap[j+1];
-
-        // Collisional ionization of the less excited state
-        if (flags.include_collisional_ionization) {
-            if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap[j-1];
-        }
-
-        // Photoionization of the less excited state
-        if (flags.include_HM12_UVB) {
-            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap[j-1];
-        }
-
-        // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
-        if (flags.include_photoionization) {
-            if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap[j-1];
-        }
-
-        // Cosmic ray ionization of the less excited state
-        if (flags.include_cosmic_ray_ionization) {
-            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap[j-1];
-
-            // Cosmic ray ionization of the less excited state from induced UV
-            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap[j-1];
-        }
-
-        // Recombination on dust for the more excited state
-        if (flags.include_dust_recombination) {
-            if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap[j+1];
-        }
-
-        // Photoionization of the less excited state from local radiation field
-        if (rt_advect) {
-            if (j > 0) {
-                for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap[j-1];
-                } // End loop over photon groups
+        Real cr = Real(0);
+        Real de = Real(0);
+        if constexpr (cache_all_rates) {
+            const Real* dust = auxiliary_cache + 1;
+            const Real* uvb = dust + cache_stride;
+            const Real* cosmic = uvb + cache_stride;
+            const Real* induced = cosmic + cache_stride;
+            const Real* isrf = induced + cache_stride;
+            cr += recombination_cache[t+1] * state.ne * xi_snap_higher;
+            if (flags.include_collisional_ionization)
+                cr += collisional_cache[t-1] * state.ne * xi_snap_lower;
+            if (flags.include_HM12_UVB)
+                cr += uvb[t-1] * ss_factor * xi_snap_lower;
+            if (flags.include_photoionization)
+                cr += UV_background_G0 * isrf[t-1] * xi_snap_lower;
+            if (flags.include_cosmic_ray_ionization) {
+                cr += cosmic[t-1] * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+                cr += induced[t-1] * state.cosmic_ray_scale_factor * xi_snap_lower;
             }
-        }
-
-        /////////////////////////
-        //     Destruction     //
-        /////////////////////////
-        Real de = Real(0.E0);
-
-        // Collisional ionization
-        if (flags.include_collisional_ionization) {
-            if (j < (n_ions - 1)) de += (cache_rates ? collisional_cache[t] : collisional_ionization(state.TK, j, i, tabData)) * state.ne;
-        }
-
-        // Photoionization
-        if (flags.include_HM12_UVB) {
-            if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
-        }
-
-        // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
-        if (flags.include_photoionization) {
-            if (j == 0) de += UV_background_G0 * elements[i].G0_photo_rate;
-        }
-
-        // Recombination
-        if (j > 0) de += (cache_rates ? recombination_cache[t] : recombination(state.TK, j, i, tabData)) * state.ne;
-
-        // Cosmic ray ionization
-        if (flags.include_cosmic_ray_ionization) {
-            if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
-
-            // Cosmic ray ionization from induced UV
-            if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor;
-        }
-
-        // Recombination on dust
-        if (flags.include_dust_recombination) {
-            if (j > 0) de += dust_recombination_rates(j, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density;
-        }
-
-        // Photoionization from local radiation field
-        if (rt_advect) {
-            if (j < (n_ions - 1)) {
-                for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                    de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
-                } // End loop over photon groups
+            if (flags.include_dust_recombination)
+                cr += dust[t+1] * dust_effective_number_density * xi_snap_higher;
+            if constexpr (rt_advect) {
+                for (int k = 0; k < N_GROUPS; ++k)
+                    cr += N_phot_new[k] * auxiliary_cache[(5+k)*cache_stride + 1 + t-1] * xi_snap_lower;
             }
-        }
+            if (flags.include_collisional_ionization)
+                de += collisional_cache[t] * state.ne;
+            if (flags.include_HM12_UVB)
+                de += uvb[t] * ss_factor;
+            if (flags.include_photoionization)
+                de += UV_background_G0 * isrf[t];
+            de += recombination_cache[t] * state.ne;
+            if (flags.include_cosmic_ray_ionization) {
+                de += cosmic[t] * state.total_cosmic_ray_ionization_rate;
+                de += induced[t] * state.cosmic_ray_scale_factor;
+            }
+            if (flags.include_dust_recombination)
+                de += dust[t] * dust_effective_number_density;
+            if constexpr (rt_advect) {
+                for (int k = 0; k < N_GROUPS; ++k)
+                    de += N_phot_new[k] * auxiliary_cache[(5+k)*cache_stride + 1 + t];
+            }
+            if (flags.include_charge_exchange) {
+                const Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+                const Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+                cr += ct_ionization_cache[t-1] * xi_snap_lower * HII_number_density;
+                de += ct_recombination_cache[t] * HI_number_density;
+                de += ct_ionization_cache[t] * HII_number_density;
+                cr += ct_recombination_cache[t+1] * xi_snap_higher * HI_number_density;
+            }
+        } else {
+            /////////////////////////
+            //       Creation      //
+            /////////////////////////
 
-        /////////////////////////
-        //   Charge Transfer   //
-        /////////////////////////
-        // Charge exchange couples each metal to hydrogen via the live H fractions
-        if (flags.include_charge_exchange) {
-            Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
-            Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
 
-            if (j > 0) {
-                // Ionization from less excited state
-                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H
+            // Recombinations of the more excited ionization state
+            if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap_higher;
 
-                // Charge exchange recombination
-                de += (cache_charge_transfer ? ct_recombination_cache[t] : charge_transfer_recombination(j,i,state.TK, tabData)) * HI_number_density; //! Example:  O+ + H => O + H+
+            // Collisional ionization of the less excited state
+            if (flags.include_collisional_ionization) {
+                if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap_lower;
             }
 
-            if (j < (n_ions - 1)) {
-                // Charge exchange ionization
-                de += (cache_charge_transfer ? ct_ionization_cache[t] : charge_transfer_ionization(j,i,state.TK, tabData)) * HII_number_density; //! Example:  O + H+ => O+ + H
-
-                // Charge exchange recombination from the more excited state
-                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
+            // Photoionization of the less excited state
+            if (flags.include_HM12_UVB) {
+                if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap_lower;
             }
+
+            // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+            if (flags.include_photoionization) {
+                if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap_lower;
+            }
+
+            // Cosmic ray ionization of the less excited state
+            if (flags.include_cosmic_ray_ionization) {
+                if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+
+                // Cosmic ray ionization of the less excited state from induced UV
+                if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap_lower;
+            }
+
+            // Recombination on dust for the more excited state
+            if (flags.include_dust_recombination) {
+                if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap_higher;
+            }
+
+            // Photoionization of the less excited state from local radiation field
+            if (rt_advect) {
+                if (j > 0) {
+                    for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                        cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap_lower;
+                    } // End loop over photon groups
+                }
+            }
+
+            /////////////////////////
+            //     Destruction     //
+            /////////////////////////
+
+
+            // Collisional ionization
+            if (flags.include_collisional_ionization) {
+                if (j < (n_ions - 1)) de += (cache_rates ? collisional_cache[t] : collisional_ionization(state.TK, j, i, tabData)) * state.ne;
+            }
+
+            // Photoionization
+            if (flags.include_HM12_UVB) {
+                if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
+            }
+
+            // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+            if (flags.include_photoionization) {
+                if (j == 0) de += UV_background_G0 * elements[i].G0_photo_rate;
+            }
+
+            // Recombination
+            if (j > 0) de += (cache_rates ? recombination_cache[t] : recombination(state.TK, j, i, tabData)) * state.ne;
+
+            // Cosmic ray ionization
+            if (flags.include_cosmic_ray_ionization) {
+                if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
+
+                // Cosmic ray ionization from induced UV
+                if (j == 0) de += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor;
+            }
+
+            // Recombination on dust
+            if (flags.include_dust_recombination) {
+                if (j > 0) de += dust_recombination_rates(j, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density;
+            }
+
+            // Photoionization from local radiation field
+            if (rt_advect) {
+                if (j < (n_ions - 1)) {
+                    for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+                        de += N_phot_new[k] * tabData.cs_ph(erow, j, k, 0);
+                    } // End loop over photon groups
+                }
+            }
+
+            /////////////////////////
+            //   Charge Transfer   //
+            /////////////////////////
+            // Charge exchange couples each metal to hydrogen via the live H fractions
+            if (flags.include_charge_exchange) {
+                Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+                Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+
+                if (j > 0) {
+                    // Ionization from less excited state
+                    cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap_lower * HII_number_density; //! Example:  O + H+ => O+ + H
+
+                    // Charge exchange recombination
+                    de += (cache_charge_transfer ? ct_recombination_cache[t] : charge_transfer_recombination(j,i,state.TK, tabData)) * HI_number_density; //! Example:  O+ + H => O + H+
+                }
+
+                if (j < (n_ions - 1)) {
+                    // Charge exchange ionization
+                    de += (cache_charge_transfer ? ct_ionization_cache[t] : charge_transfer_ionization(j,i,state.TK, tabData)) * HII_number_density; //! Example:  O + H+ => O+ + H
+
+                    // Charge exchange recombination from the more excited state
+                    cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap_higher * HI_number_density; //! Example:  O+ + H => O + H+
+                }
+            }
+
         }
 
         /////////////////////////
@@ -1898,36 +2016,42 @@ void metal_ions_step(
     // X% rule on the metal ion fractions (residual vs the committed values);
     // H/He already folded theirs in HandHe_ions_step
     Real max_stage_residual = -Real(999.);
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lmax) {
-        const int i = ion_map[t] >> 8;
-        const int j = ion_map[t] & 0xFF;
-        if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
-        const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
-        const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-        lmax = rtz_math::fmax(lmax, rtz_math::fabs(x_new - x_old) / (x_old + X_FM));
-    }, Kokkos::Max<Real>(max_stage_residual));
-
+    // TODO: merge those three parallel_reduce into one.
     int violated = 0;
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, int& lviol) {
+    Real delta_ne = Real(0.0);
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lmax, int& lviol, Real& dne_sum) {
         const int i = ion_map[t] >> 8;
         const int j = ion_map[t] & 0xFF;
         if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
         const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
         const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
         const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
-        if (x_old > Real(1E-10) && residual > X_PCT_RULE) lviol = 1;
-    }, Kokkos::Max<int>(violated));
-
-    // Electron density from the swept metal fractions; state.ne already carries
-    // the H/He contributions from HandHe_ions_step
-    Real delta_ne = Real(0.0);
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lsum) {
-        const int i = ion_map[t] >> 8;
-        const int j = ion_map[t] & 0xFF;
+        lmax = rtz_math::fmax(lmax, residual);
+        if (x_old > Real(1e-10) && residual > X_PCT_RULE) lviol = 1;
         if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
-        lsum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
-               - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
-    }, delta_ne);
+        dne_sum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
+                  - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
+    }, Kokkos::Max<Real>(max_stage_residual), Kokkos::Max<int>(violated), delta_ne);
+
+    // Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, int& lviol) {
+    //     const int i = ion_map[t] >> 8;
+    //     const int j = ion_map[t] & 0xFF;
+    //     if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
+    //     const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
+    //     const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
+    //     const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
+    //     if (x_old > Real(1E-10) && residual > X_PCT_RULE) lviol = 1;
+    // }, Kokkos::Max<int>(violated));
+
+    // // Electron density from the swept metal fractions; state.ne already carries
+    // // the H/He contributions from HandHe_ions_step
+    // Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t, Real& lsum) {
+    //     const int i = ion_map[t] >> 8;
+    //     const int j = ion_map[t] & 0xFF;
+    //     if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
+    //     lsum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
+    //            - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
+    // }, delta_ne);
 
     const Real ne_new = state.ne + delta_ne;
     const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
@@ -1944,26 +2068,54 @@ void metal_ions_step(
     });
     team.team_barrier();
 
-    // REDUCE SO THAT THE METAL IONIZATION FRACTIONS SUM TO 1 (H/He were
-    // normalized in HandHe_ions_step)
-    if (state.x_percent_rule) {
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, MAX_ELEMENTS - 1), [&](const int t) {
-            const int i = t + 1;
-            if (i <= 2) return; // H/He normalized in HandHe_ions_step
-            if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
+    // Preserve each element's sum order; distribute only its independent
+    // divisions across ion lanes instead of serializing a whole element.
+    if constexpr (parallel_normalization) {
+        if (state.x_percent_rule) {
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, MAX_ELEMENTS - 1), [&](const int t) {
+                const int i = t + 1;
+                if (i <= 2 || n_and_ion_fracs.n_element[i] == Real(0)) return;
+                const int size = elements[i].n_ions + elements[i].n_mol;
+                Real sum = Real(0);
+                for (int j = 0; j < size; ++j)
+                    sum += n_and_ion_fracs[i].ion_fracs_new[j];
+                normalization_sums[i] = sum;
+                // The ion map covers atoms; retain normalization of any
+                // additional molecular entries without overlapping those lanes.
+                for (int j = elements[i].n_ions; j < size; ++j)
+                    n_and_ion_fracs[i].ion_fracs_new[j] /= sum;
+            });
+            team.team_barrier();
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n_ion_work), [&](const int t) {
+                const int i = ion_map[t] >> 8;
+                const int j = ion_map[t] & 0xFF;
+                if (n_and_ion_fracs.n_element[i] == Real(0)) return;
+                n_and_ion_fracs[i].ion_fracs_new[j] /= normalization_sums[i];
+            });
+            team.team_barrier();
+        }
+    } else {
+        // REDUCE SO THAT THE METAL IONIZATION FRACTIONS SUM TO 1 (H/He were
+        // normalized in HandHe_ions_step)
+        if (state.x_percent_rule) {
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, MAX_ELEMENTS - 1), [&](const int t) {
+                const int i = t + 1;
+                if (i <= 2) return; // H/He normalized in HandHe_ions_step
+                if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
 
-            int size = elements[i].n_ions + elements[i].n_mol;
+                int size = elements[i].n_ions + elements[i].n_mol;
 
-            Real current_mass_frac = Real(0.0);
-            for (int i_tmp = 0; i_tmp < size; i_tmp++) {
-                current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
-            }
+                Real current_mass_frac = Real(0.0);
+                for (int i_tmp = 0; i_tmp < size; i_tmp++) {
+                    current_mass_frac += n_and_ion_fracs[i].ion_fracs_new[i_tmp];
+                }
 
-            for (int i_tmp = 0; i_tmp < size; i_tmp++) {
-                n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
-            }
-        });
-        team.team_barrier();
+                for (int i_tmp = 0; i_tmp < size; i_tmp++) {
+                    n_and_ion_fracs[i].ion_fracs_new[i_tmp] /= current_mass_frac;
+                }
+            });
+            team.team_barrier();
+        }
     }
 }
 
@@ -2045,6 +2197,98 @@ void subcycle_prep_iteration(
     }
 }
 
+
+// Backward Euler for all atomic ions, with ne and thermal quantities frozen
+// throughout the solve. Molecular evolution and temperature integration stay
+// in their existing steps. Charge exchange is solved at the new H AND partner
+// populations, using the sparse bordered-block system in implicit_ions.hpp.
+template<bool include_H2, bool rt_advect, class Executor, class Table>
+KOKKOS_INLINE_FUNCTION void implicit_ions_step(
+    const Executor& exec, Real dt, const Element* elements,
+    CompactIonData& ions, const Table& tables, const PhysicsFlags& flags,
+    Real dust_ratio, Real uv_g0, Real ss_factor,
+    const std::array<Real, N_GROUPS>& photons, const uint16_t* ion_map,
+    int n_ion_work, Real* work, SubcycleState& state, Real ion_change_limit)
+{
+    if (!state.compute_atoms || !state.x_percent_rule) return;
+    const SparseIonSystem system(work);
+    const Real temperature = state.TK, ne = state.ne;
+    const Real dust_density = ions.n_element_new[1] * dust_ratio;
+    exec.each(n_ion_work, [&](int t) {
+        const int i = ion_map[t] >> 8, j = ion_map[t] & 0xFF;
+        const int k = ions.offsets[i] + j;
+        system.old[k] = ions.ion_fracs_new_flat[k];
+        Real up = 0, down = 0, ct_up = 0, ct_down = 0;
+        if (ions.n_element[i] != 0) {
+            const int row = elem_row(i);
+            if (j + 1 < elements[i].n_ions) {
+                if (flags.include_collisional_ionization)
+                    up += collisional_ionization(temperature, j, i, tables) * ne;
+                if (flags.include_HM12_UVB) up += tables.HM12_UVB_z(row, j, 0) * ss_factor;
+                if (flags.include_photoionization && j == 0) up += uv_g0 * elements[i].G0_photo_rate;
+                if (flags.include_cosmic_ray_ionization) {
+                    up += tables.cosmic_ray_ionization_rates(row, j) * state.total_cosmic_ray_ionization_rate;
+                    if (j == 0) up += tables.cosmic_ray_ionization_rates_induced_UV(row) * state.cosmic_ray_scale_factor;
+                }
+                if constexpr (rt_advect)
+                    for (int group = 0; group < N_GROUPS; ++group)
+                        up += photons[group] * tables.cs_ph(row, j, group, 0);
+                if (flags.include_charge_exchange && i != 1)
+                    ct_up = charge_transfer_ionization(j, i, temperature, tables);
+            }
+            if (j > 0) {
+                down += recombination(temperature, j, i, tables) * ne;
+                if (flags.include_dust_recombination)
+                    down += dust_recombination_rates(j, i, temperature, uv_g0, ne, tables.dust_rec_coefs) * dust_density;
+                if (flags.include_charge_exchange && i != 1)
+                    ct_down = charge_transfer_recombination(j, i, temperature, tables);
+            }
+        }
+        system.up[k] = up; system.down[k] = down;
+        system.ct_up[k] = ct_up; system.ct_down[k] = ct_down;
+    });
+    exec.barrier();
+    // H2 has already advanced. Its net formation/destruction changes the
+    // available neutral hydrogen, exactly conserving H+HI+2H2 in this split.
+    const Real hydrogen_mass = include_H2 ? Real(1) - ions[1].ion_fracs_new[2] : Real(1);
+    const bool solved = system.solve(exec, elements, ions, dt, hydrogen_mass);
+    if (!solved) {
+        exec.single([&]() { state.x_percent_rule = false; state.success_counter = 0; });
+        exec.barrier();
+        return;
+    }
+    const Real residual = exec.maximum(n_ion_work, [&](int t) {
+        const int i = ion_map[t] >> 8, j = ion_map[t] & 0xFF;
+        if (ions.n_element[i] == 0) return Real(0);
+        const int k = ions.offsets[i] + j;
+        const Real old = ions.ion_fracs_flat[k];
+        return old > Real(1e-10) ? rtz_math::fabs(system.x[k] - old) / (old + X_FM) : Real(0);
+    });
+    const Real new_ne = exec.sum(n_ion_work, [&](int t) {
+        const int i = ion_map[t] >> 8, j = ion_map[t] & 0xFF;
+        return ions.n_element[i] == 0 ? Real(0) : ions.n_element_new[i] * system.x[ions.offsets[i]+j] * Real(j);
+    });
+    exec.single([&]() {
+        const Real ne_residual = rtz_math::fabs(new_ne - state.ne_initial) / (new_ne + X_FM);
+        const Real ion_residual = rtz_math::fmax(residual, ne_residual);
+        // Keep temperature/radiation's existing 10% controller unchanged;
+        // express the separate ion limit in that controller's residual units.
+        state.max_residual_all = rtz_math::fmax(state.max_residual_all,
+                                              ion_residual * X_PCT_RULE / ion_change_limit);
+        if (ion_residual > ion_change_limit) {
+            state.x_percent_rule = false;
+            state.success_counter = 0;
+        }
+    });
+    exec.barrier();
+    if (state.x_percent_rule) {
+        exec.each(n_ion_work, [&](int t) {
+            const int i = ion_map[t] >> 8, j = ion_map[t] & 0xFF;
+            if (ions.n_element[i] != 0) ions.ion_fracs_new_flat[ions.offsets[i]+j] = system.x[ions.offsets[i]+j];
+        });
+        exec.barrier();
+    }
+}
 
 // Timestep-control law shared by subcycle_commit_and_control and the
 // group-synchronized driver in CoolingUpdate_PRISM_GPU.cpp (which applies it

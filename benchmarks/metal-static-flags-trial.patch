@@ -1,0 +1,183 @@
+--- a/dyablo_api_GPU.cpp
++++ b/dyablo_api_GPU.cpp
+@@ -1762,10 +1762,10 @@
+             if (n_and_ion_fracs.n_element[element] == Real(0)) return;
+             if (stage > 0)
+                 recombination_cache[t] = recombination(state.TK, stage, element, tabData);
+-            if (flags.include_collisional_ionization && stage < elements[element].n_ions - 1)
++            if (stage < elements[element].n_ions - 1)
+                 collisional_cache[t] = collisional_ionization(state.TK, stage, element, tabData);
+             if constexpr (cache_charge_transfer) {
+-                if (flags.include_charge_exchange) {
++                if constexpr (true) {
+                     if (stage > 0)
+                         ct_recombination_cache[t] = charge_transfer_recombination(stage, element, state.TK, tabData);
+                     if (stage < elements[element].n_ions - 1)
+@@ -1780,21 +1780,21 @@
+                 Real* cosmic = uvb + cache_stride;
+                 Real* induced = cosmic + cache_stride;
+                 Real* isrf = induced + cache_stride;
+-                if (flags.include_dust_recombination) {
++                if constexpr (true) {
+                     if (stage > 0)
+                         dust[t] = dust_recombination_rates(stage, element, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs);
+                 }
+-                if (flags.include_HM12_UVB) {
++                if constexpr (true) {
+                     if (stage < elements[element].n_ions - 1)
+                         uvb[t] = tabData.HM12_UVB_z(row, stage, 0);
+                 }
+-                if (flags.include_cosmic_ray_ionization) {
++                if constexpr (true) {
+                     if (stage < elements[element].n_ions - 1)
+                         cosmic[t] = tabData.cosmic_ray_ionization_rates(row, stage);
+                     if (stage == 0)
+                         induced[t] = tabData.cosmic_ray_ionization_rates_induced_UV(row);
+                 }
+-                if (flags.include_photoionization) {
++                if constexpr (true) {
+                     if (stage == 0) isrf[t] = elements[element].G0_photo_rate;
+                 }
+                 if constexpr (rt_advect) {
+@@ -1832,40 +1832,40 @@
+             const Real* induced = cosmic + cache_stride;
+             const Real* isrf = induced + cache_stride;
+             cr += recombination_cache[t+1] * state.ne * xi_snap_higher;
+-            if (flags.include_collisional_ionization)
++            if constexpr (true)
+                 cr += collisional_cache[t-1] * state.ne * xi_snap_lower;
+-            if (flags.include_HM12_UVB)
++            if constexpr (true)
+                 cr += uvb[t-1] * ss_factor * xi_snap_lower;
+-            if (flags.include_photoionization)
++            if constexpr (true)
+                 cr += UV_background_G0 * isrf[t-1] * xi_snap_lower;
+-            if (flags.include_cosmic_ray_ionization) {
++            if constexpr (true) {
+                 cr += cosmic[t-1] * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+                 cr += induced[t-1] * state.cosmic_ray_scale_factor * xi_snap_lower;
+             }
+-            if (flags.include_dust_recombination)
++            if constexpr (true)
+                 cr += dust[t+1] * dust_effective_number_density * xi_snap_higher;
+             if constexpr (rt_advect) {
+                 for (int k = 0; k < N_GROUPS; ++k)
+                     cr += N_phot_new[k] * auxiliary_cache[(5+k)*cache_stride + 1 + t-1] * xi_snap_lower;
+             }
+-            if (flags.include_collisional_ionization)
++            if constexpr (true)
+                 de += collisional_cache[t] * state.ne;
+-            if (flags.include_HM12_UVB)
++            if constexpr (true)
+                 de += uvb[t] * ss_factor;
+-            if (flags.include_photoionization)
++            if constexpr (true)
+                 de += UV_background_G0 * isrf[t];
+             de += recombination_cache[t] * state.ne;
+-            if (flags.include_cosmic_ray_ionization) {
++            if constexpr (true) {
+                 de += cosmic[t] * state.total_cosmic_ray_ionization_rate;
+                 de += induced[t] * state.cosmic_ray_scale_factor;
+             }
+-            if (flags.include_dust_recombination)
++            if constexpr (true)
+                 de += dust[t] * dust_effective_number_density;
+             if constexpr (rt_advect) {
+                 for (int k = 0; k < N_GROUPS; ++k)
+                     de += N_phot_new[k] * auxiliary_cache[(5+k)*cache_stride + 1 + t];
+             }
+-            if (flags.include_charge_exchange) {
++            if constexpr (true) {
+                 const Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+                 const Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+                 cr += ct_ionization_cache[t-1] * xi_snap_lower * HII_number_density;
+@@ -1886,7 +1886,7 @@
+                 cr += recombination(state.TK, j+1, i, tabData) * state.ne * xi_snap_higher;
+ 
+             // Collisional ionization of the less excited state
+-            if (flags.include_collisional_ionization) {
++            if constexpr (true) {
+                 if constexpr (cache_rates)
+                     cr += collisional_cache[t-1] * state.ne * xi_snap_lower;
+                 else if (j > 0)
+@@ -1894,17 +1894,17 @@
+             }
+ 
+             // Photoionization of the less excited state
+-            if (flags.include_HM12_UVB) {
++            if constexpr (true) {
+                 if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap_lower;
+             }
+ 
+             // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+-            if (flags.include_photoionization) {
++            if constexpr (true) {
+                 if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap_lower;
+             }
+ 
+             // Cosmic ray ionization of the less excited state
+-            if (flags.include_cosmic_ray_ionization) {
++            if constexpr (true) {
+                 if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+ 
+                 // Cosmic ray ionization of the less excited state from induced UV
+@@ -1912,7 +1912,7 @@
+             }
+ 
+             // Recombination on dust for the more excited state
+-            if (flags.include_dust_recombination) {
++            if constexpr (true) {
+                 if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap_higher;
+             }
+ 
+@@ -1931,7 +1931,7 @@
+ 
+ 
+             // Collisional ionization
+-            if (flags.include_collisional_ionization) {
++            if constexpr (true) {
+                 if constexpr (cache_rates)
+                     de += collisional_cache[t] * state.ne;
+                 else if (j < n_ions - 1)
+@@ -1939,12 +1939,12 @@
+             }
+ 
+             // Photoionization
+-            if (flags.include_HM12_UVB) {
++            if constexpr (true) {
+                 if (j < (n_ions - 1)) de += tabData.HM12_UVB_z(erow, j, 0) * ss_factor;
+             }
+ 
+             // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+-            if (flags.include_photoionization) {
++            if constexpr (true) {
+                 if (j == 0) de += UV_background_G0 * elements[i].G0_photo_rate;
+             }
+ 
+@@ -1955,7 +1955,7 @@
+                 de += recombination(state.TK, j, i, tabData) * state.ne;
+ 
+             // Cosmic ray ionization
+-            if (flags.include_cosmic_ray_ionization) {
++            if constexpr (true) {
+                 if (j < (n_ions - 1)) de += tabData.cosmic_ray_ionization_rates(erow, j) * state.total_cosmic_ray_ionization_rate;
+ 
+                 // Cosmic ray ionization from induced UV
+@@ -1963,7 +1963,7 @@
+             }
+ 
+             // Recombination on dust
+-            if (flags.include_dust_recombination) {
++            if constexpr (true) {
+                 if (j > 0) de += dust_recombination_rates(j, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density;
+             }
+ 
+@@ -1980,7 +1980,7 @@
+             //   Charge Transfer   //
+             /////////////////////////
+             // Charge exchange couples each metal to hydrogen via the live H fractions
+-            if (flags.include_charge_exchange) {
++            if constexpr (true) {
+                 Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+                 Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+ 

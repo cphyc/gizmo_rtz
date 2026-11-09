@@ -1,0 +1,149 @@
+{
+  "scope": "second solve only",
+  "kernels": [
+    {
+      "phase": "Metals",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(const Kokkos::Impl::CudaTeamMember &) (instance 1)], Kokkos::TeamPolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 6.217208891,
+      "registers": [
+        90
+      ],
+      "dynamic_shared_bytes": [
+        8183
+      ],
+      "percent_gpu": 54.808114812075004
+    },
+    {
+      "phase": "Cooling rates",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 3)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 2.116311956,
+      "registers": [
+        130
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 18.656453514136082
+    },
+    {
+      "phase": "HHe/cooling update",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 4)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 1.350589569,
+      "registers": [
+        92
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 11.9061896519029
+    },
+    {
+      "phase": "Prep/radiation",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 2)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 1.13826021,
+      "registers": [
+        64
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 10.034389606243748
+    },
+    {
+      "phase": "Commit/control",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 5)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 0.484474471,
+      "registers": [
+        64
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 4.270908842796883
+    },
+    {
+      "phase": "Pending count",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelReduce<Kokkos::Impl::CombinedFunctorReducer<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], Kokkos::Impl::FunctorAnalysis<Kokkos::Impl::FunctorPatternInterface::REDUCE, Kokkos::RangePolicy<>, nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], unsigned long>::Reducer, void>, Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1505,
+      "seconds": 0.013426361,
+      "registers": [
+        25
+      ],
+      "dynamic_shared_bytes": [
+        2064
+      ],
+      "percent_gpu": 0.1183607544957373
+    },
+    {
+      "phase": "Iteration-limit check",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelReduce<Kokkos::Impl::CombinedFunctorReducer<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, int &) (instance 1)], Kokkos::Impl::FunctorAnalysis<Kokkos::Impl::FunctorPatternInterface::REDUCE, Kokkos::RangePolicy<>, nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, int &) (instance 1)], int>::Reducer, void>, Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1504,
+      "seconds": 0.010941786,
+      "registers": [
+        25
+      ],
+      "dynamic_shared_bytes": [
+        1032
+      ],
+      "percent_gpu": 0.09645785976489799
+    },
+    {
+      "phase": "Compaction scan",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelScan<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &, bool) (instance 1)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 2150,
+      "seconds": 0.010076585,
+      "registers": [
+        56
+      ],
+      "dynamic_shared_bytes": [
+        1040
+      ],
+      "percent_gpu": 0.08883063723226488
+    },
+    {
+      "phase": "Interval init",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 1)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1,
+      "seconds": 0.001368367,
+      "registers": [
+        64
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 0.012062907480818412
+    },
+    {
+      "phase": "Final output",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<nanobind::object <unnamed>::run_solver<(bool)0, (bool)0, (bool)0, (bool)1, (bool)0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 6)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1)",
+      "launches": 1,
+      "seconds": 0.000932778,
+      "registers": [
+        63
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 0.008222950943820506
+    },
+    {
+      "phase": "Descriptor destruction",
+      "kernel": "void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<<unnamed>::DeviceTableDescriptor<prism_gpu::CompactTabulatedData>::destroy(prism_gpu::CompactTabulatedData *)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)",
+      "launches": 1,
+      "seconds": 9.6e-07,
+      "registers": [
+        16
+      ],
+      "dynamic_shared_bytes": [
+        0
+      ],
+      "percent_gpu": 8.462927841423882e-06
+    }
+  ],
+  "gpu_seconds": 11.343591934
+}

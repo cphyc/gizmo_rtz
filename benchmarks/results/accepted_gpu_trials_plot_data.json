@@ -85,6 +85,42 @@
       "range_high": 1.052852334808347
     },
     {
+      "tag": "M01",
+      "label": "Separate metal commit/control",
+      "candidate": "metal-split-commit",
+      "parent": "metal-opt-control-recheck",
+      "category": "float64",
+      "before_seconds": 13.05714178600465,
+      "after_seconds": 12.372252608009148,
+      "speedup": 1.0553568699003235,
+      "range_low": 1.0540997876728464,
+      "range_high": 1.0561171090626447
+    },
+    {
+      "tag": "M02",
+      "label": "Normalize metal stages in parallel",
+      "candidate": "metal-normalize",
+      "parent": "metal-normalize-control-recheck",
+      "category": "float64",
+      "before_seconds": 12.388375907990849,
+      "after_seconds": 11.98580034301267,
+      "speedup": 1.0335877082428515,
+      "range_low": 1.0300387885943363,
+      "range_high": 1.0344407427228066
+    },
+    {
+      "tag": "M03",
+      "label": "Cache all metal coefficients",
+      "candidate": "metal-all-cache-final",
+      "parent": "metal-cache-parent-recheck",
+      "category": "float64",
+      "before_seconds": 12.038629638002021,
+      "after_seconds": 11.482720355998026,
+      "speedup": 1.0484126813829107,
+      "range_low": 1.0463534013564493,
+      "range_high": 1.0499950723694982
+    },
+    {
       "tag": "P02",
       "label": "Charge transfer \u2192 float32",
       "candidate": "precision-timing-charge",

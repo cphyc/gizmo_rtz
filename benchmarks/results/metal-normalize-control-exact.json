@@ -1,0 +1,18 @@
+{
+  "temperature": {
+    "bit_identical": true,
+    "max_absolute_difference": 0.0
+  },
+  "densities": {
+    "bit_identical": true,
+    "max_absolute_difference": 0.0
+  },
+  "ion_fractions": {
+    "bit_identical": true,
+    "max_absolute_difference": 0.0
+  },
+  "photon_densities": {
+    "bit_identical": true,
+    "max_absolute_difference": 0.0
+  }
+}

@@ -292,6 +292,12 @@ void finalize_runtime() {
         Kokkos::finalize();
 }
 
+struct SolveStatistics {
+    std::vector<int> iterations;
+    std::vector<int> accepted;
+};
+SolveStatistics last_solve_statistics;
+
 struct CellState {
     CompactIonData chemistry{};
     SubcycleState subcycle{};
@@ -305,6 +311,7 @@ struct CellState {
     Real ddt = 0.0;
     Real total_time = 0.0;
     int iterations = 0;
+    int accepted_steps = 0;
     bool done = false;
     bool initial_interval = true;
     std::array<Real, N_GROUPS> photons{};
@@ -385,6 +392,8 @@ struct SolveOptions {
     bool temperature_is_Tmu;
     bool use_default_depletion;
     PhysicsFlags physics_flags;
+    bool implicit_ions;
+    double ion_change_limit;
 };
 
 template <bool include_CO>
@@ -396,6 +405,8 @@ SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndi
                                     const SolveOptions &options) {
     if (input.shape(0) == 0)
         throw std::invalid_argument("state must contain at least one cell");
+    if (!std::isfinite(options.ion_change_limit) || options.ion_change_limit <= 0 || options.ion_change_limit > 1)
+        throw std::invalid_argument("ion_change_limit must be in (0, 1]");
     if (options.max_iterations <= 0)
         throw std::invalid_argument("max_iterations must be positive");
     if (options.conv_its <= 0)
@@ -618,6 +629,18 @@ nb::object run_solver(const SolveParameters &parameters,
             ion_map.push_back(static_cast<std::uint16_t>((atomic_number << 8) | stage));
     }
 
+    std::vector<std::uint16_t> all_ion_map;
+    for (int atomic_number : inputs.element_numbers)
+        for (int stage = 0; stage < configured_elements[atomic_number].n_ions; ++stage)
+            all_ion_map.push_back(static_cast<std::uint16_t>((atomic_number << 8) | stage));
+    Kokkos::View<std::uint16_t*> all_ion_map_d("rtz_python_all_ions", all_ion_map.size());
+    auto host_all_ions = Kokkos::create_mirror_view(all_ion_map_d);
+    for (std::size_t j = 0; j < all_ion_map.size(); ++j) host_all_ions(j) = all_ion_map[j];
+    Kokkos::deep_copy(all_ion_map_d, host_all_ions);
+    const auto* device_all_ions = all_ion_map_d.data();
+    const int n_all_ions = static_cast<int>(all_ion_map.size());
+    const bool implicit_ions = options.implicit_ions;
+    const Real ion_change_limit = implicit_ions ? Real(options.ion_change_limit) : X_PCT_RULE;
     const int n_ion_work = static_cast<int>(ion_map.size());
     Kokkos::View<std::uint16_t *> ion_map_d("rtz_python_ion_map", n_ion_work);
     auto host_ion_map = Kokkos::create_mirror_view(ion_map_d);
@@ -634,6 +657,8 @@ nb::object run_solver(const SolveParameters &parameters,
         host_cells(index) = cells[index];
     Kokkos::deep_copy(device_cells, host_cells);
 
+    last_solve_statistics.iterations.assign(n_cells, 0);
+    last_solve_statistics.accepted.assign(n_cells, 0);
     double previous_time = 0.0;
     const PhysicsFlags flags = options.physics_flags;
     const std::array<Real, N_GROUPS> dNpdt{};
@@ -656,7 +681,9 @@ nb::object run_solver(const SolveParameters &parameters,
     using TeamPolicy = Kokkos::TeamPolicy<>;
     using TeamMember = TeamPolicy::member_type;
     const std::size_t ion_snapshot_bytes = MAX_TOTAL_IONS * sizeof(CompactIonData::xion_t);
-    const std::size_t rate_cache_bytes = 4 * n_ion_work * sizeof(Real);
+    const int rate_cache_stride = n_ion_work + 2; // zero sentinel on both sides
+    // Four atomic-rate arrays, five other coefficients and one array per photon group.
+    const std::size_t rate_cache_bytes = ((9 + N_GROUPS) * rate_cache_stride + MAX_ELEMENTS) * sizeof(Real);
     const std::size_t ion_scratch_bytes = ion_snapshot_bytes + alignof(Real) - 1 + rate_cache_bytes;
 
     for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
@@ -715,6 +742,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                : requested_delta_time;
                 cell.total_time = Real(0.0);
                 cell.iterations = 0;
+                cell.accepted_steps = 0;
                 cell.done = false;
             });
 
@@ -829,9 +857,9 @@ nb::object run_solver(const SolveParameters &parameters,
                                                            cell.dust_ratio,
                                                            uv_background,
                                                            cell.photons_new,
-                                                           cell.subcycle);
+                                                           cell.subcycle, ion_change_limit);
 
-                    HandHe_ions_step<constant_temperature,
+                    if (!implicit_ions) HandHe_ions_step<constant_temperature,
                                      include_H2,
                                      include_CO,
                                      rt_advect,
@@ -854,7 +882,20 @@ nb::object run_solver(const SolveParameters &parameters,
 #else
             TeamPolicy team_policy(static_cast<int>(active_count), Kokkos::AUTO());
 #endif
-            team_policy.set_scratch_size(0, Kokkos::PerTeam(ion_scratch_bytes));
+            team_policy.set_scratch_size(0, Kokkos::PerTeam(implicit_ions ? IMPLICIT_ION_WORK * sizeof(Real) : ion_scratch_bytes));
+
+            if (implicit_ions) {
+                Kokkos::parallel_for("rtz_python_implicit_ions", team_policy,
+                    KOKKOS_LAMBDA(const TeamMember& team) {
+                        CellState& cell = device_cells(active_cells(team.league_rank()));
+                        if (cell.done) return;
+                        auto* work = static_cast<Real*>(team.team_shmem().get_shmem(IMPLICIT_ION_WORK * sizeof(Real)));
+                        implicit_ions_step<include_H2, rt_advect>(TeamIonExecutor<TeamMember>{team},
+                            cell.ddt, device_elements, cell.chemistry, *device_tables, flags,
+                            cell.dust_ratio, uv_background, cell.ss_factor, cell.photons_new,
+                            device_all_ions, n_all_ions, work, cell.subcycle, ion_change_limit);
+                    });
+            } else {
 
             Kokkos::parallel_for(
                 "rtz_python_metals",
@@ -875,7 +916,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                     include_H2,
                                     include_CO,
                                     rt_advect,
-                                    include_self_shielding, true, true>(team,
+                                    include_self_shielding, true, true, true, true>(team,
                                                             cell.ddt,
                                                             device_elements,
                                                             cell.chemistry,
@@ -890,13 +931,17 @@ nb::object run_solver(const SolveParameters &parameters,
                                                             n_ion_work,
                                                             ion_snapshot,
                                                             cell.subcycle,
-                                                            rate_cache,
-                                                            rate_cache + n_ion_work,
-                                                            rate_cache + 2 * n_ion_work,
-                                                            rate_cache + 3 * n_ion_work);
-                    team.team_barrier();
+                                                            rate_cache + 1,
+                                                            rate_cache + rate_cache_stride + 1,
+                                                            rate_cache + 2 * rate_cache_stride + 1,
+                                                            rate_cache + 3 * rate_cache_stride + 1,
+                                                            rate_cache + (9 + N_GROUPS) * rate_cache_stride,
+                                                            rate_cache + 4 * rate_cache_stride);
+                    // team.team_barrier();
 
                 });
+
+            }
 
             // Commit is sequential within each cell; execute different cells
             // across lanes instead of keeping the other metal-team lanes idle.
@@ -910,7 +955,7 @@ nb::object run_solver(const SolveParameters &parameters,
                         return;
                     Real ddt = cell.ddt;
                     Real total_time = cell.total_time;
-                    subcycle_commit_and_control<constant_temperature,
+                    const bool accepted = subcycle_commit_and_control<constant_temperature,
                                                 include_H2,
                                                 include_CO,
                                                 rt_advect,
@@ -927,6 +972,7 @@ nb::object run_solver(const SolveParameters &parameters,
                                                                         cell.subcycle,
                                                                         false,
                                                                         dFpdt);
+                    if (accepted) ++cell.accepted_steps;
                     cell.ddt = ddt;
                     cell.total_time = total_time;
 
@@ -1018,6 +1064,8 @@ nb::object run_solver(const SolveParameters &parameters,
 
         for (std::size_t cell_index = 0; cell_index < n_cells; ++cell_index) {
             cells[cell_index] = host_cells(cell_index);
+            last_solve_statistics.iterations[cell_index] += cells[cell_index].iterations;
+            last_solve_statistics.accepted[cell_index] += cells[cell_index].accepted_steps;
             double *output_row =
                 output_data.get() + (time_index * n_cells + cell_index) * n_columns;
             copy_state_to_matrix(
@@ -1169,7 +1217,9 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                  bool include_cosmic_ray_ionization,
                  bool include_HM12_UVB,
                  bool include_dust_recombination,
-                 bool include_charge_exchange) {
+                 bool include_charge_exchange,
+                 bool implicit_ions,
+                 double ion_change_limit) {
     PhysicsFlags physics_flags;
     physics_flags.include_collisional_ionization = include_collisional_ionization;
     physics_flags.include_photoionization = include_photoionization;
@@ -1189,7 +1239,7 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
                                equilibrium,
                                temperature_is_Tmu,
                                use_default_depletion,
-                               physics_flags};
+                               physics_flags, implicit_ions, ion_change_limit};
     if (constant_temperature)
         return dispatch_rt_advection<true>(state,
                                            times,
@@ -1216,6 +1266,17 @@ nb::object solve(nb::ndarray<nb::numpy, const double, nb::ndim<2>> state,
 } // namespace
 
 NB_MODULE(_rtz, module) {
+    module.def("last_solve_statistics", []() {
+        nb::dict result;
+        nb::list iterations, accepted, rejected;
+        for (std::size_t i = 0; i < last_solve_statistics.iterations.size(); ++i) {
+            const int n = last_solve_statistics.iterations[i];
+            const int a = last_solve_statistics.accepted[i];
+            iterations.append(n); accepted.append(a); rejected.append(n-a);
+        }
+        result["iterations"] = iterations; result["accepted"] = accepted; result["rejected"] = rejected;
+        return result;
+    });
     module.def("build_info", []() {
         nb::dict info;
         info["execution_space"] = Kokkos::DefaultExecutionSpace::name();
@@ -1269,5 +1330,7 @@ NB_MODULE(_rtz, module) {
                nb::arg("include_HM12_UVB") = true,
                nb::arg("include_dust_recombination") = true,
                nb::arg("include_charge_exchange") = true,
+               nb::arg("implicit_ions") = false,
+               nb::arg("ion_change_limit") = 0.2,
                "Evolve each state row from t=0 through the requested 1D NumPy time array.");
 }

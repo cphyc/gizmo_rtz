@@ -1,0 +1,168 @@
+--- a/dyablo_api_GPU.cpp
++++ b/dyablo_api_GPU.cpp
+@@ -1733,6 +1733,20 @@
+             const int stage = ion_map[t] & 0xFF;
+             recombination_cache[t] = Real(0);
+             collisional_cache[t] = Real(0);
++            if constexpr (cache_charge_transfer) {
++                ct_recombination_cache[t] = Real(0);
++                ct_ionization_cache[t] = Real(0);
++            }
++            // Caches have one zero sentinel on either side. At internal
++            // element boundaries, the adjacent endpoint coefficient is zero.
++            if (t == 0) {
++                recombination_cache[-1] = recombination_cache[n_ion_work] = Real(0);
++                collisional_cache[-1] = collisional_cache[n_ion_work] = Real(0);
++                if constexpr (cache_charge_transfer) {
++                    ct_recombination_cache[-1] = ct_recombination_cache[n_ion_work] = Real(0);
++                    ct_ionization_cache[-1] = ct_ionization_cache[n_ion_work] = Real(0);
++                }
++            }
+             if (n_and_ion_fracs.n_element[element] == Real(0)) return;
+             if (stage > 0)
+                 recombination_cache[t] = recombination(state.TK, stage, element, tabData);
+@@ -1765,6 +1779,8 @@
+         const int erow = elem_row(i);
+         if (erow < 0) return;     // not a tabulated element: no rates exist for it
+         const xion_t* xi_snap = x_snap + n_and_ion_fracs.offsets[i];
++        const xion_t xi_snap_lower = j > 0 ? xi_snap[j-1] : xion_t(0);
++        const xion_t xi_snap_higher = j < n_ions - 1 ? xi_snap[j+1] : xion_t(0);
+ 
+         /////////////////////////
+         //       Creation      //
+@@ -1772,41 +1788,47 @@
+         Real cr = Real(0.E0);
+ 
+         // Recombinations of the more excited ionization state
+-        if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap[j+1];
++        if constexpr (cache_rates)
++            cr += recombination_cache[t+1] * state.ne * xi_snap_higher;
++        else if (j < n_ions - 1)
++            cr += recombination(state.TK, j+1, i, tabData) * state.ne * xi_snap_higher;
+ 
+         // Collisional ionization of the less excited state
+         if (flags.include_collisional_ionization) {
+-            if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap[j-1];
++            if constexpr (cache_rates)
++                cr += collisional_cache[t-1] * state.ne * xi_snap_lower;
++            else if (j > 0)
++                cr += collisional_ionization(state.TK, j-1, i, tabData) * state.ne * xi_snap_lower;
+         }
+ 
+         // Photoionization of the less excited state
+         if (flags.include_HM12_UVB) {
+-            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap[j-1];
++            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap_lower;
+         }
+ 
+         // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+         if (flags.include_photoionization) {
+-            if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap[j-1];
++            if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap_lower;
+         }
+ 
+         // Cosmic ray ionization of the less excited state
+         if (flags.include_cosmic_ray_ionization) {
+-            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap[j-1];
++            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+ 
+             // Cosmic ray ionization of the less excited state from induced UV
+-            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap[j-1];
++            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap_lower;
+         }
+ 
+         // Recombination on dust for the more excited state
+         if (flags.include_dust_recombination) {
+-            if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap[j+1];
++            if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap_higher;
+         }
+ 
+         // Photoionization of the less excited state from local radiation field
+         if (rt_advect) {
+             if (j > 0) {
+                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+-                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap[j-1];
++                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap_lower;
+                 } // End loop over photon groups
+             }
+         }
+@@ -1818,7 +1840,10 @@
+ 
+         // Collisional ionization
+         if (flags.include_collisional_ionization) {
+-            if (j < (n_ions - 1)) de += (cache_rates ? collisional_cache[t] : collisional_ionization(state.TK, j, i, tabData)) * state.ne;
++            if constexpr (cache_rates)
++                de += collisional_cache[t] * state.ne;
++            else if (j < n_ions - 1)
++                de += collisional_ionization(state.TK, j, i, tabData) * state.ne;
+         }
+ 
+         // Photoionization
+@@ -1832,7 +1857,10 @@
+         }
+ 
+         // Recombination
+-        if (j > 0) de += (cache_rates ? recombination_cache[t] : recombination(state.TK, j, i, tabData)) * state.ne;
++        if constexpr (cache_rates)
++            de += recombination_cache[t] * state.ne;
++        else if (j > 0)
++            de += recombination(state.TK, j, i, tabData) * state.ne;
+ 
+         // Cosmic ray ionization
+         if (flags.include_cosmic_ray_ionization) {
+@@ -1864,9 +1892,15 @@
+             Real HI_number_density = x_H[0] * n_and_ion_fracs[1].n_element_new;
+             Real HII_number_density = x_H[1] * n_and_ion_fracs[1].n_element_new;
+ 
++            if constexpr (cache_charge_transfer) {
++                cr += ct_ionization_cache[t-1] * xi_snap_lower * HII_number_density;
++                de += ct_recombination_cache[t] * HI_number_density;
++                de += ct_ionization_cache[t] * HII_number_density;
++                cr += ct_recombination_cache[t+1] * xi_snap_higher * HI_number_density;
++            } else {
+             if (j > 0) {
+                 // Ionization from less excited state
+-                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H
++                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap_lower * HII_number_density; //! Example:  O + H+ => O+ + H
+ 
+                 // Charge exchange recombination
+                 de += (cache_charge_transfer ? ct_recombination_cache[t] : charge_transfer_recombination(j,i,state.TK, tabData)) * HI_number_density; //! Example:  O+ + H => O + H+
+@@ -1877,7 +1911,8 @@
+                 de += (cache_charge_transfer ? ct_ionization_cache[t] : charge_transfer_ionization(j,i,state.TK, tabData)) * HII_number_density; //! Example:  O + H+ => O+ + H
+ 
+                 // Charge exchange recombination from the more excited state
+-                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
++                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap_higher * HI_number_density; //! Example:  O+ + H => O + H+
++            }
+             }
+         }
+ 
+--- a/rtz_bindings.cpp
++++ b/rtz_bindings.cpp
+@@ -656,7 +656,8 @@
+     using TeamPolicy = Kokkos::TeamPolicy<>;
+     using TeamMember = TeamPolicy::member_type;
+     const std::size_t ion_snapshot_bytes = MAX_TOTAL_IONS * sizeof(CompactIonData::xion_t);
+-    const std::size_t rate_cache_bytes = (4 * n_ion_work + MAX_ELEMENTS) * sizeof(Real);
++    const int rate_cache_stride = n_ion_work + 2; // zero sentinel on both sides
++    const std::size_t rate_cache_bytes = (4 * rate_cache_stride + MAX_ELEMENTS) * sizeof(Real);
+     const std::size_t ion_scratch_bytes = ion_snapshot_bytes + alignof(Real) - 1 + rate_cache_bytes;
+ 
+     for (std::size_t time_index = 0; time_index < times.size(); ++time_index) {
+@@ -890,11 +891,11 @@
+                                                             n_ion_work,
+                                                             ion_snapshot,
+                                                             cell.subcycle,
+-                                                            rate_cache,
+-                                                            rate_cache + n_ion_work,
+-                                                            rate_cache + 2 * n_ion_work,
+-                                                            rate_cache + 3 * n_ion_work,
+-                                                            rate_cache + 4 * n_ion_work);
++                                                            rate_cache + 1,
++                                                            rate_cache + rate_cache_stride + 1,
++                                                            rate_cache + 2 * rate_cache_stride + 1,
++                                                            rate_cache + 3 * rate_cache_stride + 1,
++                                                            rate_cache + 4 * rate_cache_stride);
+                     team.team_barrier();
+ 
+                 });

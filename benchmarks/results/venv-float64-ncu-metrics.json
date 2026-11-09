@@ -1,42 +1,43 @@
 [
   {
     "kernel": "Kokkos::<unnamed>::query_cuda_kernel_arch(int *) (1, 1, 1)x(1, 1, 1), Context 1, Stream 7, Device 0, CC 7.5",
+    "phase": "Architecture query",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.90"
+        "value": "5"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.29"
+        "value": "1.32"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "2038"
+        "value": "2035"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "1.87"
+        "value": "1.58"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "1.04"
+        "value": "1.08"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "1.57"
+        "value": "1.54"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "10.45"
+        "value": "10.66"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "1.87"
+        "value": "1.58"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "57.43"
+        "value": "56.29"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
@@ -56,15 +57,15 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "1.63"
+        "value": "1.73"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "1.87"
+        "value": "1.58"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "1.29"
+        "value": "1.26"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
@@ -72,7 +73,7 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "76.82"
+        "value": "72.43"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -80,15 +81,15 @@
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "1.21"
+        "value": "1.19"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "98.79"
+        "value": "98.81"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "1.06"
+        "value": "1.01"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -96,11 +97,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "87.33"
+        "value": "85.56"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "157.20"
+        "value": "154"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "1"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "1"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -160,56 +169,57 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "3.04"
+        "value": "3.11"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "0.97"
+        "value": "0.99"
       }
     }
   },
   {
     "kernel": "desul::<unnamed>::init_lock_arrays_cuda_kernel() (512, 1, 1)x(256, 1, 1), Context 1, Stream 7, Device 0, CC 7.5",
+    "phase": "Lock initialization",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.89"
+        "value": "4.01"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.33"
+        "value": "1.34"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "57487"
+        "value": "70342"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "8.64"
+        "value": "7.06"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "4.72"
+        "value": "5.34"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "42.78"
+        "value": "52.16"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "8.18"
+        "value": "8.23"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "8.64"
+        "value": "7.06"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "43061.29"
+        "value": "43498.86"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "3.06"
+        "value": "3.08"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -225,15 +235,15 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "7.40"
+        "value": "6.86"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "7.75"
+        "value": "6.29"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "8.64"
+        "value": "7.06"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
@@ -241,23 +251,23 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "99.98"
+        "value": "100.34"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "3.06"
+        "value": "3.08"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "2.10"
+        "value": "2.04"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "97.90"
+        "value": "97.96"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.81"
+        "value": "5.54"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -265,11 +275,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "277.35"
+        "value": "271.83"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "284.94"
+        "value": "279.27"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "32"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "29.33"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -329,16 +347,17 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "73.27"
+        "value": "99.79"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "23.45"
+        "value": "31.93"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<void prism_gpu::update_cross_sections<prism_gpu::RawTabulatedDataStorage<Kokkos::CudaSpace>>(double, T1 &, const std::vector<double, std::allocator<double>> &, const std::vector<double, std::allocator<double>> &)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1) (1, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Setup spectrum",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
@@ -350,7 +369,7 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "143443204"
+        "value": "143442835"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
@@ -362,7 +381,7 @@
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "105.09"
+        "value": "105.11"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
@@ -374,11 +393,11 @@
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "10245854.29"
+        "value": "10245837.64"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "1.92"
+        "value": "1.93"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -386,7 +405,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "4.45"
+        "value": "2.75"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -394,7 +413,7 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Mbyte/s",
-        "value": "2.28"
+        "value": "2.59"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
@@ -410,7 +429,7 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "100.66"
+        "value": "88.53"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -439,6 +458,14 @@
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
         "value": "15.76"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "6.52"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "6.27"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -508,6 +535,7 @@
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<void prism_gpu::update_cross_sections<prism_gpu::RawTabulatedDataStorage<Kokkos::CudaSpace>>(double, T1 &, const std::vector<double, std::allocator<double>> &, const std::vector<double, std::allocator<double>> &)::[lambda(int, int) (instance 1)], Kokkos::MDRangePolicy<Kokkos::Cuda, Kokkos::Rank<2, 0, 0>>, Kokkos::Cuda>>(T1) (1, 176, 1)x(16, 2, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Setup quadrature",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
@@ -519,7 +547,7 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "1597500752"
+        "value": "1597545264"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
@@ -543,7 +571,7 @@
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "27.86"
+        "value": "27.96"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -558,8 +586,8 @@
         "value": "0"
       },
       "Memory Workload Analysis/Memory Throughput": {
-        "unit": "Kbyte/s",
-        "value": "920.30"
+        "unit": "Mbyte/s",
+        "value": "1.35"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
@@ -575,11 +603,11 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "94.76"
+        "value": "84.48"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "7.21"
+        "value": "7.23"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
@@ -604,6 +632,14 @@
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
         "value": "28.16"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "7.01"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "6.73"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -663,7 +699,7 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "6.99"
+        "value": "7.00"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
@@ -673,6 +709,7 @@
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<void prism_gpu::update_cross_sections<prism_gpu::RawTabulatedDataStorage<Kokkos::CudaSpace>>(double, T1 &, const std::vector<double, std::allocator<double>> &, const std::vector<double, std::allocator<double>> &)::[lambda(int) (instance 2)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1) (1, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Setup H2",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
@@ -684,7 +721,7 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "100757167"
+        "value": "100757453"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
@@ -696,7 +733,7 @@
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "73.84"
+        "value": "73.83"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
@@ -704,11 +741,11 @@
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "0.01"
+        "value": "0.00"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "7196883.14"
+        "value": "7196859.79"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
@@ -720,15 +757,15 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "2.47"
+        "value": "2.68"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
         "value": "0"
       },
       "Memory Workload Analysis/Memory Throughput": {
-        "unit": "Kbyte/s",
-        "value": "932.60"
+        "unit": "Mbyte/s",
+        "value": "2.60"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
@@ -744,7 +781,7 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "37.87"
+        "value": "57.11"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -773,6 +810,14 @@
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
         "value": "17.72"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "5.79"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "5.51"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -842,10 +887,11 @@
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<Kokkos::ViewValueFunctor<Kokkos::Device<Kokkos::Cuda, Kokkos::CudaSpace>, <unnamed>::CellState>, Kokkos::RangePolicy<Kokkos::Cuda, Kokkos::IndexType<long>, Kokkos::ViewValueFunctor<Kokkos::Device<Kokkos::Cuda, Kokkos::CudaSpace>, <unnamed>::CellState>::ConstructTag>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Cell construction",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.51"
+        "value": "4.84"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -853,35 +899,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "1605803"
+        "value": "1455340"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "57.91"
+        "value": "63.95"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "23.65"
+        "value": "22.74"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "1.19"
+        "value": "1.08"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "70.04"
+        "value": "67.65"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "57.91"
+        "value": "63.95"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "1238573.14"
+        "value": "1234761.57"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "1.10"
+        "value": "1.06"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -889,7 +935,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "0.45"
+        "value": "0.14"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -897,27 +943,27 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "34.10"
+        "value": "35.25"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "30.25"
+        "value": "32.57"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "57.91"
+        "value": "63.95"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "80.19"
+        "value": "79.94"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "99.96"
+        "value": "99.74"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "1.10"
+        "value": "1.06"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
@@ -929,7 +975,7 @@
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "3.79"
+        "value": "3.77"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -937,11 +983,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "2033.02"
+        "value": "2024.72"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "2062.27"
+        "value": "2053.81"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "31.95"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "31.57"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1001,20 +1055,21 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "58.94"
+        "value": "49.98"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "18.86"
+        "value": "15.99"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<<unnamed>::DeviceTableDescriptor<prism_gpu::CompactTabulatedData>::construct(prism_gpu::CompactTabulatedData *, const prism_gpu::CompactTabulatedData &)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1) (1, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Descriptor construction",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.99"
+        "value": "4.98"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -1022,31 +1077,31 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "39796"
+        "value": "39936"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "1.52"
+        "value": "1.50"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "1.46"
+        "value": "1.22"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "29.57"
+        "value": "29.63"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "4.82"
+        "value": "4.81"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "1.52"
+        "value": "1.50"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "2750.29"
+        "value": "2751.50"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
@@ -1066,15 +1121,15 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "2.32"
+        "value": "1.94"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "1.52"
+        "value": "1.50"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "1.46"
+        "value": "1.24"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
@@ -1082,7 +1137,7 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "68.05"
+        "value": "65.79"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -1090,11 +1145,11 @@
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "8.55"
+        "value": "8.57"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "91.45"
+        "value": "91.43"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
@@ -1106,11 +1161,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "11.67"
+        "value": "11.64"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "13.48"
+        "value": "13.45"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "1.28"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "1.28"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1180,10 +1243,11 @@
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 1)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Interval init",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.99"
+        "value": "5.00"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -1191,35 +1255,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "1700820"
+        "value": "1657404"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "45.88"
+        "value": "47.25"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "45.88"
+        "value": "47.25"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "1.26"
+        "value": "1.23"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "21.49"
+        "value": "21.71"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "25.80"
+        "value": "28.03"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "1608973.64"
+        "value": "1571582.21"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "16.65"
+        "value": "16.81"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1227,7 +1291,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "49.77"
+        "value": "49.73"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1235,39 +1299,39 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "73.29"
+        "value": "75.66"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "25.80"
+        "value": "28.03"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "45.88"
+        "value": "47.25"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "40.70"
+        "value": "40.68"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "40.11"
+        "value": "39.84"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "3.62"
+        "value": "3.65"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "1.12"
+        "value": "1.13"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "98.88"
+        "value": "98.87"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.47"
+        "value": "5.40"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -1275,11 +1339,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "488.36"
+        "value": "476.26"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "489.68"
+        "value": "477.56"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "31.95"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "29.63"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1339,16 +1411,17 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "68.70"
+        "value": "68.63"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "21.98"
+        "value": "21.96"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 2)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Prep/radiation",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
@@ -1360,35 +1433,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "7565232"
+        "value": "7520933"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "41.89"
+        "value": "42.12"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "41.89"
+        "value": "42.12"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "5.61"
+        "value": "5.57"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "16.72"
+        "value": "16.70"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "24.12"
+        "value": "24.80"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "7257259.07"
+        "value": "7274530.57"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "6.54"
+        "value": "6.53"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1396,7 +1469,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "49.91"
+        "value": "50.06"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1404,23 +1477,23 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "66.90"
+        "value": "67.19"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "24.12"
+        "value": "24.80"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "41.89"
+        "value": "42.12"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "20.31"
+        "value": "20.19"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "33.84"
+        "value": "33.76"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -1428,15 +1501,15 @@
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "1.47"
+        "value": "1.48"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "98.53"
+        "value": "98.52"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.47"
+        "value": "5.50"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -1444,11 +1517,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "371.14"
+        "value": "372.07"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "371.33"
+        "value": "372.26"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "31.92"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "30.88"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1508,20 +1589,21 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "69.05"
+        "value": "68.47"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "22.09"
+        "value": "21.91"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 3)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (157, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Cooling rates",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.99"
+        "value": "5.00"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -1529,35 +1611,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "10531352"
+        "value": "10528549"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "3.54"
+        "value": "3.55"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "3.48"
+        "value": "3.47"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "7.81"
+        "value": "7.80"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "7.09"
+        "value": "7.10"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "2.62"
+        "value": "2.63"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "9784492.14"
+        "value": "9785204.50"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "78.87"
+        "value": "78.93"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1565,7 +1647,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "46.50"
+        "value": "46.31"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1577,23 +1659,23 @@
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "3.54"
+        "value": "3.55"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "3.48"
+        "value": "3.47"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "77.80"
+        "value": "77.75"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "65.04"
+        "value": "66.93"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "20.70"
+        "value": "20.71"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
@@ -1613,11 +1695,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "72.99"
+        "value": "72.98"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
         "value": "73.02"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "26.07"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "25.31"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1677,20 +1767,21 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "47.07"
+        "value": "47.09"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "15.06"
+        "value": "15.07"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 4)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "HHe/cooling update",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.99"
+        "value": "5.07"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -1698,15 +1789,15 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "5207626"
+        "value": "5213223"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "18.94"
+        "value": "19.23"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "18.94"
+        "value": "19.23"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
@@ -1714,19 +1805,19 @@
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "10.19"
+        "value": "10.23"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "14.27"
+        "value": "14.65"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "4339243.93"
+        "value": "4285867.57"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "62.90"
+        "value": "63.14"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1734,7 +1825,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "48.86"
+        "value": "49.99"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1742,39 +1833,39 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "30.22"
+        "value": "31.23"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "14.27"
+        "value": "14.65"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "18.94"
+        "value": "19.23"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "53.80"
+        "value": "52.44"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "46.08"
+        "value": "46.75"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "16.23"
+        "value": "16.29"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "3.71"
+        "value": "3.78"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "96.29"
+        "value": "96.22"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "4.41"
+        "value": "4.42"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -1782,11 +1873,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "118.71"
+        "value": "116.72"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "118.83"
+        "value": "116.84"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "19.88"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "18.95"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1846,56 +1945,57 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "54.98"
+        "value": "56.26"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "17.59"
+        "value": "18.00"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(const Kokkos::CudaTeamMember &) (instance 1)], Kokkos::TeamPolicy<>, Kokkos::Cuda>>(T1) (10000, 1, 1)x(1, 32, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Metals",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.99"
+        "value": "5.04"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.34"
+        "value": "1.36"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "26988562"
+        "value": "23922115"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "22.73"
+        "value": "22.48"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "0.66"
+        "value": "0.61"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "ms",
-        "value": "20.00"
+        "value": "17.56"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "5.06"
+        "value": "4.82"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "22.73"
+        "value": "22.48"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "26712537.36"
+        "value": "23769213.79"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "84.40"
+        "value": "85.20"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -1903,47 +2003,47 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "23.02"
+        "value": "21.70"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
         "value": "0"
       },
       "Memory Workload Analysis/Memory Throughput": {
-        "unit": "Gbyte/s",
-        "value": "1.05"
+        "unit": "Mbyte/s",
+        "value": "977.85"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "22.73"
+        "value": "22.48"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "22.35"
+        "value": "22.30"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "86.78"
+        "value": "85.97"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "98.87"
+        "value": "99.16"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "23.21"
+        "value": "23.47"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "5.32"
+        "value": "5.01"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "94.68"
+        "value": "94.99"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "3.55"
+        "value": "3.96"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -1951,11 +2051,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "66.65"
+        "value": "79.08"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "66.75"
+        "value": "79.14"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "13.07"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "12.51"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -1963,7 +2071,7 @@
       },
       "Launch Statistics/Registers Per Thread": {
         "unit": "register/thread",
-        "value": "82"
+        "value": "68"
       },
       "Launch Statistics/Shared Memory Configuration Size": {
         "unit": "Kbyte",
@@ -1995,7 +2103,7 @@
       },
       "Occupancy/Block Limit Registers": {
         "unit": "block",
-        "value": "20"
+        "value": "28"
       },
       "Occupancy/Block Limit Shared Mem": {
         "unit": "block",
@@ -2015,56 +2123,57 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "43.38"
+        "value": "48.50"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "13.88"
+        "value": "15.52"
       }
     }
   },
   {
-    "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelReduce<Kokkos::CombinedFunctorReducer<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], Kokkos::FunctorAnalysis<FunctorPatternInterface::REDUCE, Kokkos::RangePolicy<>, nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], unsigned long>::Reducer, void>, Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (40, 1, 1)x(1, 256, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 5)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Commit/control",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.46"
+        "value": "4.85"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.33"
+        "value": "1.34"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "25013"
+        "value": "779644"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "35.49"
+        "value": "31.42"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "35.49"
+        "value": "31.42"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "18.72"
+        "value": "578.08"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "12.91"
+        "value": "22.00"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "18.71"
+        "value": "19.64"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "15794.86"
+        "value": "695827.36"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "9.11"
+        "value": "28.88"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2072,7 +2181,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "44.27"
+        "value": "49.19"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2080,15 +2189,193 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "50.64"
+        "value": "48.76"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "18.71"
+        "value": "17.77"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "35.49"
+        "value": "31.42"
+      },
+      "Memory Workload Analysis/L1/TEX Hit Rate": {
+        "unit": "%",
+        "value": "36.31"
+      },
+      "Memory Workload Analysis/L2 Hit Rate": {
+        "unit": "%",
+        "value": "61.27"
+      },
+      "Memory Workload Analysis/Mem Pipes Busy": {
+        "unit": "%",
+        "value": "7.80"
+      },
+      "Scheduler Statistics/One or More Eligible": {
+        "unit": "%",
+        "value": "2.64"
+      },
+      "Scheduler Statistics/No Eligible": {
+        "unit": "%",
+        "value": "97.36"
+      },
+      "Scheduler Statistics/Active Warps Per Scheduler": {
+        "unit": "warp",
+        "value": "5.36"
+      },
+      "Scheduler Statistics/Eligible Warps Per Scheduler": {
+        "unit": "warp",
+        "value": "0.03"
+      },
+      "Warp State Statistics/Warp Cycles Per Issued Instruction": {
+        "unit": "cycle",
+        "value": "202.91"
+      },
+      "Warp State Statistics/Warp Cycles Per Executed Instruction": {
+        "unit": "cycle",
+        "value": "203.50"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "10.57"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "9.99"
+      },
+      "Launch Statistics/Metric Name": {
+        "unit": "Metric Unit",
+        "value": "Metric Value"
+      },
+      "Launch Statistics/Registers Per Thread": {
+        "unit": "register/thread",
+        "value": "64"
+      },
+      "Launch Statistics/Shared Memory Configuration Size": {
+        "unit": "Kbyte",
+        "value": "32.77"
+      },
+      "Launch Statistics/Driver Shared Memory Per Block": {
+        "unit": "byte/block",
+        "value": "0"
+      },
+      "Launch Statistics/Dynamic Shared Memory Per Block": {
+        "unit": "byte/block",
+        "value": "0"
+      },
+      "Launch Statistics/Static Shared Memory Per Block": {
+        "unit": "byte/block",
+        "value": "0"
+      },
+      "Launch Statistics/# SMs": {
+        "unit": "SM",
+        "value": "14"
+      },
+      "Launch Statistics/Threads": {
+        "unit": "thread",
+        "value": "10112"
+      },
+      "Occupancy/Block Limit SM": {
+        "unit": "block",
+        "value": "16"
+      },
+      "Occupancy/Block Limit Registers": {
+        "unit": "block",
+        "value": "8"
+      },
+      "Occupancy/Block Limit Shared Mem": {
+        "unit": "block",
+        "value": "16"
+      },
+      "Occupancy/Block Limit Warps": {
+        "unit": "block",
+        "value": "8"
+      },
+      "Occupancy/Theoretical Active Warps per SM": {
+        "unit": "warp",
+        "value": "32"
+      },
+      "Occupancy/Theoretical Occupancy": {
+        "unit": "%",
+        "value": "100"
+      },
+      "Occupancy/Achieved Occupancy": {
+        "unit": "%",
+        "value": "68.94"
+      },
+      "Occupancy/Achieved Active Warps Per SM": {
+        "unit": "warp",
+        "value": "22.06"
+      }
+    }
+  },
+  {
+    "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelReduce<Kokkos::CombinedFunctorReducer<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], Kokkos::FunctorAnalysis<FunctorPatternInterface::REDUCE, Kokkos::RangePolicy<>, nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &) (instance 1)], unsigned long>::Reducer, void>, Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (40, 1, 1)x(1, 256, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Pending count",
+    "metrics": {
+      "GPU Speed Of Light Throughput/DRAM Frequency": {
+        "unit": "Ghz",
+        "value": "4.51"
+      },
+      "GPU Speed Of Light Throughput/SM Frequency": {
+        "unit": "Ghz",
+        "value": "1.34"
+      },
+      "GPU Speed Of Light Throughput/Elapsed Cycles": {
+        "unit": "cycle",
+        "value": "24660"
+      },
+      "GPU Speed Of Light Throughput/Memory Throughput": {
+        "unit": "%",
+        "value": "36.70"
+      },
+      "GPU Speed Of Light Throughput/DRAM Throughput": {
+        "unit": "%",
+        "value": "36.70"
+      },
+      "GPU Speed Of Light Throughput/Duration": {
+        "unit": "us",
+        "value": "18.40"
+      },
+      "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
+        "unit": "%",
+        "value": "12.98"
+      },
+      "GPU Speed Of Light Throughput/L2 Cache Throughput": {
+        "unit": "%",
+        "value": "19.05"
+      },
+      "GPU Speed Of Light Throughput/SM Active Cycles": {
+        "unit": "cycle",
+        "value": "15426.93"
+      },
+      "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
+        "unit": "%",
+        "value": "9.14"
+      },
+      "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
+        "unit": "%",
+        "value": "0"
+      },
+      "Memory Workload Analysis/L2 Sector Promotion Misses": {
+        "unit": "%",
+        "value": "44.25"
+      },
+      "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
+        "unit": "%",
+        "value": "0"
+      },
+      "Memory Workload Analysis/Memory Throughput": {
+        "unit": "Gbyte/s",
+        "value": "52.93"
+      },
+      "Memory Workload Analysis/Mem Busy": {
+        "unit": "%",
+        "value": "19.05"
+      },
+      "Memory Workload Analysis/Max Bandwidth": {
+        "unit": "%",
+        "value": "36.70"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
@@ -2096,35 +2383,43 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "8.92"
+        "value": "6.58"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "6.13"
+        "value": "6.15"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "13.05"
+        "value": "13.65"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "86.95"
+        "value": "86.35"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.28"
+        "value": "5.41"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
-        "value": "0.18"
+        "value": "0.19"
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "40.48"
+        "value": "39.63"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "41.04"
+        "value": "40.18"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "27.72"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "22.95"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -2184,20 +2479,21 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "76.71"
+        "value": "74.63"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "24.55"
+        "value": "23.88"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelReduce<Kokkos::CombinedFunctorReducer<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, int &) (instance 1)], Kokkos::FunctorAnalysis<FunctorPatternInterface::REDUCE, Kokkos::RangePolicy<>, nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, int &) (instance 1)], int>::Reducer, void>, Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (40, 1, 1)x(1, 256, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Iteration-limit check",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.45"
+        "value": "4.53"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -2205,35 +2501,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "29427"
+        "value": "28613"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "38.28"
+        "value": "38.10"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "38.28"
+        "value": "38.10"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "21.95"
+        "value": "21.38"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "10.01"
+        "value": "10.11"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "22.45"
+        "value": "22.64"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "19455.79"
+        "value": "19412.71"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "7.61"
+        "value": "7.73"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2241,7 +2537,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "45.24"
+        "value": "44.96"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2249,39 +2545,39 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "54.57"
+        "value": "55.19"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "22.45"
+        "value": "22.64"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "38.28"
+        "value": "38.10"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "2.66"
+        "value": "2.82"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "26.34"
+        "value": "25.27"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "5.34"
+        "value": "5.42"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "10.64"
+        "value": "10.67"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "89.36"
+        "value": "89.33"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.75"
+        "value": "5.72"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -2289,11 +2585,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "54.06"
+        "value": "53.61"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "54.81"
+        "value": "54.37"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "27.60"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "23.03"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -2353,56 +2657,57 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "82.01"
+        "value": "80.02"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "26.24"
+        "value": "25.61"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelScan<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long, unsigned long &, bool) (instance 1)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Compaction scan",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.46"
+        "value": "4.44"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.34"
+        "value": "1.33"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "22297"
+        "value": "21473"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "41.21"
+        "value": "43.71"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "41.21"
+        "value": "43.71"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "16.64"
+        "value": "16.03"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "13.42"
+        "value": "13.58"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "21.41"
+        "value": "21.93"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "14635.57"
+        "value": "14390.93"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "6.08"
+        "value": "6.15"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2410,7 +2715,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "43.27"
+        "value": "43.28"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2418,51 +2723,59 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "58.84"
+        "value": "62.09"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "21.41"
+        "value": "21.93"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "41.21"
+        "value": "43.71"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "2.06"
+        "value": "2.05"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "12.54"
+        "value": "10.36"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "5.98"
+        "value": "6.05"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "7.96"
+        "value": "8.42"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "92.04"
+        "value": "91.58"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.15"
+        "value": "5.36"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
-        "value": "0.11"
+        "value": "0.12"
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "64.63"
+        "value": "63.69"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "66.89"
+        "value": "65.90"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "27.64"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "22.96"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -2522,20 +2835,21 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "76.79"
+        "value": "75.83"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "24.57"
+        "value": "24.27"
       }
     }
   },
   {
-    "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 5)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<nanobind::object <unnamed>::run_solver<0, 0, 0, 1, 0>(const <unnamed>::SolveParameters &, std::vector<<unnamed>::CellState, std::allocator<<unnamed>::CellState>>, const <unnamed>::SolveOptions &)::[lambda(unsigned long) (instance 6)], Kokkos::RangePolicy<>, Kokkos::Cuda>>(T1) (79, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Final output",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "5.01"
+        "value": "4.99"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
@@ -2543,35 +2857,35 @@
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "1226631"
+        "value": "1207312"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "45.07"
+        "value": "45.81"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "45.07"
+        "value": "45.81"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "909.25"
+        "value": "894.98"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "17.62"
+        "value": "17.92"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "30.84"
+        "value": "31.61"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "1176744"
+        "value": "1156905.36"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
-        "value": "13.96"
+        "value": "14.21"
       },
       "Memory Workload Analysis/Local Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2579,7 +2893,7 @@
       },
       "Memory Workload Analysis/L2 Sector Promotion Misses": {
         "unit": "%",
-        "value": "49.99"
+        "value": "50.07"
       },
       "Memory Workload Analysis/Shared Memory Spilling Request Overhead": {
         "unit": "%",
@@ -2587,39 +2901,39 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "72.21"
+        "value": "73.13"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "30.84"
+        "value": "31.61"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "45.07"
+        "value": "45.81"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
-        "value": "32.04"
+        "value": "32.11"
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "34.42"
+        "value": "33.90"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
-        "value": "3.38"
+        "value": "3.43"
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "1.06"
+        "value": "1.08"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "98.94"
+        "value": "98.92"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "5.47"
+        "value": "5.48"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -2627,11 +2941,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "515.64"
+        "value": "506.18"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "517.25"
+        "value": "507.77"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "31.95"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "30.42"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -2691,52 +3013,53 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "68.36"
+        "value": "68.41"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "21.88"
+        "value": "21.89"
       }
     }
   },
   {
     "kernel": "void Kokkos::cuda_parallel_launch_local_memory<Kokkos::ParallelFor<<unnamed>::DeviceTableDescriptor<prism_gpu::CompactTabulatedData>::destroy(prism_gpu::CompactTabulatedData *)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1) (1, 1, 1)x(1, 128, 1), Context 1, Stream 13, Device 0, CC 7.5",
+    "phase": "Descriptor destruction",
     "metrics": {
       "GPU Speed Of Light Throughput/DRAM Frequency": {
         "unit": "Ghz",
-        "value": "4.63"
+        "value": "4.76"
       },
       "GPU Speed Of Light Throughput/SM Frequency": {
         "unit": "Ghz",
-        "value": "1.26"
+        "value": "1.28"
       },
       "GPU Speed Of Light Throughput/Elapsed Cycles": {
         "unit": "cycle",
-        "value": "1539"
+        "value": "1529"
       },
       "GPU Speed Of Light Throughput/Memory Throughput": {
         "unit": "%",
-        "value": "1.97"
+        "value": "1.99"
       },
       "GPU Speed Of Light Throughput/DRAM Throughput": {
         "unit": "%",
-        "value": "1.56"
+        "value": "1.30"
       },
       "GPU Speed Of Light Throughput/Duration": {
         "unit": "us",
-        "value": "1.22"
+        "value": "1.18"
       },
       "GPU Speed Of Light Throughput/L1/TEX Cache Throughput": {
         "unit": "%",
-        "value": "24.35"
+        "value": "25.38"
       },
       "GPU Speed Of Light Throughput/L2 Cache Throughput": {
         "unit": "%",
-        "value": "1.97"
+        "value": "1.99"
       },
       "GPU Speed Of Light Throughput/SM Active Cycles": {
         "unit": "cycle",
-        "value": "24.64"
+        "value": "23.64"
       },
       "GPU Speed Of Light Throughput/Compute (SM) Throughput": {
         "unit": "%",
@@ -2756,15 +3079,15 @@
       },
       "Memory Workload Analysis/Memory Throughput": {
         "unit": "Gbyte/s",
-        "value": "2.32"
+        "value": "1.97"
       },
       "Memory Workload Analysis/Mem Busy": {
         "unit": "%",
-        "value": "1.97"
+        "value": "1.99"
       },
       "Memory Workload Analysis/Max Bandwidth": {
         "unit": "%",
-        "value": "1.56"
+        "value": "1.54"
       },
       "Memory Workload Analysis/L1/TEX Hit Rate": {
         "unit": "%",
@@ -2772,7 +3095,7 @@
       },
       "Memory Workload Analysis/L2 Hit Rate": {
         "unit": "%",
-        "value": "72.41"
+        "value": "73.59"
       },
       "Memory Workload Analysis/Mem Pipes Busy": {
         "unit": "%",
@@ -2780,15 +3103,15 @@
       },
       "Scheduler Statistics/One or More Eligible": {
         "unit": "%",
-        "value": "1.20"
+        "value": "1.27"
       },
       "Scheduler Statistics/No Eligible": {
         "unit": "%",
-        "value": "98.80"
+        "value": "98.73"
       },
       "Scheduler Statistics/Active Warps Per Scheduler": {
         "unit": "warp",
-        "value": "0.96"
+        "value": "0.97"
       },
       "Scheduler Statistics/Eligible Warps Per Scheduler": {
         "unit": "warp",
@@ -2796,11 +3119,19 @@
       },
       "Warp State Statistics/Warp Cycles Per Issued Instruction": {
         "unit": "cycle",
-        "value": "80.25"
+        "value": "76.75"
       },
       "Warp State Statistics/Warp Cycles Per Executed Instruction": {
         "unit": "cycle",
-        "value": "160.50"
+        "value": "153.50"
+      },
+      "Warp State Statistics/Avg. Active Threads Per Warp": {
+        "unit": "",
+        "value": "32"
+      },
+      "Warp State Statistics/Avg. Not Predicated Off Threads Per Warp": {
+        "unit": "",
+        "value": "32"
       },
       "Launch Statistics/Metric Name": {
         "unit": "Metric Unit",
@@ -2860,11 +3191,11 @@
       },
       "Occupancy/Achieved Occupancy": {
         "unit": "%",
-        "value": "12.37"
+        "value": "12.60"
       },
       "Occupancy/Achieved Active Warps Per SM": {
         "unit": "warp",
-        "value": "3.96"
+        "value": "4.03"
       }
     }
   }

@@ -1,0 +1,79 @@
+--- a/dyablo_api_GPU.cpp
++++ b/dyablo_api_GPU.cpp
+@@ -1765,6 +1765,8 @@
+         const int erow = elem_row(i);
+         if (erow < 0) return;     // not a tabulated element: no rates exist for it
+         const xion_t* xi_snap = x_snap + n_and_ion_fracs.offsets[i];
++        const xion_t xi_snap_lower = j > 0 ? xi_snap[j-1] : xion_t(0);
++        const xion_t xi_snap_higher = j < n_ions - 1 ? xi_snap[j+1] : xion_t(0);
+ 
+         /////////////////////////
+         //       Creation      //
+@@ -1772,41 +1774,41 @@
+         Real cr = Real(0.E0);
+ 
+         // Recombinations of the more excited ionization state
+-        if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap[j+1];
++        if (j < (n_ions - 1)) cr += (cache_rates ? recombination_cache[t+1] : recombination(state.TK, j+1, i, tabData)) * state.ne * xi_snap_higher;
+ 
+         // Collisional ionization of the less excited state
+         if (flags.include_collisional_ionization) {
+-            if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap[j-1];
++            if (j > 0) cr += (cache_rates ? collisional_cache[t-1] : collisional_ionization(state.TK, j-1, i, tabData)) * state.ne * xi_snap_lower;
+         }
+ 
+         // Photoionization of the less excited state
+         if (flags.include_HM12_UVB) {
+-            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap[j-1];
++            if (j > 0) cr += tabData.HM12_UVB_z(erow, j-1, 0) * ss_factor * xi_snap_lower;
+         }
+ 
+         // Photoionization by sub-ionizing ISRF --> only impacts lowest ionization states
+         if (flags.include_photoionization) {
+-            if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap[j-1];
++            if (j == 1) cr += UV_background_G0 * elements[i].G0_photo_rate * xi_snap_lower;
+         }
+ 
+         // Cosmic ray ionization of the less excited state
+         if (flags.include_cosmic_ray_ionization) {
+-            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap[j-1];
++            if (j > 0) cr += tabData.cosmic_ray_ionization_rates(erow, j-1) * state.total_cosmic_ray_ionization_rate * xi_snap_lower;
+ 
+             // Cosmic ray ionization of the less excited state from induced UV
+-            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap[j-1];
++            if (j == 1) cr += tabData.cosmic_ray_ionization_rates_induced_UV(erow) * state.cosmic_ray_scale_factor * xi_snap_lower;
+         }
+ 
+         // Recombination on dust for the more excited state
+         if (flags.include_dust_recombination) {
+-            if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap[j+1];
++            if (j < (n_ions - 1)) cr += dust_recombination_rates(j+1, i, state.TK, UV_background_G0, state.ne, tabData.dust_rec_coefs) * dust_effective_number_density * xi_snap_higher;
+         }
+ 
+         // Photoionization of the less excited state from local radiation field
+         if (rt_advect) {
+             if (j > 0) {
+                 for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
+-                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap[j-1];
++                    cr += N_phot_new[k] * tabData.cs_ph(erow, j-1, k, 0) * xi_snap_lower;
+                 } // End loop over photon groups
+             }
+         }
+@@ -1866,7 +1868,7 @@
+ 
+             if (j > 0) {
+                 // Ionization from less excited state
+-                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap[j-1] * HII_number_density; //! Example:  O + H+ => O+ + H
++                cr += (cache_charge_transfer ? ct_ionization_cache[t-1] : charge_transfer_ionization(j-1,i,state.TK, tabData)) * xi_snap_lower * HII_number_density; //! Example:  O + H+ => O+ + H
+ 
+                 // Charge exchange recombination
+                 de += (cache_charge_transfer ? ct_recombination_cache[t] : charge_transfer_recombination(j,i,state.TK, tabData)) * HI_number_density; //! Example:  O+ + H => O + H+
+@@ -1877,7 +1879,7 @@
+                 de += (cache_charge_transfer ? ct_ionization_cache[t] : charge_transfer_ionization(j,i,state.TK, tabData)) * HII_number_density; //! Example:  O + H+ => O+ + H
+ 
+                 // Charge exchange recombination from the more excited state
+-                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap[j+1] * HI_number_density; //! Example:  O+ + H => O + H+
++                cr += (cache_charge_transfer ? ct_recombination_cache[t+1] : charge_transfer_recombination(j+1,i,state.TK, tabData)) * xi_snap_higher * HI_number_density; //! Example:  O+ + H => O + H+
+             }
+         }
+ 

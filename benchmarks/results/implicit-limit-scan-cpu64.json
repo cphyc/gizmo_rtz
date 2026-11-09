@@ -1,0 +1,63 @@
+[
+  {
+    "limit": 0.5,
+    "seconds": 1.108537874999456,
+    "max_ion_relative_error": 0.8922303571946164,
+    "p99_ion_relative_error": 0.1782631234661932,
+    "ion_violations": 592,
+    "max_temperature_relative_error": 0.039394239797812425
+  },
+  {
+    "limit": 0.25,
+    "seconds": 0.31260541902156547,
+    "max_ion_relative_error": 0.2934226823749104,
+    "p99_ion_relative_error": 0.07393419399432206,
+    "ion_violations": 565,
+    "max_temperature_relative_error": 0.016442586550546423
+  },
+  {
+    "limit": 0.1,
+    "seconds": 0.6329661459894851,
+    "max_ion_relative_error": 0.05474039456560442,
+    "p99_ion_relative_error": 0.0280655263650092,
+    "ion_violations": 492,
+    "max_temperature_relative_error": 0.0017983034666597675
+  },
+  {
+    "limit": 0.05,
+    "seconds": 1.2170533839962445,
+    "max_ion_relative_error": 0.08794192371137821,
+    "p99_ion_relative_error": 0.03572070873687133,
+    "ion_violations": 541,
+    "max_temperature_relative_error": 0.005003976445395297
+  },
+  {
+    "limit": 0.02,
+    "seconds": 2.8980102879868355,
+    "max_ion_relative_error": 0.13589049297688616,
+    "p99_ion_relative_error": 0.044761072578666565,
+    "ion_violations": 551,
+    "max_temperature_relative_error": 0.007969625252401857
+  },
+  {
+    "limit": 0.01,
+    "seconds": 5.832350545999361,
+    "max_ion_relative_error": 0.1513395151336292,
+    "p99_ion_relative_error": 0.049398634059666206,
+    "ion_violations": 552,
+    "max_temperature_relative_error": 0.008957205062135709
+  },
+  {
+    "limit": 0.005,
+    "seconds": 11.574070143979043,
+    "max_ion_relative_error": 0.15896832854309362,
+    "p99_ion_relative_error": 0.051729762448525035,
+    "ion_violations": 555,
+    "max_temperature_relative_error": 0.00945077794123994
+  },
+  {
+    "limit": 0.001,
+    "completed": false,
+    "reason": "Exceeded 100000 iterations; cell44 advanced 4.124087e7 s of 3.15576e9 s, dt=4501.552 s"
+  }
+]

@@ -1508,3 +1508,8 @@ where the results are those from commit #d97c264
 
 We're back to using Kokkos:: instead of the thin wrapper `gizmo_math::`.
 The timings are 5.449414101000002, 5.484627198999078, 5.524917572001868, 5.419396897999832, 5.361734106001677, median is **5.449414101000002s**.
+
+## Simplifications B: use Kokkos::pow(..., value) instead of Kokkos::pow(..., Real(value)) when value is int
+
+The timings are 5.282679358999303, 5.2734643110015895, 5.267252976998861, 5.2678547160030575, 5.276044088997878, median is **5.2734643110015895s**.
+Speedup: 1.033x.

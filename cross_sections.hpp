@@ -143,7 +143,7 @@ void initialize_cross_sections(const std::string& path_to_data, auto &tabData) {
 
 KOKKOS_INLINE_FUNCTION
 Real F_of_y(Real y, Real yw, Real ya, Real P, Real Q) {
-    return (Kokkos::pow(y - Real(1.0), Real(2.0)) + Kokkos::pow(yw, Real(2.0))) * Kokkos::pow(y, -Q) * Kokkos::pow(Real(1.0) + Kokkos::sqrt(y / ya), -P);
+    return (Kokkos::pow(y - Real(1.0), 2) + Kokkos::pow(yw, 2)) * Kokkos::pow(y, -Q) * Kokkos::pow(Real(1.0) + Kokkos::sqrt(y / ya), -P);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -177,7 +177,7 @@ Real getCrosssection_rtz(Real lambda, int element, int ion, const auto& tabData)
         if (E > Real(17.00) && E <= Real(17.20)) return Real(9.50e-18);
         if (E > Real(17.20) && E <= Real(17.65)) return Real(9.80e-18);
         if (E > Real(17.65) && E <= Real(18.10)) return Real(10.10e-18);
-        if (E > Real(18.10)) return (Real(10.10e-18)) * Kokkos::pow(Real(18.10) / E, Real(3.0));
+        if (E > Real(18.10)) return (Real(10.10e-18)) * Kokkos::pow(Real(18.10) / E, 3);
         return Real(0.0);
     }
 
@@ -201,7 +201,7 @@ Real getCrosssection_rtz(Real lambda, int element, int ion, const auto& tabData)
     Real x = (E / E_0_tot) - y_0;
     Real y = Kokkos::sqrt((x * x) + (y_1 * y_1));
 
-    Real F = Kokkos::pow(x - Real(1.0), Real(2.0)) + Kokkos::pow(y_w, Real(2.0));
+    Real F = Kokkos::pow(x - Real(1.0), 2) + Kokkos::pow(y_w, 2);
     F *= Kokkos::pow(y, (Real(0.5) * P_tot) - Real(5.5));
     F *= Kokkos::pow(Real(1.0) + Kokkos::sqrt(y / y_a), -P_tot);
 
@@ -269,7 +269,7 @@ Real blackbody_nu(Real T, Real nu){
 #ifdef RTZ_FLOAT32_CROSS_SECTIONS
     Real B_nu = ((Real(2) * Real(H_PLANCK) / Real(C_CGS)) * nu) * ((nu / Real(C_CGS)) * nu);
 #else
-    Real B_nu = Real(2.0) * Real(H_PLANCK) * Kokkos::pow(nu,Real(3.0)) / Kokkos::pow(Real(C_CGS),Real(2.0));
+    Real B_nu = Real(2.0) * Real(H_PLANCK) * Kokkos::pow(nu, 3) / Kokkos::pow(Real(C_CGS), 2);
 #endif
     B_nu = B_nu * (Real(1.0) / (Kokkos::exp(Real(H_PLANCK) * nu / (Real(KB) * T)) - Real(1.0)));
 

@@ -58,23 +58,16 @@ void load_ct_rates(std::string path_to_data){
 
 }
 
-#ifdef RTZ_FLOAT32_CHARGE_TRANSFER
-using ChargeTransferReal = float;
-namespace charge_transfer_math = rtz_float_math;
-#else
-using ChargeTransferReal = Real;
-namespace charge_transfer_math = rtz_math;
-#endif
 
 template<typename Table>
 KOKKOS_FUNCTION
-ChargeTransferReal charge_transfer_recombination(int ion, int nelem, ChargeTransferReal T, const Table& tabData){
+Real charge_transfer_recombination(int ion, int nelem, Real T, const Table& tabData){
     // ion is stage of ionization, 2 for the ion going to the atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O+ + H => O + H+ is HCTRecom(2,8,1e4)
     // Note that temperature is in linear scale
 
-    ChargeTransferReal ct_recomb = ChargeTransferReal(0.0);
+    Real ct_recomb = Real(0.0);
 
     if (ion == 0)
     {
@@ -85,7 +78,7 @@ ChargeTransferReal charge_transfer_recombination(int ion, int nelem, ChargeTrans
     //  use statistical charge transfer for ion > 4
     if( ion > 4 )
     {
-        ct_recomb = ChargeTransferReal(1.92E-9) * (ChargeTransferReal)(ipIon+1);
+        ct_recomb = Real(1.92E-9) * (Real)(ipIon+1);
         return ct_recomb;
     }
 
@@ -93,57 +86,57 @@ ChargeTransferReal charge_transfer_recombination(int ion, int nelem, ChargeTrans
 
     // A zero-amplitude fit yields only the rate floor, even if an unused
     // exponential overflows (fmax maps the resulting NaN to the same floor).
-    if (ChargeTransferReal(tabData.CTRecomb(0, ipIon, erow)) == ChargeTransferReal(0.0))
-        return ChargeTransferReal(1E-100);
+    if (Real(tabData.CTRecomb(0, ipIon, erow)) == Real(0.0))
+        return Real(1E-100);
 
     // Make sure te is between temp. boundaries; set constant outside of range
-    ChargeTransferReal tused = ChargeTransferReal(0.0);
-    tused = charge_transfer_math::fmin(charge_transfer_math::fmax(T,ChargeTransferReal(tabData.CTRecomb(4, ipIon, erow))),ChargeTransferReal(tabData.CTRecomb(5, ipIon, erow)));
-    tused *= ChargeTransferReal(1E-4);
-    tused = charge_transfer_math::fmax(tused,ChargeTransferReal(1E-10)); //! harley added to prevent zero temperature
+    Real tused = Real(0.0);
+    tused = Kokkos::fmin(Kokkos::fmax(T,Real(tabData.CTRecomb(4, ipIon, erow))),Real(tabData.CTRecomb(5, ipIon, erow)));
+    tused *= Real(1E-4);
+    tused = Kokkos::fmax(tused,Real(1E-10)); //! harley added to prevent zero temperature
 
     // The interpolation equation
-    ct_recomb = ChargeTransferReal(tabData.CTRecomb(0, ipIon, erow)) * ChargeTransferReal(1E-9) * charge_transfer_math::pow(tused,ChargeTransferReal(tabData.CTRecomb(1, ipIon, erow))) * (ChargeTransferReal(1.) + ChargeTransferReal(tabData.CTRecomb(2, ipIon, erow)) * charge_transfer_math::exp(ChargeTransferReal(tabData.CTRecomb(3, ipIon, erow))*tused) );
+    ct_recomb = Real(tabData.CTRecomb(0, ipIon, erow)) * Real(1E-9) * Kokkos::pow(tused,Real(tabData.CTRecomb(1, ipIon, erow))) * (Real(1.) + Real(tabData.CTRecomb(2, ipIon, erow)) * Kokkos::exp(Real(tabData.CTRecomb(3, ipIon, erow))*tused) );
 
     // Clamp
-    ct_recomb = charge_transfer_math::fmax(ct_recomb,ChargeTransferReal(1E-100));
+    ct_recomb = Kokkos::fmax(ct_recomb,Real(1E-100));
 
     return ct_recomb;
 }
 
 template<typename Table>
 KOKKOS_FUNCTION
-ChargeTransferReal charge_transfer_ionization(int ion, int nelem, ChargeTransferReal T, const Table& tabData){
+Real charge_transfer_ionization(int ion, int nelem, Real T, const Table& tabData){
     // ion is stage of ionization, 1 for atom
     // nelem is atomic number of element, 2 up to 30
     // Example:  O + H+ => O+ + H is HCTIon(1,8,1e4)
     // Note that temperature is in linear scale
 
-    ChargeTransferReal ct_ion = ChargeTransferReal(0.0);
+    Real ct_ion = Real(0.0);
 
     int ipIon = ion;
     if( ipIon > 1 )
     {
-        ct_ion = ChargeTransferReal(0.0);
+        ct_ion = Real(0.0);
         return ct_ion;
     }
 
     const int erow = elem_row(nelem);
 
-    if (ChargeTransferReal(tabData.CTIon(0, ipIon, erow)) == ChargeTransferReal(0.0))
-        return ChargeTransferReal(1E-100);
+    if (Real(tabData.CTIon(0, ipIon, erow)) == Real(0.0))
+        return Real(1E-100);
 
     // ! Make sure te is between temp. boundaries; set constant outside of range
-    ChargeTransferReal tused = ChargeTransferReal(0.0);
-    tused = charge_transfer_math::fmin(charge_transfer_math::fmax(T, ChargeTransferReal(tabData.CTIon(4, ipIon, erow))), ChargeTransferReal(tabData.CTIon(5, ipIon, erow)));
-    tused *= ChargeTransferReal(1E-4);
-    tused = charge_transfer_math::fmax(tused,ChargeTransferReal(1E-10)); //! harley added to prevent zero temperature
+    Real tused = Real(0.0);
+    tused = Kokkos::fmin(Kokkos::fmax(T, Real(tabData.CTIon(4, ipIon, erow))), Real(tabData.CTIon(5, ipIon, erow)));
+    tused *= Real(1E-4);
+    tused = Kokkos::fmax(tused,Real(1E-10)); //! harley added to prevent zero temperature
 
     // ! the interpolation equation
-    ct_ion = ChargeTransferReal(tabData.CTIon(0, ipIon, erow)) * ChargeTransferReal(1E-9) * charge_transfer_math::pow(tused,ChargeTransferReal(tabData.CTIon(1, ipIon, erow))) * (ChargeTransferReal(1.) + ChargeTransferReal(tabData.CTIon(2, ipIon, erow)) * charge_transfer_math::exp(ChargeTransferReal(tabData.CTIon(3, ipIon, erow))*tused) ) * charge_transfer_math::exp(-ChargeTransferReal(1.0) * ChargeTransferReal(tabData.CTIon(6, ipIon, erow))/tused);
+    ct_ion = Real(tabData.CTIon(0, ipIon, erow)) * Real(1E-9) * Kokkos::pow(tused,Real(tabData.CTIon(1, ipIon, erow))) * (Real(1.) + Real(tabData.CTIon(2, ipIon, erow)) * Kokkos::exp(Real(tabData.CTIon(3, ipIon, erow))*tused) ) * Kokkos::exp(-Real(1.0) * Real(tabData.CTIon(6, ipIon, erow))/tused);
 
     // Clamp
-    ct_ion = charge_transfer_math::fmax(ct_ion,ChargeTransferReal(1E-100));
+    ct_ion = Kokkos::fmax(ct_ion,Real(1E-100));
 
     return ct_ion;
 }

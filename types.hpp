@@ -4,57 +4,7 @@
 #include <vector>
 #include <stdexcept>
 
-#ifdef RTZ_FLOAT32_ARITHMETIC
-using Real = float;
-#else
-using Real = double;
-#endif
-// Explicit Real overloads prevent integer pow exponents and global C math
-// overloads from silently promoting float computations back to double.
-namespace rtz_math {
-KOKKOS_INLINE_FUNCTION Real sqrt(Real x) { return Kokkos::sqrt(x); }
-KOKKOS_INLINE_FUNCTION Real exp(Real x) { return Kokkos::exp(x); }
-KOKKOS_INLINE_FUNCTION Real log(Real x) { return Kokkos::log(x); }
-KOKKOS_INLINE_FUNCTION Real log10(Real x) { return Kokkos::log10(x); }
-KOKKOS_INLINE_FUNCTION Real exp2(Real x) { return Kokkos::exp2(x); }
-KOKKOS_INLINE_FUNCTION Real fabs(Real x) { return Kokkos::fabs(x); }
-KOKKOS_INLINE_FUNCTION Real floor(Real x) { return Kokkos::floor(x); }
-KOKKOS_INLINE_FUNCTION Real ceil(Real x) { return Kokkos::ceil(x); }
-KOKKOS_INLINE_FUNCTION Real cbrt(Real x) { return Kokkos::cbrt(x); }
-KOKKOS_INLINE_FUNCTION Real sin(Real x) { return Kokkos::sin(x); }
-KOKKOS_INLINE_FUNCTION Real cos(Real x) { return Kokkos::cos(x); }
-KOKKOS_INLINE_FUNCTION Real tanh(Real x) { return Kokkos::tanh(x); }
-KOKKOS_INLINE_FUNCTION Real pow(Real x, Real y) { return Kokkos::pow(x, y); }
-KOKKOS_INLINE_FUNCTION Real fmin(Real x, Real y) { return Kokkos::fmin(x, y); }
-KOKKOS_INLINE_FUNCTION Real fmax(Real x, Real y) { return Kokkos::fmax(x, y); }
-KOKKOS_INLINE_FUNCTION Real exp10(Real x) {
-#ifdef RTZ_FLOAT32_ARITHMETIC
-    return Kokkos::pow(Real(10), x);
-#else
-    return ::exp10(x);
-#endif
-}
-}
-
-// Explicit float overloads for independently converted physics files.
-namespace rtz_float_math {
-KOKKOS_INLINE_FUNCTION float sqrt(float x) { return Kokkos::sqrt(x); }
-KOKKOS_INLINE_FUNCTION float exp(float x) { return Kokkos::exp(x); }
-KOKKOS_INLINE_FUNCTION float log(float x) { return Kokkos::log(x); }
-KOKKOS_INLINE_FUNCTION float log10(float x) { return Kokkos::log10(x); }
-KOKKOS_INLINE_FUNCTION float exp2(float x) { return Kokkos::exp2(x); }
-KOKKOS_INLINE_FUNCTION float fabs(float x) { return Kokkos::fabs(x); }
-KOKKOS_INLINE_FUNCTION float floor(float x) { return Kokkos::floor(x); }
-KOKKOS_INLINE_FUNCTION float ceil(float x) { return Kokkos::ceil(x); }
-KOKKOS_INLINE_FUNCTION float cbrt(float x) { return Kokkos::cbrt(x); }
-KOKKOS_INLINE_FUNCTION float sin(float x) { return Kokkos::sin(x); }
-KOKKOS_INLINE_FUNCTION float cos(float x) { return Kokkos::cos(x); }
-KOKKOS_INLINE_FUNCTION float tanh(float x) { return Kokkos::tanh(x); }
-KOKKOS_INLINE_FUNCTION float pow(float x, float y) { return Kokkos::pow(x,y); }
-KOKKOS_INLINE_FUNCTION float fmin(float x, float y) { return Kokkos::fmin(x,y); }
-KOKKOS_INLINE_FUNCTION float fmax(float x, float y) { return Kokkos::fmax(x,y); }
-KOKKOS_INLINE_FUNCTION float exp10(float x) { return Kokkos::pow(10.0f,x); }
-}
+#include "constants.hpp"
 
 // Create shorthand for double kokkos views
 #define MAX_ELEMENTS 27

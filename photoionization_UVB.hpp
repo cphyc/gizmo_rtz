@@ -1,32 +1,31 @@
 // photoionization_UVB.h
 #pragma once
+#include "constants.hpp"
 
 
-#ifdef RTZ_FLOAT32_UVB
-using UVBReal = float;
+#ifdef RTZ_FLOAT32
 constexpr const char* UVB_SCAN_FORMAT = "%f";
 #else
-using UVBReal = double;
 constexpr const char* UVB_SCAN_FORMAT = "%lf";
 #endif
 
 const int N_UVB_POINTS = 60;
 
 // Initialize the UVB arrays
-UVBReal HM12_UVB_redshifts[N_UVB_POINTS];
-UVBReal HM12_UVB_hydrogen[N_UVB_POINTS][1][2];
-UVBReal HM12_UVB_helium[N_UVB_POINTS][2][2];
-UVBReal HM12_UVB_carbon[N_UVB_POINTS][6][2];
-UVBReal HM12_UVB_nitrogen[N_UVB_POINTS][7][2];
-UVBReal HM12_UVB_oxygen[N_UVB_POINTS][8][2];
-UVBReal HM12_UVB_neon[N_UVB_POINTS][10][2];
-UVBReal HM12_UVB_magnesium[N_UVB_POINTS][12][2];
-UVBReal HM12_UVB_silicon[N_UVB_POINTS][14][2];
-UVBReal HM12_UVB_sulfur[N_UVB_POINTS][16][2];
-UVBReal HM12_UVB_iron[N_UVB_POINTS][26][2];
+Real HM12_UVB_redshifts[N_UVB_POINTS];
+Real HM12_UVB_hydrogen[N_UVB_POINTS][1][2];
+Real HM12_UVB_helium[N_UVB_POINTS][2][2];
+Real HM12_UVB_carbon[N_UVB_POINTS][6][2];
+Real HM12_UVB_nitrogen[N_UVB_POINTS][7][2];
+Real HM12_UVB_oxygen[N_UVB_POINTS][8][2];
+Real HM12_UVB_neon[N_UVB_POINTS][10][2];
+Real HM12_UVB_magnesium[N_UVB_POINTS][12][2];
+Real HM12_UVB_silicon[N_UVB_POINTS][14][2];
+Real HM12_UVB_sulfur[N_UVB_POINTS][16][2];
+Real HM12_UVB_iron[N_UVB_POINTS][26][2];
 
 // Array that holds the UVB for each ion at a given redshift
-UVBReal HM12_UVB_z[27][27][2];
+Real HM12_UVB_z[27][27][2];
 
 void load_UVB_data(std::string path_to_data) {
     // Load in all of the UV background tables
@@ -339,14 +338,14 @@ void load_UVB_data(std::string path_to_data) {
     fclose(file);
 }
 
-void update_UVB(UVBReal redshift){
+void update_UVB(Real redshift){
     /*
     interpolates the UVB for all ions
     to a particular redshift
     */
 
-    UVBReal scale_low;
-    UVBReal scale_high;
+    Real scale_low;
+    Real scale_high;
 
     // No interpolation beyond redshift bounds --> set the UVB to zero
     if (redshift < HM12_UVB_redshifts[0] || redshift >= HM12_UVB_redshifts[N_UVB_POINTS-1]){
@@ -364,7 +363,7 @@ void update_UVB(UVBReal redshift){
 
                 // Perform linear interpolation
                 scale_high = (redshift - HM12_UVB_redshifts[i]) / (HM12_UVB_redshifts[i+1] - HM12_UVB_redshifts[i]);
-                scale_low  = UVBReal(1.0) - scale_high;
+                scale_low  = Real(1.0) - scale_high;
 
                 for (int j = 0; j < 27; j++) {
                     if (j<1){

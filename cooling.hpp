@@ -16,17 +16,9 @@
 #define CUBE(x) ((x)*(x)*(x))
 
 
-#ifdef RTZ_FLOAT32_COOLING
-using CoolingReal = float;
-namespace cooling_math = rtz_float_math;
-#else
-using CoolingReal = Real;
-namespace cooling_math = rtz_math;
-#endif
-
 // Constants
-const CoolingReal MIN_METAL_COOL_DENS = CoolingReal(1E-10); //minimum number density to calc cooling
-const CoolingReal MIN_COOL_ION = CoolingReal(1.E-10); //minimum number density to calculate cooling for a particular ion
+const Real MIN_METAL_COOL_DENS = Real(1E-10); //minimum number density to calc cooling
+const Real MIN_COOL_ION = Real(1.E-10); //minimum number density to calculate cooling for a particular ion
 
 // Initialize the relevant arrays
 const int N_HIGH_T_COOLING_TEMP = 121;
@@ -68,84 +60,84 @@ double G0_heating_rates[27] = {
 
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal collisional_ionization_cooling_HI(CoolingReal T){
+Real collisional_ionization_cooling_HI(Real T){
     // From Cen 1992
-    CoolingReal term_1 = CoolingReal(1.27E-21) * cooling_math::sqrt(T);
-    CoolingReal term_2 = CoolingReal(1.0) /(CoolingReal(1.0) + cooling_math::sqrt(T/CoolingReal(1E5)));
-    CoolingReal term_3 = cooling_math::exp(-CoolingReal(157809.1)/T);
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real term_1 = Real(1.27E-21) * Kokkos::sqrt(T);
+    Real term_2 = Real(1.0) /(Real(1.0) + Kokkos::sqrt(T/Real(1E5)));
+    Real term_3 = Kokkos::exp(-Real(157809.1)/T);
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal collisional_ionization_cooling_HeI(CoolingReal T){
+Real collisional_ionization_cooling_HeI(Real T){
     // From Cen 1992
-    CoolingReal term_1 = CoolingReal(9.38E-22) * cooling_math::sqrt(T);
-    CoolingReal term_2 = CoolingReal(1.0) /(CoolingReal(1.0) + cooling_math::sqrt(T/CoolingReal(1E5)));
-    CoolingReal term_3 = cooling_math::exp(-CoolingReal(285335.4)/T);
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real term_1 = Real(9.38E-22) * Kokkos::sqrt(T);
+    Real term_2 = Real(1.0) /(Real(1.0) + Kokkos::sqrt(T/Real(1E5)));
+    Real term_3 = Kokkos::exp(-Real(285335.4)/T);
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal collisional_ionization_cooling_HeII(CoolingReal T){
+Real collisional_ionization_cooling_HeII(Real T){
     // From Cen 1992
-    CoolingReal term_1 = CoolingReal(4.95E-22) * cooling_math::sqrt(T);
-    CoolingReal term_2 = CoolingReal(1.0) /(CoolingReal(1.0) + cooling_math::sqrt(T/CoolingReal(1E5)));
-    CoolingReal term_3 = cooling_math::exp(-CoolingReal(631515.0)/T);
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real term_1 = Real(4.95E-22) * Kokkos::sqrt(T);
+    Real term_2 = Real(1.0) /(Real(1.0) + Kokkos::sqrt(T/Real(1E5)));
+    Real term_3 = Kokkos::exp(-Real(631515.0)/T);
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal recombination_cooling_case_B_HII(CoolingReal T){
+Real recombination_cooling_case_B_HII(Real T){
     // From Hui & Gnedin 1997
-    CoolingReal lam_HI = CoolingReal(315614.0) / T;
-    CoolingReal term_1 = CoolingReal(3.435E-30) * T;
-    CoolingReal term_2 = cooling_math::pow(lam_HI,CoolingReal(1.97));
-    CoolingReal term_3 = cooling_math::pow(CoolingReal(1.0) + cooling_math::pow(lam_HI/CoolingReal(2.25),CoolingReal(0.376)),-CoolingReal(3.72));
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real lam_HI = Real(315614.0) / T;
+    Real term_1 = Real(3.435E-30) * T;
+    Real term_2 = Kokkos::pow(lam_HI,Real(1.97));
+    Real term_3 = Kokkos::pow(Real(1.0) + Kokkos::pow(lam_HI/Real(2.25),Real(0.376)),-Real(3.72));
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal recombination_cooling_case_B_HeII(CoolingReal T){
+Real recombination_cooling_case_B_HeII(Real T){
     // From Hui & Gnedin 1997
-    CoolingReal lam_HeI = CoolingReal(570670.0) / T;
-    CoolingReal term_1 = CoolingReal(KB) * T * CoolingReal(1.26E-14);
-    CoolingReal term_2 = cooling_math::pow(lam_HeI,CoolingReal(0.75));
-    CoolingReal cooling_rate = term_1 * term_2;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real lam_HeI = Real(570670.0) / T;
+    Real term_1 = Real(KB) * T * Real(1.26E-14);
+    Real term_2 = Kokkos::pow(lam_HeI,Real(0.75));
+    Real cooling_rate = term_1 * term_2;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal recombination_cooling_case_B_HeIII(CoolingReal T){
+Real recombination_cooling_case_B_HeIII(Real T){
     // From Hui & Gnedin 1997
-    CoolingReal lam_HeII = CoolingReal(1263030.0) / T;
-    CoolingReal term_1 = CoolingReal(8.0) * CoolingReal(3.435E-30) * T;
-    CoolingReal term_2 = cooling_math::pow(lam_HeII,CoolingReal(1.97));
-    CoolingReal term_3 = cooling_math::pow(CoolingReal(1.0) + cooling_math::pow(lam_HeII/CoolingReal(2.25),CoolingReal(0.376)),-CoolingReal(3.72));
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real lam_HeII = Real(1263030.0) / T;
+    Real term_1 = Real(8.0) * Real(3.435E-30) * T;
+    Real term_2 = Kokkos::pow(lam_HeII,Real(1.97));
+    Real term_3 = Kokkos::pow(Real(1.0) + Kokkos::pow(lam_HeII/Real(2.25),Real(0.376)),-Real(3.72));
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal dielectronic_recombination_cooling_HeII(CoolingReal T){
+Real dielectronic_recombination_cooling_HeII(Real T){
     // From Black 1981
-    CoolingReal term_1 = CoolingReal(1.24E-13) * cooling_math::pow(T,-CoolingReal(1.5));
-    CoolingReal term_2 = cooling_math::exp(-CoolingReal(470000.0)/T);
-    CoolingReal term_3 = CoolingReal(1.0) + (CoolingReal(0.3) * cooling_math::exp(-CoolingReal(94000.0)/T));
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real term_1 = Real(1.24E-13) * Kokkos::pow(T,-Real(1.5));
+    Real term_2 = Kokkos::exp(-Real(470000.0)/T);
+    Real term_3 = Real(1.0) + (Real(0.3) * Kokkos::exp(-Real(94000.0)/T));
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal collisional_excitation_cooling_HI(CoolingReal T){
+Real collisional_excitation_cooling_HI(Real T){
     // From Seon 2020
-    CoolingReal cooling_rate = CoolingReal(4.13e-19) * cooling_math::exp(-CoolingReal(117744.0)/T);
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real cooling_rate = Real(4.13e-19) * Kokkos::exp(-Real(117744.0)/T);
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 // double collisional_excitation_cooling_HI(double T){
@@ -158,62 +150,62 @@ CoolingReal collisional_excitation_cooling_HI(CoolingReal T){
 // }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal collisional_excitation_cooling_HeII(CoolingReal T){
+Real collisional_excitation_cooling_HeII(Real T){
     // From Cen 1992
-    CoolingReal term_1 = CoolingReal(5.54E-17) * cooling_math::pow(T,-CoolingReal(0.397));
-    CoolingReal term_2 = CoolingReal(1.0) /(CoolingReal(1.0) + cooling_math::sqrt(T/CoolingReal(1E5)));
-    CoolingReal term_3 = cooling_math::exp(-CoolingReal(473638.0)/T);
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real term_1 = Real(5.54E-17) * Kokkos::pow(T,-Real(0.397));
+    Real term_2 = Real(1.0) /(Real(1.0) + Kokkos::sqrt(T/Real(1E5)));
+    Real term_3 = Kokkos::exp(-Real(473638.0)/T);
+    Real cooling_rate = term_1 * term_2 * term_3;
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal bremmstrahlung(CoolingReal T){
+Real bremmstrahlung(Real T){
     // Osterbrock and Ferland 2006
-    CoolingReal cooling_rate = CoolingReal(1.42E-27) * cooling_math::sqrt(T);
-    return cooling_math::fmax(cooling_rate, CoolingReal(1e-100));
+    Real cooling_rate = Real(1.42E-27) * Kokkos::sqrt(T);
+    return Kokkos::fmax(cooling_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal compton_cooling(CoolingReal T, CoolingReal a){
+Real compton_cooling(Real T, Real a){
 
-    CoolingReal Tcmb_over_a = CoolingReal(2.727)/a;
+    Real Tcmb_over_a = Real(2.727)/a;
 
     // Haiman+ 1996
-    CoolingReal term_1 = CoolingReal(1.017E-37);
-    CoolingReal term_2 = SQR(SQR(Tcmb_over_a));
-    CoolingReal term_3 = T - Tcmb_over_a;
-    CoolingReal cooling_rate = term_1 * term_2 * term_3;
+    Real term_1 = Real(1.017E-37);
+    Real term_2 = SQR(SQR(Tcmb_over_a));
+    Real term_3 = T - Tcmb_over_a;
+    Real cooling_rate = term_1 * term_2 * term_3;
     return cooling_rate;
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal H2_cooling(CoolingReal nH, CoolingReal nH2, CoolingReal T){
+Real H2_cooling(Real nH, Real nH2, Real T){
     // From Moseley 2021
-    CoolingReal T3 = CoolingReal(1E-3) * T;
-    CoolingReal n1 = CoolingReal(50.0);
-    CoolingReal n2 = CoolingReal(450.0);
-    CoolingReal n3 = CoolingReal(25.0);
-    CoolingReal n4 = CoolingReal(900.0);
+    Real T3 = Real(1E-3) * T;
+    Real n1 = Real(50.0);
+    Real n2 = Real(450.0);
+    Real n3 = Real(25.0);
+    Real n4 = Real(900.0);
 
-    CoolingReal x1 = nH + (CoolingReal(5.0) * nH2);
-    CoolingReal x2 = nH + (CoolingReal(4.5) * nH2);
-    CoolingReal x3 = nH + (CoolingReal(0.75) * nH2);
-    CoolingReal x4 = nH + (CoolingReal(0.05) * nH2);
+    Real x1 = nH + (Real(5.0) * nH2);
+    Real x2 = nH + (Real(4.5) * nH2);
+    Real x3 = nH + (Real(0.75) * nH2);
+    Real x4 = nH + (Real(0.05) * nH2);
 
-    CoolingReal f1 = CoolingReal(1.1E-25) * cooling_math::sqrt(T3) * cooling_math::exp(-CoolingReal(0.51) / T3);
-    f1 = f1 * (((CoolingReal(0.7) * x1) / (CoolingReal(1.0) + (x1/n1))) + ((CoolingReal(0.3) * x1)/(CoolingReal(1.0) + (x1/(CoolingReal(10.0)*n1)))));
+    Real f1 = Real(1.1E-25) * Kokkos::sqrt(T3) * Kokkos::exp(-Real(0.51) / T3);
+    f1 = f1 * (((Real(0.7) * x1) / (Real(1.0) + (x1/n1))) + ((Real(0.3) * x1)/(Real(1.0) + (x1/(Real(10.0)*n1)))));
 
-    CoolingReal f2 = CoolingReal(2.0E-25) * T3 * cooling_math::exp(-CoolingReal(1.0) / T3);
-    f2 = f2 * (((CoolingReal(0.35) * x2) / (CoolingReal(1.0) + (x2/n2))) + ((CoolingReal(0.65) * x2)/(CoolingReal(1.0) + (x2/(CoolingReal(10.0)*n2)))));
+    Real f2 = Real(2.0E-25) * T3 * Kokkos::exp(-Real(1.0) / T3);
+    f2 = f2 * (((Real(0.35) * x2) / (Real(1.0) + (x2/n2))) + ((Real(0.65) * x2)/(Real(1.0) + (x2/(Real(10.0)*n2)))));
 
-    CoolingReal f3 = CoolingReal(2.4E-24) * (cooling_math::pow(T3,CoolingReal(1.50))) * cooling_math::exp(-CoolingReal(2.0) / T3);
-    f3 = f3 * (x3 / (CoolingReal(1.0) + (x3/n3)));
+    Real f3 = Real(2.4E-24) * (Kokkos::pow(T3,Real(1.50))) * Kokkos::exp(-Real(2.0) / T3);
+    f3 = f3 * (x3 / (Real(1.0) + (x3/n3)));
 
-    CoolingReal f4 = CoolingReal(1.7E-23) * (cooling_math::pow(T3,CoolingReal(1.50))) * cooling_math::exp(-CoolingReal(4.0) / T3);
-    f4 = f4 * (((CoolingReal(0.45) * x4) / (CoolingReal(1.0) + (x4/n4))) + ((CoolingReal(0.55) * x4)/(CoolingReal(1.0) + (x4/(CoolingReal(10.0)*n4)))));
+    Real f4 = Real(1.7E-23) * (Kokkos::pow(T3,Real(1.50))) * Kokkos::exp(-Real(4.0) / T3);
+    f4 = f4 * (((Real(0.45) * x4) / (Real(1.0) + (x4/n4))) + ((Real(0.55) * x4)/(Real(1.0) + (x4/(Real(10.0)*n4)))));
 
-    return cooling_math::fmax(nH2 * (f1 + f2 + f3 + f4), CoolingReal(1e-100));
+    return Kokkos::fmax(nH2 * (f1 + f2 + f3 + f4), Real(1e-100));
 }
 
 void initialize_high_temperature_metal_cooling(std::string path_to_data){
@@ -406,22 +398,22 @@ void initialize_high_temperature_metal_cooling(std::string path_to_data){
 
 template<typename Table>
 KOKKOS_FUNCTION
-CoolingReal get_high_t_cooling_rates(CoolingReal T, CoolingReal ne,
+Real get_high_t_cooling_rates(Real T, Real ne,
                                 const CompactIonData& n_and_ion_fracs,
                                 const Element* elements,
-                                CoolingReal temp_smooth,
+                                Real temp_smooth,
                                 const Table& tabData){
     // Computes the high-temperature cooling rates
     // derived from Harley's custom cloudy models
 
-    CoolingReal loc_T = cooling_math::fmax(T,CoolingReal(1000.0));
-    CoolingReal log_T = cooling_math::log10(loc_T);
-    CoolingReal t_min = CoolingReal(3.0);
-    CoolingReal t_max = CoolingReal(9.0);
-    CoolingReal dt = CoolingReal(0.05);
-    CoolingReal total_metal_cooling_rate = CoolingReal(0.0);
-    CoolingReal two_e4_overT = CoolingReal(2000.0)/loc_T;
-    CoolingReal t_scale_fac = cooling_math::exp(-CoolingReal(1.0) * cooling_math::pow(two_e4_overT, 5));
+    Real loc_T = Kokkos::fmax(T,Real(1000.0));
+    Real log_T = Kokkos::log10(loc_T);
+    Real t_min = Real(3.0);
+    Real t_max = Real(9.0);
+    Real dt = Real(0.05);
+    Real total_metal_cooling_rate = Real(0.0);
+    Real two_e4_overT = Real(2000.0)/loc_T;
+    Real t_scale_fac = Kokkos::exp(-Real(1.0) * Kokkos::pow(two_e4_overT, 5));
 
     // bounds for temperature --> no cooling
     if (log_T < t_min){
@@ -429,33 +421,33 @@ CoolingReal get_high_t_cooling_rates(CoolingReal T, CoolingReal ne,
     }
 
     // Still cool above 10^9 K but set a bound
-    log_T = cooling_math::fmin(log_T, t_max);
+    log_T = Kokkos::fmin(log_T, t_max);
 
     // Prepare for 1D interpolation
-    int idx_low = (int)cooling_math::floor((log_T - t_min)/dt);
+    int idx_low = (int)Kokkos::floor((log_T - t_min)/dt);
 
 	// Uniform grid: high_t_cooling_temp[k] = t_min + k * dt
-    CoolingReal frac_high = (log_T - (t_min + idx_low * dt)) / dt;
-    CoolingReal frac_low = CoolingReal(1.0) - frac_high;
+    Real frac_high = (log_T - (t_min + idx_low * dt)) / dt;
+    Real frac_low = Real(1.0) - frac_high;
 
     // Loop over the tabulated elements -- not including H and He (rows 0 and 1)
     for (int erow = 2; erow < N_TAB_ELEMENTS; erow++) {
         const int i = row_elem(erow);
-        if (CoolingReal(n_and_ion_fracs.n_element_new[i]) > MIN_METAL_COOL_DENS){
+        if (Real(n_and_ion_fracs.n_element_new[i]) > MIN_METAL_COOL_DENS){
             // Get the element number density
-            CoolingReal n_element = CoolingReal(n_and_ion_fracs.n_element_new[i]);
+            Real n_element = Real(n_and_ion_fracs.n_element_new[i]);
             for (int j = 0; j < (elements[i].n_ions + elements[i].n_mol); j++) {
                 // Get the element ion fraction
-                CoolingReal n_ion = CoolingReal(n_and_ion_fracs[i].ion_fracs_new[j]);
+                Real n_ion = Real(n_and_ion_fracs[i].ion_fracs_new[j]);
 
                 // Interpolate the cooling rate for the ion
-                CoolingReal loc_cooling_rate = (frac_low * CoolingReal(tabData.high_t_cooling_rates(idx_low, erow, j)));
-                loc_cooling_rate += (frac_high * CoolingReal(tabData.high_t_cooling_rates(idx_low+1, erow, j)));
-                loc_cooling_rate = cooling_math::exp10(loc_cooling_rate);
+                Real loc_cooling_rate = (frac_low * Real(tabData.high_t_cooling_rates(idx_low, erow, j)));
+                loc_cooling_rate += (frac_high * Real(tabData.high_t_cooling_rates(idx_low+1, erow, j)));
+                loc_cooling_rate = Kokkos::pow(10, loc_cooling_rate);
 
                 // Smooth with temperature if necessary
-                CoolingReal loc_temp_smooth = CoolingReal(1.0);
-                if (CoolingReal(tabData.high_t_cooling_rates_tflag(erow,j))) {
+                Real loc_temp_smooth = Real(1.0);
+                if (Real(tabData.high_t_cooling_rates_tflag(erow,j))) {
                     loc_temp_smooth = temp_smooth;
                 }
 
@@ -465,7 +457,7 @@ CoolingReal get_high_t_cooling_rates(CoolingReal T, CoolingReal ne,
         }
     }
 
-    return cooling_math::fmax(total_metal_cooling_rate * t_scale_fac,CoolingReal(1e-100));
+    return Kokkos::fmax(total_metal_cooling_rate * t_scale_fac,Real(1e-100));
 }
 
 void init_fine_structure_tables(std::string path_to_data){
@@ -524,124 +516,124 @@ void init_fine_structure_tables(std::string path_to_data){
 // Form the Planck prefactor without cubing a frequency (~1e13 Hz):
 // nu^3 can overflow float before multiplication by Planck's constant.
 KOKKOS_INLINE_FUNCTION
-CoolingReal line_planck_spectrum(CoolingReal nu, CoolingReal temperature) {
+Real line_planck_spectrum(Real nu, Real temperature) {
 #if defined(RTZ_FLOAT32_ARITHMETIC) || defined(RTZ_FLOAT32_COOLING)
-    const CoolingReal nu_over_c = nu / CoolingReal(C_CGS);
-    const CoolingReal prefactor = (CoolingReal(2) * CoolingReal(H_PLANCK) * nu) * nu_over_c * nu_over_c;
+    const Real nu_over_c = nu / Real(C_CGS);
+    const Real prefactor = (Real(2) * Real(H_PLANCK) * nu) * nu_over_c * nu_over_c;
 #else
-    const CoolingReal prefactor = CoolingReal(2) * CoolingReal(H_PLANCK) * CUBE(nu) / (CoolingReal(C_CGS) * CoolingReal(C_CGS));
+    const Real prefactor = Real(2) * Real(H_PLANCK) * CUBE(nu) / (Real(C_CGS) * Real(C_CGS));
 #endif
-    return prefactor / (cooling_math::exp(CoolingReal(H_PLANCK) * nu / (CoolingReal(KB) * temperature)) - CoolingReal(1));
+    return prefactor / (Kokkos::exp(Real(H_PLANCK) * nu / (Real(KB) * temperature)) - Real(1));
 }
 
 template<typename Table>
 KOKKOS_FUNCTION
-CoolingReal three_level(CoolingReal g_0, CoolingReal g_1, CoolingReal g_2,
-                   CoolingReal lam_10, CoolingReal lam_20, CoolingReal lam_21,
-                   CoolingReal A_10, CoolingReal A_20, CoolingReal A_21,
-                   CoolingReal z, CoolingReal T, CoolingReal n_ion,
-                   CoolingReal ne, CoolingReal nH, CoolingReal nHp,
-                   CoolingReal nHe, CoolingReal nHep, CoolingReal nHepp,
-                   CoolingReal nH2,
+Real three_level(Real g_0, Real g_1, Real g_2,
+                   Real lam_10, Real lam_20, Real lam_21,
+                   Real A_10, Real A_20, Real A_21,
+                   Real z, Real T, Real n_ion,
+                   Real ne, Real nH, Real nHp,
+                   Real nHe, Real nHep, Real nHepp,
+                   Real nH2,
                    int idx_0, int idx_1, int idx_2,
                    const Table& tabData
                 ){
     // Harley's three-level ion solver
 
     // ! Initialize the result
-    CoolingReal three_level_cooling = CoolingReal(1E-50);
+    Real three_level_cooling = Real(1E-50);
 
-    CoolingReal T_cmb = CoolingReal(2.725) * (CoolingReal(1.0) + z); //! CMB temperature
+    Real T_cmb = Real(2.725) * (Real(1.0) + z); //! CMB temperature
 
     // ! Get log T and enforce bounds
-    CoolingReal logT = cooling_math::log10(T);
+    Real logT = Kokkos::log10(T);
 
     // Enforce bounds on temperature
-    CoolingReal tmin = CoolingReal(1.0);
-    CoolingReal tmax = CoolingReal(4.975);
-    CoolingReal delta_temp = CoolingReal(0.025);
-    logT = cooling_math::fmax(logT,CoolingReal(1.0));
-    logT = cooling_math::fmin(logT,tmax);
-    CoolingReal lam_10_minus4 = lam_10 * CoolingReal(1E-4);
-    CoolingReal lam_20_minus4 = lam_20 * CoolingReal(1E-4);
-    CoolingReal lam_21_minus4 = lam_21 * CoolingReal(1E-4);
+    Real tmin = Real(1.0);
+    Real tmax = Real(4.975);
+    Real delta_temp = Real(0.025);
+    logT = Kokkos::fmax(logT,Real(1.0));
+    logT = Kokkos::fmin(logT,tmax);
+    Real lam_10_minus4 = lam_10 * Real(1E-4);
+    Real lam_20_minus4 = lam_20 * Real(1E-4);
+    Real lam_21_minus4 = lam_21 * Real(1E-4);
 
-    CoolingReal nu_10 = CoolingReal(C_CGS) / lam_10_minus4; //! Hz
-    CoolingReal nu_20 = CoolingReal(C_CGS) / lam_20_minus4; //! Hz
-    CoolingReal nu_21 = CoolingReal(C_CGS) / lam_21_minus4; //! Hz
+    Real nu_10 = Real(C_CGS) / lam_10_minus4; //! Hz
+    Real nu_20 = Real(C_CGS) / lam_20_minus4; //! Hz
+    Real nu_21 = Real(C_CGS) / lam_21_minus4; //! Hz
 
-    CoolingReal E_10 = (CoolingReal(H_PLANCK) * CoolingReal(C_CGS) / lam_10_minus4) / CoolingReal(KB); //! E/K (K)
-    CoolingReal E_20 = (CoolingReal(H_PLANCK) * CoolingReal(C_CGS) / lam_20_minus4) / CoolingReal(KB); //! E/K (K)
-    CoolingReal E_21 = (CoolingReal(H_PLANCK) * CoolingReal(C_CGS) / lam_21_minus4) / CoolingReal(KB); //! E/K (K)
+    Real E_10 = (Real(H_PLANCK) * Real(C_CGS) / lam_10_minus4) / Real(KB); //! E/K (K)
+    Real E_20 = (Real(H_PLANCK) * Real(C_CGS) / lam_20_minus4) / Real(KB); //! E/K (K)
+    Real E_21 = (Real(H_PLANCK) * Real(C_CGS) / lam_21_minus4) / Real(KB); //! E/K (K)
 
-    CoolingReal B_01 = A_10 * (CUBE(lam_10_minus4)) * (g_1 / g_0) / (CoolingReal(2.0) * CoolingReal(H_PLANCK) * CoolingReal(C_CGS));
-    CoolingReal B_02 = A_20 * (CUBE(lam_20_minus4)) * (g_2 / g_0) / (CoolingReal(2.0) * CoolingReal(H_PLANCK) * CoolingReal(C_CGS));
-    CoolingReal B_12 = A_21 * (CUBE(lam_21_minus4)) * (g_2 / g_1) / (CoolingReal(2.0) * CoolingReal(H_PLANCK) * CoolingReal(C_CGS));
+    Real B_01 = A_10 * (CUBE(lam_10_minus4)) * (g_1 / g_0) / (Real(2.0) * Real(H_PLANCK) * Real(C_CGS));
+    Real B_02 = A_20 * (CUBE(lam_20_minus4)) * (g_2 / g_0) / (Real(2.0) * Real(H_PLANCK) * Real(C_CGS));
+    Real B_12 = A_21 * (CUBE(lam_21_minus4)) * (g_2 / g_1) / (Real(2.0) * Real(H_PLANCK) * Real(C_CGS));
 
-    CoolingReal B_10 = (g_0 / g_1) * B_01;
-    CoolingReal B_20 = (g_0 / g_2) * B_02;
-    CoolingReal B_21 = (g_1 / g_2) * B_12;
+    Real B_10 = (g_0 / g_1) * B_01;
+    Real B_20 = (g_0 / g_2) * B_02;
+    Real B_21 = (g_1 / g_2) * B_12;
 
     //! CMB black body spectrum
-    CoolingReal B_nu_10 = line_planck_spectrum(nu_10, T_cmb);
-    CoolingReal B_nu_20 = line_planck_spectrum(nu_20, T_cmb);
-    CoolingReal B_nu_21 = line_planck_spectrum(nu_21, T_cmb);
+    Real B_nu_10 = line_planck_spectrum(nu_10, T_cmb);
+    Real B_nu_20 = line_planck_spectrum(nu_20, T_cmb);
+    Real B_nu_21 = line_planck_spectrum(nu_21, T_cmb);
 
     // ! Find temperature index.
-    int itemp_low = (int)cooling_math::floor((logT - tmin)/delta_temp);
+    int itemp_low = (int)Kokkos::floor((logT - tmin)/delta_temp);
     int itemp_high = itemp_low + 1;
-    CoolingReal frac_high = (logT - (tmin + ((CoolingReal)itemp_low * delta_temp))) / delta_temp;
-    CoolingReal frac_low = CoolingReal(1.0) - frac_high;
+    Real frac_high = (logT - (tmin + ((Real)itemp_low * delta_temp))) / delta_temp;
+    Real frac_low = Real(1.0) - frac_high;
 
     // ! All collison strengths are in cm^3 s^-1
     // ! For collisions with o-H2
-    CoolingReal q10_oH2 = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 6)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 6)) * frac_high);
-    CoolingReal q20_oH2 = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 6)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 6)) * frac_high);
-    CoolingReal q21_oH2 = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 6)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 6)) * frac_high);
+    Real q10_oH2 = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 6)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 6)) * frac_high);
+    Real q20_oH2 = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 6)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 6)) * frac_high);
+    Real q21_oH2 = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 6)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 6)) * frac_high);
 
     // ! For collisions with p-H2
-    CoolingReal q10_pH2 = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 7)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 7)) * frac_high);
-    CoolingReal q20_pH2 = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 7)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 7)) * frac_high);
-    CoolingReal q21_pH2 = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 7)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 7)) * frac_high);
+    Real q10_pH2 = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 7)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 7)) * frac_high);
+    Real q20_pH2 = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 7)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 7)) * frac_high);
+    Real q21_pH2 = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 7)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 7)) * frac_high);
 
     // ! For collisions with H
-    CoolingReal q10_H = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 4)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 4)) * frac_high);
-    CoolingReal q20_H = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 4)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 4)) * frac_high);
-    CoolingReal q21_H = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 4)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 4)) * frac_high);
+    Real q10_H = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 4)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 4)) * frac_high);
+    Real q20_H = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 4)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 4)) * frac_high);
+    Real q21_H = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 4)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 4)) * frac_high);
 
     // ! For collisions with H+
-    CoolingReal q10_Hp = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 1)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 1)) * frac_high);
-    CoolingReal q20_Hp = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 1)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 1)) * frac_high);
-    CoolingReal q21_Hp = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 1)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 1)) * frac_high);
+    Real q10_Hp = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 1)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 1)) * frac_high);
+    Real q20_Hp = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 1)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 1)) * frac_high);
+    Real q21_Hp = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 1)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 1)) * frac_high);
 
     // ! For collisions with e
-    CoolingReal q10_e = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 0)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 0)) * frac_high);
-    CoolingReal q20_e = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 0)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 0)) * frac_high);
-    CoolingReal q21_e = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 0)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 0)) * frac_high);
+    Real q10_e = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 0)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 0)) * frac_high);
+    Real q20_e = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 0)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 0)) * frac_high);
+    Real q21_e = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 0)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 0)) * frac_high);
 
     // ! For collisions with He
-    CoolingReal q10_He = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 5)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 5)) * frac_high);
-    CoolingReal q20_He = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 5)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 5)) * frac_high);
-    CoolingReal q21_He = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 5)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 5)) * frac_high);
+    Real q10_He = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 5)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 5)) * frac_high);
+    Real q20_He = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 5)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 5)) * frac_high);
+    Real q21_He = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 5)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 5)) * frac_high);
 
     // ! For collisions with He+
-    CoolingReal q10_Hep = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 2)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 2)) * frac_high);
-    CoolingReal q20_Hep = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 2)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 2)) * frac_high);
-    CoolingReal q21_Hep = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 2)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 2)) * frac_high);
+    Real q10_Hep = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 2)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 2)) * frac_high);
+    Real q20_Hep = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 2)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 2)) * frac_high);
+    Real q21_Hep = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 2)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 2)) * frac_high);
 
     // ! For collisions with He++
-    CoolingReal q10_Hepp = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 3)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 3)) * frac_high);
-    CoolingReal q20_Hepp = (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_low, 3)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_1, itemp_high, 3)) * frac_high);
-    CoolingReal q21_Hepp = (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_low, 3)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_2, itemp_high, 3)) * frac_high);
+    Real q10_Hepp = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 3)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 3)) * frac_high);
+    Real q20_Hepp = (Real(tabData.fs_cool_tab(idx_1, itemp_low, 3)) * frac_low) + (Real(tabData.fs_cool_tab(idx_1, itemp_high, 3)) * frac_high);
+    Real q21_Hepp = (Real(tabData.fs_cool_tab(idx_2, itemp_low, 3)) * frac_low) + (Real(tabData.fs_cool_tab(idx_2, itemp_high, 3)) * frac_high);
 
     // ! Net collision strengths note the 75-25 ortho-para H2
-    CoolingReal C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * CoolingReal(0.75) * nH2) + (q10_pH2 * CoolingReal(0.25) * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
-    CoolingReal C_20 = (q20_e * ne) + (q20_H * nH) + (q20_Hp * nHp) + (q20_oH2 * CoolingReal(0.75) * nH2) + (q20_pH2 * CoolingReal(0.25) * nH2) + (q20_He * nHe) + (q20_Hep * nHep) + (q20_Hepp * nHepp);
-    CoolingReal C_21 = (q21_e * ne) + (q21_H * nH) + (q21_Hp * nHp) + (q21_oH2 * CoolingReal(0.75) * nH2) + (q21_pH2 * CoolingReal(0.25) * nH2) + (q21_He * nHe) + (q21_Hep * nHep) + (q21_Hepp * nHepp);
+    Real C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * Real(0.75) * nH2) + (q10_pH2 * Real(0.25) * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
+    Real C_20 = (q20_e * ne) + (q20_H * nH) + (q20_Hp * nHp) + (q20_oH2 * Real(0.75) * nH2) + (q20_pH2 * Real(0.25) * nH2) + (q20_He * nHe) + (q20_Hep * nHep) + (q20_Hepp * nHepp);
+    Real C_21 = (q21_e * ne) + (q21_H * nH) + (q21_Hp * nHp) + (q21_oH2 * Real(0.75) * nH2) + (q21_pH2 * Real(0.25) * nH2) + (q21_He * nHe) + (q21_Hep * nHep) + (q21_Hepp * nHepp);
 
-    CoolingReal C_01 = C_10 * (g_1/g_0) * cooling_math::exp(-CoolingReal(1.0) * E_10 / T);
-    CoolingReal C_02 = C_20 * (g_2/g_0) * cooling_math::exp(-CoolingReal(1.0) * E_20 / T);
-    CoolingReal C_12 = C_21 * (g_2/g_1) * cooling_math::exp(-CoolingReal(1.0) * E_21 / T);
+    Real C_01 = C_10 * (g_1/g_0) * Kokkos::exp(-Real(1.0) * E_10 / T);
+    Real C_02 = C_20 * (g_2/g_0) * Kokkos::exp(-Real(1.0) * E_20 / T);
+    Real C_12 = C_21 * (g_2/g_1) * Kokkos::exp(-Real(1.0) * E_21 / T);
 
     C_01 += (B_01*B_nu_10);
     C_02 += (B_02*B_nu_20);
@@ -653,26 +645,26 @@ CoolingReal three_level(CoolingReal g_0, CoolingReal g_1, CoolingReal g_2,
 
     // ! Analytic solution to the 3 level system (see paul goldsmith papers)
     // ! Done this way to avoid numerical errors
-    CoolingReal n2_n1_top = (C_12 * (C_01 + C_02)) + (C_02 * (A_10 + C_10));
-    CoolingReal n2_n1_bot = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20 * C_02);
-    CoolingReal n2_n1 = n2_n1_top / n2_n1_bot;
+    Real n2_n1_top = (C_12 * (C_01 + C_02)) + (C_02 * (A_10 + C_10));
+    Real n2_n1_bot = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20 * C_02);
+    Real n2_n1 = n2_n1_top / n2_n1_bot;
 
-    CoolingReal n1_n0_top = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20*C_02);
-    CoolingReal n1_n0_bot = ((A_21 + C_21 + C_20) * (A_10 + C_10)) + (C_20*C_12);
-    CoolingReal n1_n0 = n1_n0_top / n1_n0_bot;
+    Real n1_n0_top = ((A_21 + C_21 + C_20) * (C_01 + C_02)) - (C_20*C_02);
+    Real n1_n0_bot = ((A_21 + C_21 + C_20) * (A_10 + C_10)) + (C_20*C_12);
+    Real n1_n0 = n1_n0_top / n1_n0_bot;
 
-    CoolingReal n_0 = CoolingReal(1.0) / (CoolingReal(1.0) + n1_n0 + (n2_n1 * n1_n0));
-    CoolingReal n_1 = CoolingReal(1.0) / (CoolingReal(1.0) + n2_n1 + (CoolingReal(1.0)/n1_n0));
-    CoolingReal n_2 = CoolingReal(1.0) / (CoolingReal(1.0) + (CoolingReal(1.0)/n2_n1) + ((CoolingReal(1.0)/n2_n1)*(CoolingReal(1.0)/n1_n0)));
+    Real n_0 = Real(1.0) / (Real(1.0) + n1_n0 + (n2_n1 * n1_n0));
+    Real n_1 = Real(1.0) / (Real(1.0) + n2_n1 + (Real(1.0)/n1_n0));
+    Real n_2 = Real(1.0) / (Real(1.0) + (Real(1.0)/n2_n1) + ((Real(1.0)/n2_n1)*(Real(1.0)/n1_n0)));
 
     // ! Cooling and heating rates
-    CoolingReal cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * CoolingReal(KB) * n_1 * n_ion;
-    CoolingReal cool_1 = (A_20 + (B_20 * B_nu_20)) * E_20 * CoolingReal(KB) * n_2 * n_ion;
-    CoolingReal cool_2 = (A_21 + (B_21 * B_nu_21)) * E_21 * CoolingReal(KB) * n_2 * n_ion;
+    Real cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * Real(KB) * n_1 * n_ion;
+    Real cool_1 = (A_20 + (B_20 * B_nu_20)) * E_20 * Real(KB) * n_2 * n_ion;
+    Real cool_2 = (A_21 + (B_21 * B_nu_21)) * E_21 * Real(KB) * n_2 * n_ion;
 
-    CoolingReal heat_0 = B_01 * B_nu_10 * E_10 * CoolingReal(KB) * n_0 * n_ion;
-    CoolingReal heat_1 = B_02 * B_nu_20 * E_20 * CoolingReal(KB) * n_0 * n_ion;
-    CoolingReal heat_2 = B_12 * B_nu_21 * E_21 * CoolingReal(KB) * n_1 * n_ion;
+    Real heat_0 = B_01 * B_nu_10 * E_10 * Real(KB) * n_0 * n_ion;
+    Real heat_1 = B_02 * B_nu_20 * E_20 * Real(KB) * n_0 * n_ion;
+    Real heat_2 = B_12 * B_nu_21 * E_21 * Real(KB) * n_1 * n_ion;
 
     // ! Total cooling rate
     three_level_cooling = (cool_0 + cool_1 + cool_2) - (heat_0 + heat_1 + heat_2);
@@ -682,88 +674,88 @@ CoolingReal three_level(CoolingReal g_0, CoolingReal g_1, CoolingReal g_2,
 
 template<typename Table>
 KOKKOS_FUNCTION
-CoolingReal two_level(CoolingReal g_0, CoolingReal g_1, CoolingReal lam_10, CoolingReal A_10,
-                CoolingReal z, CoolingReal T, CoolingReal n_ion, CoolingReal ne,
-                CoolingReal nH, CoolingReal nHp, CoolingReal nHe, CoolingReal nHep,
-                CoolingReal nHepp, CoolingReal nH2, int idx_0, const Table& tabData){
+Real two_level(Real g_0, Real g_1, Real lam_10, Real A_10,
+                Real z, Real T, Real n_ion, Real ne,
+                Real nH, Real nHp, Real nHe, Real nHep,
+                Real nHepp, Real nH2, int idx_0, const Table& tabData){
     // Harley's two-level ion solver
 
     // ! Initialize the result
-    CoolingReal two_level_cooling = CoolingReal(1E-50);
+    Real two_level_cooling = Real(1E-50);
 
-    CoolingReal T_cmb = CoolingReal(2.725) * (CoolingReal(1.0) + z); //! CMB temperature
+    Real T_cmb = Real(2.725) * (Real(1.0) + z); //! CMB temperature
 
     // ! Get log T and enforce bounds
-    CoolingReal logT = cooling_math::log10(T);
+    Real logT = Kokkos::log10(T);
 
     // Enforce bounds on temperature
-    CoolingReal tmin = CoolingReal(1.0);
-    CoolingReal tmax = CoolingReal(4.975);
-    CoolingReal delta_temp = CoolingReal(0.025);
-    logT = cooling_math::fmax(logT,tmin);
-    logT = cooling_math::fmin(logT,tmax);
-    CoolingReal lam_10_minus4 = lam_10 * CoolingReal(1E-4);
+    Real tmin = Real(1.0);
+    Real tmax = Real(4.975);
+    Real delta_temp = Real(0.025);
+    logT = Kokkos::fmax(logT,tmin);
+    logT = Kokkos::fmin(logT,tmax);
+    Real lam_10_minus4 = lam_10 * Real(1E-4);
 
-    CoolingReal nu_10 = CoolingReal(C_CGS) / lam_10_minus4; //! Hz
+    Real nu_10 = Real(C_CGS) / lam_10_minus4; //! Hz
 
-    CoolingReal E_10 = (CoolingReal(H_PLANCK) * CoolingReal(C_CGS) / lam_10_minus4) / CoolingReal(KB); //! E/K (K)
+    Real E_10 = (Real(H_PLANCK) * Real(C_CGS) / lam_10_minus4) / Real(KB); //! E/K (K)
 
-    CoolingReal B_01 = A_10 * CUBE(lam_10_minus4) * (g_1 / g_0) / (CoolingReal(2.0) * CoolingReal(H_PLANCK) * CoolingReal(C_CGS));
+    Real B_01 = A_10 * CUBE(lam_10_minus4) * (g_1 / g_0) / (Real(2.0) * Real(H_PLANCK) * Real(C_CGS));
 
-    CoolingReal B_10 = (g_0 / g_1) * B_01;
+    Real B_10 = (g_0 / g_1) * B_01;
 
     //! CMB black body spectrum
-    CoolingReal B_nu_10 = line_planck_spectrum(nu_10, T_cmb);
+    Real B_nu_10 = line_planck_spectrum(nu_10, T_cmb);
 
     // ! Find temperature index.
-    int itemp_low = (int)cooling_math::floor((logT - tmin)/delta_temp);
+    int itemp_low = (int)Kokkos::floor((logT - tmin)/delta_temp);
     int itemp_high = itemp_low + 1;
-    CoolingReal frac_high = (logT - (tmin + ((CoolingReal)itemp_low * delta_temp))) / delta_temp;
-    CoolingReal frac_low = CoolingReal(1.0) - frac_high;
+    Real frac_high = (logT - (tmin + ((Real)itemp_low * delta_temp))) / delta_temp;
+    Real frac_low = Real(1.0) - frac_high;
 
     // ! All collison strengths are in cm^3 s^-1
     // ! For collisions with o-H2
-    CoolingReal q10_oH2 = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 6)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 6)) * frac_high);
+    Real q10_oH2 = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 6)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 6)) * frac_high);
 
     // ! For collisions with p-H2
-    CoolingReal q10_pH2 = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 7)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 7)) * frac_high);
+    Real q10_pH2 = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 7)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 7)) * frac_high);
 
     // ! For collisions with H
-    CoolingReal q10_H = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 4)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 4)) * frac_high);
+    Real q10_H = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 4)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 4)) * frac_high);
 
     // ! For collisions with H+
-    CoolingReal q10_Hp = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 1)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 1)) * frac_high);
+    Real q10_Hp = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 1)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 1)) * frac_high);
 
     // ! For collisions with e
-    CoolingReal q10_e = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 0)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 0)) * frac_high);
+    Real q10_e = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 0)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 0)) * frac_high);
 
     // ! For collisions with He
-    CoolingReal q10_He = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 5)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 5)) * frac_high);
+    Real q10_He = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 5)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 5)) * frac_high);
 
     // ! For collisions with He+
-    CoolingReal q10_Hep = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 2)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 2)) * frac_high);
+    Real q10_Hep = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 2)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 2)) * frac_high);
 
     // ! For collisions with He++
-    CoolingReal q10_Hepp = (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_low, 3)) * frac_low) + (CoolingReal(tabData.fs_cool_tab(idx_0, itemp_high, 3)) * frac_high);
+    Real q10_Hepp = (Real(tabData.fs_cool_tab(idx_0, itemp_low, 3)) * frac_low) + (Real(tabData.fs_cool_tab(idx_0, itemp_high, 3)) * frac_high);
 
     // ! Net collision strengths note the 75-25 ortho-para H2
-    CoolingReal C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * CoolingReal(0.75) * nH2) + (q10_pH2 * CoolingReal(0.25) * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
+    Real C_10 = (q10_e * ne) + (q10_H * nH) + (q10_Hp * nHp) + (q10_oH2 * Real(0.75) * nH2) + (q10_pH2 * Real(0.25) * nH2) + (q10_He * nHe) + (q10_Hep * nHep) + (q10_Hepp * nHepp);
 
-    CoolingReal C_01 = C_10 * (g_1/g_0) * cooling_math::exp(-CoolingReal(1.0) * E_10 / T);
+    Real C_01 = C_10 * (g_1/g_0) * Kokkos::exp(-Real(1.0) * E_10 / T);
 
     // ! Analytic solution to the 2 level system (modified version of paul goldsmith papers)
     // ! Done this way to avoid numerical errors
-    CoolingReal t1 = ( (B_01*B_nu_10) + C_01 );
-    CoolingReal t2 = ( A_10 + (B_10*B_nu_10) + C_10 );
+    Real t1 = ( (B_01*B_nu_10) + C_01 );
+    Real t2 = ( A_10 + (B_10*B_nu_10) + C_10 );
 
-    CoolingReal nu_over_nl = t1 / t2;
-    CoolingReal n_0 = CoolingReal(1.0) / (nu_over_nl + CoolingReal(1.0));
-    CoolingReal n_1 = CoolingReal(1.0) / ((CoolingReal(1.0)/nu_over_nl) + CoolingReal(1.0));
+    Real nu_over_nl = t1 / t2;
+    Real n_0 = Real(1.0) / (nu_over_nl + Real(1.0));
+    Real n_1 = Real(1.0) / ((Real(1.0)/nu_over_nl) + Real(1.0));
 
     // ! Cooling and heating rates
-    CoolingReal cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * CoolingReal(KB) * n_1 * n_ion;
+    Real cool_0 = (A_10 + (B_10 * B_nu_10)) * E_10 * Real(KB) * n_1 * n_ion;
 
-    CoolingReal heat_0 = B_01 * B_nu_10 * E_10 * CoolingReal(KB) * n_0 * n_ion;
+    Real heat_0 = B_01 * B_nu_10 * E_10 * Real(KB) * n_0 * n_ion;
 
     // ! Total cooling rate
     two_level_cooling = (cool_0 - heat_0);
@@ -774,23 +766,23 @@ CoolingReal two_level(CoolingReal g_0, CoolingReal g_1, CoolingReal lam_10, Cool
 /* OI fine structure calculation function */
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal OI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                         CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                         CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real OI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                         Real ne, Real nH2, Real nHe, Real nHep,
+                         Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(5.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(1.0);
+    Real g_0 = Real(5.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(1.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(8.910E-5);
-    CoolingReal A_20 = CoolingReal(1.340E-10);
-    CoolingReal A_21 = CoolingReal(1.750E-5);
+    Real A_10 = Real(8.910E-5);
+    Real A_20 = Real(1.340E-10);
+    Real A_21 = Real(1.750E-5);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(63.1679);
-    CoolingReal lam_20 = CoolingReal(44.0453);
-    CoolingReal lam_21 = CoolingReal(145.495);
+    Real lam_10 = Real(63.1679);
+    Real lam_20 = Real(44.0453);
+    Real lam_21 = Real(145.495);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -804,23 +796,23 @@ CoolingReal OI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, 
 /* OIII fine structure calculation function */
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal OIII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                           CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                           CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real OIII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                           Real ne, Real nH2, Real nHe, Real nHep,
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(1.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(5.0);
+    Real g_0 = Real(1.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(5.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.597e-5);
-    CoolingReal A_20 = CoolingReal(3.170e-11);
-    CoolingReal A_21 = CoolingReal(9.760e-5);
+    Real A_10 = Real(2.597e-5);
+    Real A_20 = Real(3.170e-11);
+    Real A_21 = Real(9.760e-5);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(88.3323);
-    CoolingReal lam_20 = CoolingReal(32.6523);
-    CoolingReal lam_21 = CoolingReal(51.8004);
+    Real lam_10 = Real(88.3323);
+    Real lam_20 = Real(32.6523);
+    Real lam_21 = Real(51.8004);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -833,23 +825,23 @@ CoolingReal OIII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal CI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                           CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                           CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real CI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                           Real ne, Real nH2, Real nHe, Real nHep,
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(1.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(5.0);
+    Real g_0 = Real(1.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(5.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(7.930E-8);
-    CoolingReal A_20 = CoolingReal(1.000E-30);
-    CoolingReal A_21 = CoolingReal(2.650E-7);
+    Real A_10 = Real(7.930E-8);
+    Real A_20 = Real(1.000E-30);
+    Real A_21 = Real(2.650E-7);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(609.590);
-    CoolingReal lam_20 = CoolingReal(230.352);
-    CoolingReal lam_21 = CoolingReal(370.269);
+    Real lam_10 = Real(609.590);
+    Real lam_20 = Real(230.352);
+    Real lam_21 = Real(370.269);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -862,18 +854,18 @@ CoolingReal CI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, 
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal CII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                          CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                          CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real CII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                          Real ne, Real nH2, Real nHe, Real nHep,
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(2.0);
-    CoolingReal g_1 = CoolingReal(4.0);
+    Real g_0 = Real(2.0);
+    Real g_1 = Real(4.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.290E-6);
+    Real A_10 = Real(2.290E-6);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(157.636);
+    Real lam_10 = Real(157.636);
 
     return two_level(g_0, g_1,
                     lam_10,
@@ -886,23 +878,23 @@ CoolingReal CII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH,
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal NII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                          CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                          CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real NII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                          Real ne, Real nH2, Real nHe, Real nHep,
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(1.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(5.0);
+    Real g_0 = Real(1.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(5.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.080E-06);
-    CoolingReal A_20 = CoolingReal(1.000E-30);
-    CoolingReal A_21 = CoolingReal(7.460E-06);
+    Real A_10 = Real(2.080E-06);
+    Real A_20 = Real(1.000E-30);
+    Real A_21 = Real(7.460E-06);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(205.244);
-    CoolingReal lam_20 = CoolingReal(76.4318);
-    CoolingReal lam_21 = CoolingReal(121.767);
+    Real lam_10 = Real(205.244);
+    Real lam_20 = Real(76.4318);
+    Real lam_21 = Real(121.767);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -915,23 +907,23 @@ CoolingReal NII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH,
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal SiI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                          CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                          CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real SiI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                          Real ne, Real nH2, Real nHe, Real nHep,
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(1.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(5.0);
+    Real g_0 = Real(1.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(5.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(8.250E-6);
-    CoolingReal A_20 = CoolingReal(3.490E-10);
-    CoolingReal A_21 = CoolingReal(4.210E-5);
+    Real A_10 = Real(8.250E-6);
+    Real A_20 = Real(3.490E-10);
+    Real A_21 = Real(4.210E-5);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(129.641);
-    CoolingReal lam_20 = CoolingReal(44.7993);
-    CoolingReal lam_21 = CoolingReal(68.4548);
+    Real lam_10 = Real(129.641);
+    Real lam_20 = Real(44.7993);
+    Real lam_21 = Real(68.4548);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -944,18 +936,18 @@ CoolingReal SiI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH,
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal SiII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                           CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                           CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real SiII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                           Real ne, Real nH2, Real nHe, Real nHep,
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(2.0);
-    CoolingReal g_1 = CoolingReal(4.0);
+    Real g_0 = Real(2.0);
+    Real g_1 = Real(4.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.131E-4);
+    Real A_10 = Real(2.131E-4);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(34.8046);
+    Real lam_10 = Real(34.8046);
 
     return two_level(g_0, g_1,
                     lam_10,
@@ -967,18 +959,18 @@ CoolingReal SiII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal NeII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                           CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                           CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real NeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                           Real ne, Real nH2, Real nHe, Real nHep,
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(4.0);
-    CoolingReal g_1 = CoolingReal(2.0);
+    Real g_0 = Real(4.0);
+    Real g_1 = Real(2.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(8.590E-3);
+    Real A_10 = Real(8.590E-3);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(12.8101);
+    Real lam_10 = Real(12.8101);
 
     return two_level(g_0, g_1,
                     lam_10,
@@ -990,23 +982,23 @@ CoolingReal NeII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal FeI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                          CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                          CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real FeI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                          Real ne, Real nH2, Real nHe, Real nHep,
+                          Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(9.0);
-    CoolingReal g_1 = CoolingReal(7.0);
-    CoolingReal g_2 = CoolingReal(5.0);
+    Real g_0 = Real(9.0);
+    Real g_1 = Real(7.0);
+    Real g_2 = Real(5.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.510E-3);
-    CoolingReal A_20 = CoolingReal(1.000E-30);
-    CoolingReal A_21 = CoolingReal(1.560E-3);
+    Real A_10 = Real(2.510E-3);
+    Real A_20 = Real(1.000E-30);
+    Real A_21 = Real(1.560E-3);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(14.2005);
-    CoolingReal lam_20 = CoolingReal(24.0358);
-    CoolingReal lam_21 = CoolingReal(34.7038);
+    Real lam_10 = Real(14.2005);
+    Real lam_20 = Real(24.0358);
+    Real lam_21 = Real(34.7038);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -1019,23 +1011,23 @@ CoolingReal FeI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH,
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal FeII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                           CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                           CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real FeII_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                           Real ne, Real nH2, Real nHe, Real nHep,
+                           Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(10.0);
-    CoolingReal g_1 = CoolingReal(8.0);
-    CoolingReal g_2 = CoolingReal(6.0);
+    Real g_0 = Real(10.0);
+    Real g_1 = Real(8.0);
+    Real g_2 = Real(6.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(2.050E-3);
-    CoolingReal A_20 = CoolingReal(1.000E-30);
-    CoolingReal A_21 = CoolingReal(1.560E-3);
+    Real A_10 = Real(2.050E-3);
+    Real A_20 = Real(1.000E-30);
+    Real A_21 = Real(1.560E-3);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(25.9811);
-    CoolingReal lam_20 = CoolingReal(14.9731);
-    CoolingReal lam_21 = CoolingReal(35.3394);
+    Real lam_10 = Real(25.9811);
+    Real lam_20 = Real(14.9731);
+    Real lam_21 = Real(35.3394);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -1048,23 +1040,23 @@ CoolingReal FeII_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal SI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, CoolingReal nHp,
-                         CoolingReal ne, CoolingReal nH2, CoolingReal nHe, CoolingReal nHep,
-                         CoolingReal nHepp, CoolingReal z, const Table& tabData){
+Real SI_fine_structure(Real T, Real n_ion, Real nH, Real nHp,
+                         Real ne, Real nH2, Real nHe, Real nHep,
+                         Real nHepp, Real z, const Table& tabData){
     /* Degeneracy variables */
-    CoolingReal g_0 = CoolingReal(5.0);
-    CoolingReal g_1 = CoolingReal(3.0);
-    CoolingReal g_2 = CoolingReal(1.0);
+    Real g_0 = Real(5.0);
+    Real g_1 = Real(3.0);
+    Real g_2 = Real(1.0);
 
     /* Transition rates (s^-1) */
-    CoolingReal A_10 = CoolingReal(1.400E-3);
-    CoolingReal A_20 = CoolingReal(7.050E-8);
-    CoolingReal A_21 = CoolingReal(3.020E-4);
+    Real A_10 = Real(1.400E-3);
+    Real A_20 = Real(7.050E-8);
+    Real A_21 = Real(3.020E-4);
 
     /* Wavelengths (microns) */
-    CoolingReal lam_10 = CoolingReal(17.4278);
-    CoolingReal lam_20 = CoolingReal(25.2421);
-    CoolingReal lam_21 = CoolingReal(56.2957);
+    Real lam_10 = Real(17.4278);
+    Real lam_20 = Real(25.2421);
+    Real lam_21 = Real(56.2957);
 
     /* Call three_level function */
     return three_level(g_0, g_1, g_2,
@@ -1076,59 +1068,59 @@ CoolingReal SI_fine_structure(CoolingReal T, CoolingReal n_ion, CoolingReal nH, 
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal dust_recombination_cooling(CoolingReal T, CoolingReal G0, CoolingReal ne, CoolingReal f_dg, CoolingReal nH){
+Real dust_recombination_cooling(Real T, Real G0, Real ne, Real f_dg, Real nH){
     // Dust recombination cooling
-    CoolingReal beta_drc = CoolingReal(0.74) / cooling_math::pow(T,CoolingReal(0.068));
-    CoolingReal dust_recomb_cool = (CoolingReal(1.5) * CoolingReal(4.65E-30)) * cooling_math::pow(T,CoolingReal(0.94)) * cooling_math::pow(G0 * cooling_math::sqrt(T) / (CoolingReal(0.5)*ne),beta_drc) * ne * CoolingReal(0.5) * f_dg * nH;
+    Real beta_drc = Real(0.74) / Kokkos::pow(T,Real(0.068));
+    Real dust_recomb_cool = (Real(1.5) * Real(4.65E-30)) * Kokkos::pow(T,Real(0.94)) * Kokkos::pow(G0 * Kokkos::sqrt(T) / (Real(0.5)*ne),beta_drc) * ne * Real(0.5) * f_dg * nH;
 
     return dust_recomb_cool;
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal dust_gas_collisional_cooling(CoolingReal T, CoolingReal G0, CoolingReal xH2, CoolingReal aexp, CoolingReal nH, CoolingReal f_dg){
-    CoolingReal dust_hc_const = CoolingReal(1.0E-33); //! For atomic dominated regions
-    dust_hc_const += (CoolingReal(3.8E-33) - CoolingReal(1.0E-33)) * cooling_math::fmax(cooling_math::fmin(xH2,CoolingReal(1.0)),CoolingReal(0.0));
+Real dust_gas_collisional_cooling(Real T, Real G0, Real xH2, Real aexp, Real nH, Real f_dg){
+    Real dust_hc_const = Real(1.0E-33); //! For atomic dominated regions
+    dust_hc_const += (Real(3.8E-33) - Real(1.0E-33)) * Kokkos::fmax(Kokkos::fmin(xH2,Real(1.0)),Real(0.0));
 
-    CoolingReal T_dust = CoolingReal(16.4) * cooling_math::pow(CoolingReal(1.7) * G0,CoolingReal(1.0)/CoolingReal(6.0));
-    T_dust = cooling_math::fmax( T_dust, CoolingReal(2.725)/aexp ); // ! Limit dust temp minimum to CMB temp
+    Real T_dust = Real(16.4) * Kokkos::pow(Real(1.7) * G0,Real(1.0)/Real(6.0));
+    T_dust = Kokkos::fmax( T_dust, Real(2.725)/aexp ); // ! Limit dust temp minimum to CMB temp
 
-    CoolingReal dust_coll_cool = dust_hc_const * cooling_math::sqrt(T) * (T - T_dust) * ( CoolingReal(1.0) - ( CoolingReal(0.80) * cooling_math::exp(-CoolingReal(75.0)/T) ) );
+    Real dust_coll_cool = dust_hc_const * Kokkos::sqrt(T) * (T - T_dust) * ( Real(1.0) - ( Real(0.80) * Kokkos::exp(-Real(75.0)/T) ) );
     return dust_coll_cool * nH * nH * f_dg;
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal PE_efficiency(CoolingReal G0, CoolingReal T, CoolingReal ne){
-    CoolingReal phi_pah = CoolingReal(0.5); //! wolfire+(03)
-    CoolingReal fact = G0 * cooling_math::sqrt(T) / (ne * phi_pah);
-    CoolingReal PE_efficiency = (CoolingReal(4.9E-2)/(CoolingReal(1.0) + CoolingReal(4E-3) * cooling_math::pow(fact,CoolingReal(0.73)))) + (CoolingReal(3.7E-2) * cooling_math::pow(T/CoolingReal(1E4),CoolingReal(0.7)) / (CoolingReal(1.0) + CoolingReal(2E-4) * fact));
-    return cooling_math::fmax(PE_efficiency, CoolingReal(1e-100));
+Real PE_efficiency(Real G0, Real T, Real ne){
+    Real phi_pah = Real(0.5); //! wolfire+(03)
+    Real fact = G0 * Kokkos::sqrt(T) / (ne * phi_pah);
+    Real PE_efficiency = (Real(4.9E-2)/(Real(1.0) + Real(4E-3) * Kokkos::pow(fact,Real(0.73)))) + (Real(3.7E-2) * Kokkos::pow(T/Real(1E4),Real(0.7)) / (Real(1.0) + Real(2E-4) * fact));
+    return Kokkos::fmax(PE_efficiency, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal photoelectric_heating(CoolingReal T, CoolingReal G0, CoolingReal ne, CoolingReal f_dg, CoolingReal nH){
-    CoolingReal eps_PE = PE_efficiency(G0, T, ne);
-    CoolingReal HratePE = CoolingReal(1.50) * CoolingReal(1.3E-24) * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
-    return cooling_math::fmax(HratePE, CoolingReal(1e-100));
+Real photoelectric_heating(Real T, Real G0, Real ne, Real f_dg, Real nH){
+    Real eps_PE = PE_efficiency(G0, T, ne);
+    Real HratePE = Real(1.50) * Real(1.3E-24) * eps_PE * G0 * f_dg * nH; //! [erg/cm3/s]
+    return Kokkos::fmax(HratePE, Real(1e-100));
 }
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal cosmic_ray_heating(CoolingReal xe, CoolingReal n_HI, CoolingReal n_HeI, CoolingReal n_H2,
-                          CoolingReal ne, CoolingReal xi_h_cr,
+Real cosmic_ray_heating(Real xe, Real n_HI, Real n_HeI, Real n_H2,
+                          Real ne, Real xi_h_cr,
                           const CompactIonData& n_and_ion_fracs,
                           const Element* elements,
                           const Table& tabData
                         ){
-    CoolingReal q_cr = CoolingReal(6.43) * ( CoolingReal(1.0) + CoolingReal(4.06) * cooling_math::sqrt( xe / (CoolingReal(0.07) + xe) ) ) * CoolingReal(EV_2_ERG); //! Bialy 2019
+    Real q_cr = Real(6.43) * ( Real(1.0) + Real(4.06) * Kokkos::sqrt( xe / (Real(0.07) + xe) ) ) * Real(EV_2_ERG); //! Bialy 2019
 
-    CoolingReal phi_s = secondary_cr_rates(xe);
-    CoolingReal total_cosmic_ray_ionization_rate = xi_h_cr * (CoolingReal(1.0) + phi_s);
+    Real phi_s = secondary_cr_rates(xe);
+    Real total_cosmic_ray_ionization_rate = xi_h_cr * (Real(1.0) + phi_s);
 
-    CoolingReal HI_cosmic_ray_ionization_rate_primary = CoolingReal(1.0) * xi_h_cr;
-    CoolingReal He_cosmic_ray_ionization_rate_primary = CoolingReal(1.1) * xi_h_cr;
-    CoolingReal H2_cosmic_ray_ionization_rate_primary = CoolingReal(2.0) * xi_h_cr;
+    Real HI_cosmic_ray_ionization_rate_primary = Real(1.0) * xi_h_cr;
+    Real He_cosmic_ray_ionization_rate_primary = Real(1.1) * xi_h_cr;
+    Real H2_cosmic_ray_ionization_rate_primary = Real(2.0) * xi_h_cr;
 
-    CoolingReal cr_heating_tot = CoolingReal(0.0);
+    Real cr_heating_tot = Real(0.0);
 
     // HI
     cr_heating_tot +=  ( n_HI * HI_cosmic_ray_ionization_rate_primary * q_cr ); // erg/s/cm^3
@@ -1140,30 +1132,30 @@ CoolingReal cosmic_ray_heating(CoolingReal xe, CoolingReal n_HI, CoolingReal n_H
     cr_heating_tot += ( n_H2 * H2_cosmic_ray_ionization_rate_primary * q_cr ); // erg/s/cm^3
 
     // Direct heating of the electrons from cosmic rays
-    cr_heating_tot += (ne * xi_h_cr * CoolingReal(287.0) * CoolingReal(EV_2_ERG)); // erg/s/cm^3
+    cr_heating_tot += (ne * xi_h_cr * Real(287.0) * Real(EV_2_ERG)); // erg/s/cm^3
 
     // Cosmic ray heating on metals
     // --> Here we skip H and He as it's done separately above
-    CoolingReal induced_UV_heat_scale_fac = H2_cosmic_ray_ionization_rate_primary / CoolingReal(1E-16);
+    Real induced_UV_heat_scale_fac = H2_cosmic_ray_ionization_rate_primary / Real(1E-16);
     for (int erow = 2; erow < N_TAB_ELEMENTS; erow++) { // Tabulated elements from row 2 on: H and He are rows 0 and 1
         const int i = row_elem(erow);
-        CoolingReal n_element = CoolingReal(n_and_ion_fracs.n_element_new[i]);
+        Real n_element = Real(n_and_ion_fracs.n_element_new[i]);
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
 
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
-            CoolingReal x_ion = CoolingReal(n_and_ion_fracs[i].ion_fracs_new[j]);
+            Real x_ion = Real(n_and_ion_fracs[i].ion_fracs_new[j]);
 
             // This is the primary heating term from ionization
-            cr_heating_tot += (n_element * x_ion * q_cr * CoolingReal(tabData.cosmic_ray_ionization_rates(erow, j)) * total_cosmic_ray_ionization_rate); // erg/s/cm^3
+            cr_heating_tot += (n_element * x_ion * q_cr * Real(tabData.cosmic_ray_ionization_rates(erow, j)) * total_cosmic_ray_ionization_rate); // erg/s/cm^3
 
             // This is the secondary heating term from induced UV emission
             // Only happend for the ground state
             if (j == 0){
                 cr_heating_tot += ( n_element * x_ion
-                                    * CoolingReal(tabData.cosmic_ray_ionization_rates_induced_UV_heat(erow))
-                                    * CoolingReal(tabData.cosmic_ray_ionization_rates_induced_UV(erow)) * CoolingReal(EV_2_ERG)
+                                    * Real(tabData.cosmic_ray_ionization_rates_induced_UV_heat(erow))
+                                    * Real(tabData.cosmic_ray_ionization_rates_induced_UV(erow)) * Real(EV_2_ERG)
                                     * induced_UV_heat_scale_fac ); // erg/s/cm^3
             }
         }
@@ -1174,22 +1166,22 @@ CoolingReal cosmic_ray_heating(CoolingReal xe, CoolingReal n_HI, CoolingReal n_H
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal photoheating_UVB(const CompactIonData& n_and_ion_fracs,
+Real photoheating_UVB(const CompactIonData& n_and_ion_fracs,
                         const Element* elements,
                         const Table& tabData){
     // Photoheating contribution from a UVB
 
-    CoolingReal heating_rate = CoolingReal(0.0);
+    Real heating_rate = Real(0.0);
 
     // Loop over the tabulated elements
     for (int erow = 0; erow < N_TAB_ELEMENTS; erow++) {
         const int i = row_elem(erow);
-        CoolingReal n_element = CoolingReal(n_and_ion_fracs.n_element_new[i]);
+        Real n_element = Real(n_and_ion_fracs.n_element_new[i]);
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
         for (int j = 0; j < n_ions - 1; j++) { // This comes from ionization --> no heating for final ion
-            heating_rate += (n_element * CoolingReal(n_and_ion_fracs[i].ion_fracs_new[j]) * CoolingReal(tabData.HM12_UVB_z(erow, j, 1))); // erg/s/cm^3
+            heating_rate += (n_element * Real(n_and_ion_fracs[i].ion_fracs_new[j]) * Real(tabData.HM12_UVB_z(erow, j, 1))); // erg/s/cm^3
         }
     }
 
@@ -1198,92 +1190,92 @@ CoolingReal photoheating_UVB(const CompactIonData& n_and_ion_fracs,
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal photoheating_UVB_G0(CoolingReal G0,
+Real photoheating_UVB_G0(Real G0,
                            const CompactIonData& n_and_ion_fracs,
                            const Table& tabData){
     // Photoheating from the G0 background
     // Note that this only impacts the ground state
 
-    CoolingReal heating_rate = CoolingReal(0.0);
+    Real heating_rate = Real(0.0);
 
     // Loop over the tabulated elements (row 2 onwards: no need for H and He here)
     for (int erow = 2; erow < N_TAB_ELEMENTS; erow++) {
         const int i = row_elem(erow);
-        CoolingReal n_element = CoolingReal(n_and_ion_fracs.n_element_new[i]);
+        Real n_element = Real(n_and_ion_fracs.n_element_new[i]);
         if (n_element < MIN_COOL_ION) continue;
 
-        heating_rate += n_element * CoolingReal(n_and_ion_fracs[i].ion_fracs_new[0]) * CoolingReal(tabData.G0_heating_rates(erow)) * G0; // erg/s/cm^3
+        heating_rate += n_element * Real(n_and_ion_fracs[i].ion_fracs_new[0]) * Real(tabData.G0_heating_rates(erow)) * G0; // erg/s/cm^3
     }
 
     return heating_rate;
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal Epump(CoolingReal nH, CoolingReal T, CoolingReal xH2, CoolingReal xHI){
+Real Epump(Real nH, Real T, Real xH2, Real xHI){
     //! Energy converted to heat from UV pumping
     //! see Appendix A http://articles.adsabs.harvard.edu/cgi-bin/nph-iarticle_query?1990ApJ...365..620B&amp;data_type=PDF_HIGH&amp;whole_paper=YES&amp;type=PRINTER&amp;filetype=.pdf
-    CoolingReal Crad = CoolingReal(2.0E-7); //     !radiation de-excitation rate Burton 1990
-    CoolingReal Cdex = (CoolingReal(1.0E-12))*((CoolingReal(1.4)*xH2*cooling_math::exp(-CoolingReal(18100.0)/(T + CoolingReal(1200.0)))) + (CoolingReal(1.0)*xHI*cooling_math::exp(-CoolingReal(1000.0)/T)))*cooling_math::sqrt(T)*nH; // !collisional de-excitation rate Burton 1990
-    CoolingReal Cfrac = Cdex / (Cdex + Crad);
-    CoolingReal Epump_loc = CoolingReal(2.0) * Cfrac * CoolingReal(EV_2_ERG);  //!ergs
+    Real Crad = Real(2.0E-7); //     !radiation de-excitation rate Burton 1990
+    Real Cdex = (Real(1.0E-12))*((Real(1.4)*xH2*Kokkos::exp(-Real(18100.0)/(T + Real(1200.0)))) + (Real(1.0)*xHI*Kokkos::exp(-Real(1000.0)/T)))*Kokkos::sqrt(T)*nH; // !collisional de-excitation rate Burton 1990
+    Real Cfrac = Cdex / (Cdex + Crad);
+    Real Epump_loc = Real(2.0) * Cfrac * Real(EV_2_ERG);  //!ergs
     return Epump_loc;
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal H2_heating_bialy(CoolingReal G0, CoolingReal nH2, CoolingReal nH, CoolingReal T, CoolingReal xHI,
-                        CoolingReal xHII, CoolingReal xe, CoolingReal f_dg, CoolingReal xi_h2_cr){
+Real H2_heating_bialy(Real G0, Real nH2, Real nH, Real T, Real xHI,
+                        Real xHII, Real xe, Real f_dg, Real xi_h2_cr){
 
     // Heating from H2 formation and destruction following Bialy 2018
-    CoolingReal H2_heating = CoolingReal(0.0);
+    Real H2_heating = Real(0.0);
 
-    CoolingReal D0 = CoolingReal(5.68E-11);
-    CoolingReal I_UV = CoolingReal(1.7) * G0;
+    Real D0 = Real(5.68E-11);
+    Real I_UV = Real(1.7) * G0;
 
-    CoolingReal E_pump = CoolingReal(1.12) * CoolingReal(EV_2_ERG);
-    CoolingReal n_crit = CoolingReal(1.1E5) / cooling_math::sqrt(T/CoolingReal(1000.0));
-    CoolingReal ncrit_factor = CoolingReal(1.0) / (CoolingReal(1.0) + (n_crit/nH));
+    Real E_pump = Real(1.12) * Real(EV_2_ERG);
+    Real n_crit = Real(1.1E5) / Kokkos::sqrt(T/Real(1000.0));
+    Real ncrit_factor = Real(1.0) / (Real(1.0) + (n_crit/nH));
 
     // heating from H2 pumping
-    H2_heating += CoolingReal(9.0) * D0 * I_UV * E_pump * nH2 * ncrit_factor; // erg/s/cm^3
+    H2_heating += Real(9.0) * D0 * I_UV * E_pump * nH2 * ncrit_factor; // erg/s/cm^3
 
     // heating from H2 photodissociation
-    CoolingReal E_pd = CoolingReal(0.4) * CoolingReal(EV_2_ERG);
+    Real E_pd = Real(0.4) * Real(EV_2_ERG);
     H2_heating += D0 * I_UV * E_pd * nH2; // erg/s/cm^3
 
     // heating from H2 formation --> dust channel
-    CoolingReal E_form1_dust = CoolingReal(0.2) * CoolingReal(EV_2_ERG);
-    CoolingReal E_form2_dust = CoolingReal(4.48) * CoolingReal(EV_2_ERG) * ncrit_factor;
-    CoolingReal H2_formation_rate_dust = alpha_H2_dust(T, f_dg);
+    Real E_form1_dust = Real(0.2) * Real(EV_2_ERG);
+    Real E_form2_dust = Real(4.48) * Real(EV_2_ERG) * ncrit_factor;
+    Real H2_formation_rate_dust = alpha_H2_dust(T, f_dg);
 
     H2_heating += H2_formation_rate_dust * (E_form1_dust + E_form2_dust) * nH * nH * xHI; // erg/s/cm^3
 
     // heating from H2 formation --> primordial channel
-    CoolingReal E_form1_prim = CoolingReal(0.6) * CoolingReal(EV_2_ERG);
-    CoolingReal E_form2_prim = CoolingReal(3.13) * CoolingReal(EV_2_ERG) * ncrit_factor;
-    CoolingReal H2_formation_rate_prim = alpha_H2_prim(T, xe, xi_h2_cr, G0, xHI, xHII, nH);
+    Real E_form1_prim = Real(0.6) * Real(EV_2_ERG);
+    Real E_form2_prim = Real(3.13) * Real(EV_2_ERG) * ncrit_factor;
+    Real H2_formation_rate_prim = alpha_H2_prim(T, xe, xi_h2_cr, G0, xHI, xHII, nH);
 
     H2_heating += H2_formation_rate_prim * (E_form1_prim + E_form2_prim) * nH * nH * xHI; // erg/s/cm^3
 
-    return cooling_math::fmax(H2_heating, CoolingReal(1e-100));
+    return Kokkos::fmax(H2_heating, Real(1e-100));
 }
 
-struct CTReaction { bool is_ionization; int stage; int Z; CoolingReal dE; };
+struct CTReaction { bool is_ionization; int stage; int Z; Real dE; };
 
 template<typename Table>
 KOKKOS_INLINE_FUNCTION
-CoolingReal CT_heat_cool(CoolingReal T, const CompactIonData& n_and_ion_fracs,
+Real CT_heat_cool(Real T, const CompactIonData& n_and_ion_fracs,
                     const Table& tabData){
     // Heating and cooling from charge exchange reactions
 
-    CoolingReal ct_hc_rate = CoolingReal(0.0);
+    Real ct_hc_rate = Real(0.0);
 
-    if (T > CoolingReal(1E5)){
+    if (T > Real(1E5)){
         return ct_hc_rate;
     }
 
 
-    CoolingReal loc_nHI = CoolingReal(n_and_ion_fracs.n_element_new[1]) * CoolingReal(n_and_ion_fracs[1].ion_fracs_new[0]);
-    CoolingReal loc_nHII = CoolingReal(n_and_ion_fracs.n_element_new[1]) * CoolingReal(n_and_ion_fracs[1].ion_fracs_new[1]);
+    Real loc_nHI = Real(n_and_ion_fracs.n_element_new[1]) * Real(n_and_ion_fracs[1].ion_fracs_new[0]);
+    Real loc_nHII = Real(n_and_ion_fracs.n_element_new[1]) * Real(n_and_ion_fracs[1].ion_fracs_new[1]);
 
     // Charge transfer reactions, one table entry per reaction:
     //   is_ionization : true  --> H+ + X(n)  -> X(n+1) + H,  rate scales with nHII
@@ -1293,57 +1285,57 @@ CoolingReal CT_heat_cool(CoolingReal T, const CompactIonData& n_and_ion_fracs,
     //   dE            : energy released by the reaction [eV], negative if absorbed
     static constexpr CTReaction ct_reactions[] = {
         // Helium
-        {false, 1,  2,  CoolingReal(10.99)}, // H + He+ -> He + H+
+        {false, 1,  2,  Real(10.99)}, // H + He+ -> He + H+
 
         // Carbon
-        {true,  0,  6,   CoolingReal(2.34)}, // H+ + C -> C+ + H
-        {false, 1,  6,  -CoolingReal(2.34)}, // H + C+ -> C + H+
-        {false, 2,  6,   CoolingReal(4.01)}, // H + C++ -> C+ + H+
-        {false, 3,  6,   CoolingReal(5.73)}, // H + C+++ -> C++ + H+
-        {false, 4,  6,  CoolingReal(11.3) }, // H + C++++ -> C+++ + H+
+        {true,  0,  6,   Real(2.34)}, // H+ + C -> C+ + H
+        {false, 1,  6,  -Real(2.34)}, // H + C+ -> C + H+
+        {false, 2,  6,   Real(4.01)}, // H + C++ -> C+ + H+
+        {false, 3,  6,   Real(5.73)}, // H + C+++ -> C++ + H+
+        {false, 4,  6,  Real(11.3) }, // H + C++++ -> C+++ + H+
 
         // Nitrogen
-        {true,  0,  7,  -CoolingReal(0.94)}, // H+ + N -> N+ + H
-        {false, 1,  7,   CoolingReal(0.94)}, // H + N+ -> N + H+
-        {false, 2,  7,   CoolingReal(4.56)}, // H + N++ -> N+ + H+
-        {false, 3,  7,   CoolingReal(6.40)}, // H + N+++ -> N++ + H+
-        {false, 4,  7,  CoolingReal(11.0) }, // H + N++++ -> N+++ + H+
+        {true,  0,  7,  -Real(0.94)}, // H+ + N -> N+ + H
+        {false, 1,  7,   Real(0.94)}, // H + N+ -> N + H+
+        {false, 2,  7,   Real(4.56)}, // H + N++ -> N+ + H+
+        {false, 3,  7,   Real(6.40)}, // H + N+++ -> N++ + H+
+        {false, 4,  7,  Real(11.0) }, // H + N++++ -> N+++ + H+
 
         // Oxygen
-        {true,  0,  8,  -CoolingReal(0.02)}, // H+ + O -> O+ + H
-        {false, 1,  8,   CoolingReal(0.02)}, // H + O+ -> O + H+
-        {false, 2,  8,   CoolingReal(6.65)}, // H + O++ -> O+ + H+
-        {false, 3,  8,   CoolingReal(5.00)}, // H + O+++ -> O++ + H+
-        {false, 4,  8,   CoolingReal(8.47)}, // H + O++++ -> O+++ + H+
+        {true,  0,  8,  -Real(0.02)}, // H+ + O -> O+ + H
+        {false, 1,  8,   Real(0.02)}, // H + O+ -> O + H+
+        {false, 2,  8,   Real(6.65)}, // H + O++ -> O+ + H+
+        {false, 3,  8,   Real(5.00)}, // H + O+++ -> O++ + H+
+        {false, 4,  8,   Real(8.47)}, // H + O++++ -> O+++ + H+
 
         // Neon
-        {false, 3, 10,   CoolingReal(5.82)}, // H + Ne+++ -> Ne++ + H+
-        {false, 4, 10,   CoolingReal(8.60)}, // H + Ne++++ -> Ne+++ + H+
+        {false, 3, 10,   Real(5.82)}, // H + Ne+++ -> Ne++ + H+
+        {false, 4, 10,   Real(8.60)}, // H + Ne++++ -> Ne+++ + H+
 
         // Magnesium
-        {true,  0, 12,   CoolingReal(1.52)}, // H+ + Mg -> Mg+ + H
-        {true,  1, 12,  -CoolingReal(1.44)}, // H+ + Mg+ -> Mg++ + H+
-        {false, 2, 12,   CoolingReal(1.44)}, // H + Mg++ -> Mg+ + H+
-        {false, 3, 12,   CoolingReal(5.73)}, // H + Mg+++ -> Mg++ + H+
-        {false, 4, 12,   CoolingReal(8.60)}, // H + Mg++++ -> Mg+++ + H+
+        {true,  0, 12,   Real(1.52)}, // H+ + Mg -> Mg+ + H
+        {true,  1, 12,  -Real(1.44)}, // H+ + Mg+ -> Mg++ + H+
+        {false, 2, 12,   Real(1.44)}, // H + Mg++ -> Mg+ + H+
+        {false, 3, 12,   Real(5.73)}, // H + Mg+++ -> Mg++ + H+
+        {false, 4, 12,   Real(8.60)}, // H + Mg++++ -> Mg+++ + H+
 
         // Silicon
-        {true,  0, 14,   CoolingReal(0.12)}, // H+ + Si -> Si+ + H
-        {true,  1, 14,  -CoolingReal(2.72)}, // H+ + Si+ -> Si++ + H+
-        {false, 2, 14,   CoolingReal(2.72)}, // H + Si++ -> Si+ + H+
-        {false, 3, 14,   CoolingReal(4.23)}, // H + Si+++ -> Si++ + H+
-        {false, 4, 14,   CoolingReal(7.49)}, // H + Si++++ -> Si+++ + H+
+        {true,  0, 14,   Real(0.12)}, // H+ + Si -> Si+ + H
+        {true,  1, 14,  -Real(2.72)}, // H+ + Si+ -> Si++ + H+
+        {false, 2, 14,   Real(2.72)}, // H + Si++ -> Si+ + H+
+        {false, 3, 14,   Real(4.23)}, // H + Si+++ -> Si++ + H+
+        {false, 4, 14,   Real(7.49)}, // H + Si++++ -> Si+++ + H+
 
         // Sulfur
-        {false, 1, 16,  -CoolingReal(3.24)}, // H + S+ -> S + H+
-        {false, 3, 16,   CoolingReal(5.73)}, // H + S+++ -> S++ + H+
-        {false, 4, 16,   CoolingReal(8.60)}, // H + S++++ -> S+++ + H+
+        {false, 1, 16,  -Real(3.24)}, // H + S+ -> S + H+
+        {false, 3, 16,   Real(5.73)}, // H + S+++ -> S++ + H+
+        {false, 4, 16,   Real(8.60)}, // H + S++++ -> S+++ + H+
 
         // Iron
-        {true,  1, 26,  -CoolingReal(2.56)}, // H+ + Fe+ -> Fe++ + H+
-        {false, 2, 26,   CoolingReal(2.56)}, // H + Fe++ -> Fe+ + H+
-        {false, 3, 26,   CoolingReal(6.30)}, // H + Fe+++ -> Fe++ + H+
-        {false, 4, 26,  CoolingReal(10.0) }, // H + Fe++++ -> Fe+++ + H+
+        {true,  1, 26,  -Real(2.56)}, // H+ + Fe+ -> Fe++ + H+
+        {false, 2, 26,   Real(2.56)}, // H + Fe++ -> Fe+ + H+
+        {false, 3, 26,   Real(6.30)}, // H + Fe+++ -> Fe++ + H+
+        {false, 4, 26,  Real(10.0) }, // H + Fe++++ -> Fe+++ + H+
     };
 
     // Don't unroll to save on instructions (saves ~30% of SASS instructions for cooling kernel)
@@ -1353,11 +1345,11 @@ CoolingReal CT_heat_cool(CoolingReal T, const CompactIonData& n_and_ion_fracs,
 #pragma unroll 1
 #endif
     for (const CTReaction& r : ct_reactions) {
-        CoolingReal ct_rate = r.is_ionization ? charge_transfer_ionization(r.stage, r.Z, T, tabData)
+        Real ct_rate = r.is_ionization ? charge_transfer_ionization(r.stage, r.Z, T, tabData)
                                          : charge_transfer_recombination(r.stage, r.Z, T, tabData);
-        CoolingReal n_H_partner = r.is_ionization ? loc_nHII : loc_nHI;
+        Real n_H_partner = r.is_ionization ? loc_nHII : loc_nHI;
 
-        ct_hc_rate += ct_rate * n_H_partner * CoolingReal(n_and_ion_fracs.n_element_new[r.Z]) * CoolingReal(n_and_ion_fracs[r.Z].ion_fracs_new[r.stage]) * r.dE * CoolingReal(EV_2_ERG);
+        ct_hc_rate += ct_rate * n_H_partner * Real(n_and_ion_fracs.n_element_new[r.Z]) * Real(n_and_ion_fracs[r.Z].ion_fracs_new[r.stage]) * r.dE * Real(EV_2_ERG);
     }
 
     return ct_hc_rate;
@@ -1366,64 +1358,64 @@ CoolingReal CT_heat_cool(CoolingReal T, const CompactIonData& n_and_ion_fracs,
 
 template<typename Table>
 KOKKOS_FUNCTION
-CoolingReal local_photoheating(std::array<Real, N_GROUPS>& dNp,
+Real local_photoheating(std::array<Real, N_GROUPS>& dNp,
                           const CompactIonData& n_and_ion_fracs,
                           const Element* elements,
                           const Table& tabData) {
     // Heading due to the local radiation field
 
-    CoolingReal heating_rate = CoolingReal(0.0);
+    Real heating_rate = Real(0.0);
 
     // looping over number of elements being used (active species)
     // refactor: remove if-statement
 
     for (int erow = 0; erow < N_TAB_ELEMENTS; erow++) { // Loop over tabulated elements
         const int i = row_elem(erow);
-        CoolingReal n_element = CoolingReal(n_and_ion_fracs.n_element_new[i]);
+        Real n_element = Real(n_and_ion_fracs.n_element_new[i]);
         if (n_element < MIN_COOL_ION) continue;
 
         int n_ions = (elements[i].n_ions + elements[i].n_mol);
 
         for (int j = 0; j < n_ions - 1; j++) { // Loop over ions --> no heating for final ion
-            CoolingReal n_ion = n_element * CoolingReal(n_and_ion_fracs[i].ion_fracs_new[j]);
+            Real n_ion = n_element * Real(n_and_ion_fracs[i].ion_fracs_new[j]);
             for (int k = 0; k < N_GROUPS; k++) { // Loop over photon groups
-                heating_rate += (CoolingReal(dNp[k]) * n_ion * CoolingReal(tabData.cs_ph(erow, j, k, 2)));
+                heating_rate += (Real(dNp[k]) * n_ion * Real(tabData.cs_ph(erow, j, k, 2)));
             } // End loop over photon groups
         } // End loop over ions
     } // End loop over elements
-    return cooling_math::fmax(heating_rate, CoolingReal(1e-100));
+    return Kokkos::fmax(heating_rate, Real(1e-100));
 }
 
 KOKKOS_INLINE_FUNCTION
-CoolingReal CO_cooling_koyama_00(CoolingReal nH, CoolingReal nH2, CoolingReal nHI, CoolingReal nCO, CoolingReal T) {
+Real CO_cooling_koyama_00(Real nH, Real nH2, Real nHI, Real nCO, Real T) {
     // CO cooling
-    CoolingReal rate = CoolingReal(0.0);
-    CoolingReal T_pivot = CoolingReal(3080.0);
-    CoolingReal term_a = (CoolingReal(3.3e6) * cooling_math::pow(T / CoolingReal(1.0e3), CoolingReal(0.75))) / nH;
+    Real rate = Real(0.0);
+    Real T_pivot = Real(3080.0);
+    Real term_a = (Real(3.3e6) * Kokkos::pow(T / Real(1.0e3), Real(0.75))) / nH;
 
     // CO Rotational cooling
-    CoolingReal rot_numerator = nCO * CoolingReal(4.0) * SQR(CoolingReal(KB) * T) * CoolingReal(9.7e-8);
-    CoolingReal rot_denominator = CoolingReal(2.76) * CoolingReal(KB) * (CoolingReal(1.0) + term_a + CoolingReal(1.5) * cooling_math::sqrt(term_a));
+    Real rot_numerator = nCO * Real(4.0) * SQR(Real(KB) * T) * Real(9.7e-8);
+    Real rot_denominator = Real(2.76) * Real(KB) * (Real(1.0) + term_a + Real(1.5) * Kokkos::sqrt(term_a));
     rate += rot_numerator / rot_denominator;
 
     // CO Vibrational cooling (H2 collisions)
-    rate += nH2 * nCO * T_pivot * CoolingReal(KB) * CoolingReal(4.3e-14) * T * cooling_math::exp(-cooling_math::pow(CoolingReal(3.14e5) / T, CoolingReal(0.333))) * cooling_math::exp(-T_pivot / T);
+    rate += nH2 * nCO * T_pivot * Real(KB) * Real(4.3e-14) * T * Kokkos::exp(-Kokkos::pow(Real(3.14e5) / T, Real(0.333))) * Kokkos::exp(-T_pivot / T);
 
     // CO Vibrational cooling (HI collisions)
-    rate += nHI * nCO * T_pivot * CoolingReal(KB) * CoolingReal(3.0e-12) * cooling_math::sqrt(T) * cooling_math::exp(-cooling_math::pow(CoolingReal(2000.0) / T, CoolingReal(3.43))) * cooling_math::exp(-T_pivot / T);
+    rate += nHI * nCO * T_pivot * Real(KB) * Real(3.0e-12) * Kokkos::sqrt(T) * Kokkos::exp(-Kokkos::pow(Real(2000.0) / T, Real(3.43))) * Kokkos::exp(-T_pivot / T);
 
-    return cooling_math::fmax(rate, CoolingReal(1e-100));
+    return Kokkos::fmax(rate, Real(1e-100));
 }
 
 template<typename Table>
 KOKKOS_FUNCTION
-CoolingReal all_cooling(CoolingReal T, CoolingReal ne, CoolingReal aexp, const CompactIonData& n_and_ion_fracs,
+Real all_cooling(Real T, Real ne, Real aexp, const CompactIonData& n_and_ion_fracs,
                    const Element* elements,
                    std::array<Real, N_GROUPS>& dNp,
-                   CoolingReal nCO,
-                   CoolingReal G0_local, CoolingReal UV_background_G0, CoolingReal f_shd_H2,
-                   CoolingReal f_dg, CoolingReal xe, CoolingReal xi_h_cr, CoolingReal xi_h2_cr,
-                   CoolingReal ss_factor,
+                   Real nCO,
+                   Real G0_local, Real UV_background_G0, Real f_shd_H2,
+                   Real f_dg, Real xe, Real xi_h_cr, Real xi_h2_cr,
+                   Real ss_factor,
                    bool rt_advect,
                    const PhysicsFlags& flags,
                    const Table& tabData){
@@ -1441,23 +1433,23 @@ CoolingReal all_cooling(CoolingReal T, CoolingReal ne, CoolingReal aexp, const C
     xi_h_cr --> cosmic ray ionization rate
     */
 
-    CoolingReal net_cooling = CoolingReal(0.0); // heating terms are positive, cooling terms are negative
+    Real net_cooling = Real(0.0); // heating terms are positive, cooling terms are negative
 
-    CoolingReal nH    = CoolingReal(n_and_ion_fracs.n_element_new[1]);
-    CoolingReal xHI   = CoolingReal(n_and_ion_fracs[1].ion_fracs_new[0]);
-    CoolingReal xHII  = CoolingReal(n_and_ion_fracs[1].ion_fracs_new[1]);
-    CoolingReal xH2   = (elements[1].n_mol > 0) ? CoolingReal(n_and_ion_fracs[1].ion_fracs_new[2]) : CoolingReal(0.0);
-    CoolingReal nH_I  = nH * xHI;
-    CoolingReal nH_II = nH * xHII;
-    CoolingReal nH2   = nH * xH2 * CoolingReal(0.5);
+    Real nH    = Real(n_and_ion_fracs.n_element_new[1]);
+    Real xHI   = Real(n_and_ion_fracs[1].ion_fracs_new[0]);
+    Real xHII  = Real(n_and_ion_fracs[1].ion_fracs_new[1]);
+    Real xH2   = (elements[1].n_mol > 0) ? Real(n_and_ion_fracs[1].ion_fracs_new[2]) : Real(0.0);
+    Real nH_I  = nH * xHI;
+    Real nH_II = nH * xHII;
+    Real nH2   = nH * xH2 * Real(0.5);
 
-    CoolingReal nHe_I   = CoolingReal(n_and_ion_fracs.n_element_new[2]) * CoolingReal(n_and_ion_fracs[2].ion_fracs_new[0]);
-    CoolingReal nHe_II  = CoolingReal(n_and_ion_fracs.n_element_new[2]) * CoolingReal(n_and_ion_fracs[2].ion_fracs_new[1]);
-    CoolingReal nHe_III = CoolingReal(n_and_ion_fracs.n_element_new[2]) * CoolingReal(n_and_ion_fracs[2].ion_fracs_new[2]);
+    Real nHe_I   = Real(n_and_ion_fracs.n_element_new[2]) * Real(n_and_ion_fracs[2].ion_fracs_new[0]);
+    Real nHe_II  = Real(n_and_ion_fracs.n_element_new[2]) * Real(n_and_ion_fracs[2].ion_fracs_new[1]);
+    Real nHe_III = Real(n_and_ion_fracs.n_element_new[2]) * Real(n_and_ion_fracs[2].ion_fracs_new[2]);
 
     // metal cool smoothing parameters
-    CoolingReal metal_cool_smooth_f1 = CoolingReal(0.5) * (cooling_math::tanh( (CoolingReal(5E-3)) * ( T - CoolingReal(1.E4) ) ) + CoolingReal(1.0) );
-    CoolingReal metal_cool_smooth_f2 = CoolingReal(0.5) * (cooling_math::tanh( (CoolingReal(5E-3)) * ( (-CoolingReal(1.0) * T) + CoolingReal(1.E4) ) ) + CoolingReal(1.0) );
+    Real metal_cool_smooth_f1 = Real(0.5) * (Kokkos::tanh( (Real(5E-3)) * ( T - Real(1.E4) ) ) + Real(1.0) );
+    Real metal_cool_smooth_f2 = Real(0.5) * (Kokkos::tanh( (Real(5E-3)) * ( (-Real(1.0) * T) + Real(1.E4) ) ) + Real(1.0) );
 
     // Cooling from primordial species
     net_cooling -= (collisional_ionization_cooling_HI(T) + collisional_excitation_cooling_HI(T)) * ne * nH_I; // cooling_HI
@@ -1466,7 +1458,7 @@ CoolingReal all_cooling(CoolingReal T, CoolingReal ne, CoolingReal aexp, const C
     net_cooling -= (collisional_ionization_cooling_HeII(T) + collisional_excitation_cooling_HeII(T) +
                                  recombination_cooling_case_B_HeII(T) + dielectronic_recombination_cooling_HeII(T)) * ne * nHe_II; // cooling_HeII
     net_cooling -= recombination_cooling_case_B_HeIII(T) * ne * nHe_III; // cooling_HeIII
-    net_cooling -= bremmstrahlung(T) * ne * (nH_II + nHe_II + (CoolingReal(4.0) * nHe_III)); // cooling_bremmstrahlung
+    net_cooling -= bremmstrahlung(T) * ne * (nH_II + nHe_II + (Real(4.0) * nHe_III)); // cooling_bremmstrahlung
     net_cooling -= compton_cooling(T,aexp) * ne; // cooling_compton
     net_cooling -= H2_cooling(nH_I, nH2, T); // cooling_H2
 
@@ -1477,72 +1469,72 @@ CoolingReal all_cooling(CoolingReal T, CoolingReal ne, CoolingReal aexp, const C
                                             tabData);
 
     // Metal line cooling -- low temperature (fine structure)
-    CoolingReal n_ion_fs;
-    CoolingReal z = (CoolingReal(1.0) / aexp) - CoolingReal(1.0);
-    CoolingReal total_fine_structure = CoolingReal(0.0);
-    if (T < CoolingReal(1.1E4)) {
+    Real n_ion_fs;
+    Real z = (Real(1.0) / aexp) - Real(1.0);
+    Real total_fine_structure = Real(0.0);
+    if (T < Real(1.1E4)) {
         // CI cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[6]) * CoolingReal(n_and_ion_fracs[6].ion_fracs_new[0]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[6]) * Real(n_and_ion_fracs[6].ion_fracs_new[0]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += CI_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                     nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // CII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[6]) * CoolingReal(n_and_ion_fracs[6].ion_fracs_new[1]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[6]) * Real(n_and_ion_fracs[6].ion_fracs_new[1]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += CII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                      nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // NII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[7]) * CoolingReal(n_and_ion_fracs[7].ion_fracs_new[1]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[7]) * Real(n_and_ion_fracs[7].ion_fracs_new[1]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += NII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                      nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // OI cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[8]) * CoolingReal(n_and_ion_fracs[8].ion_fracs_new[0]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[8]) * Real(n_and_ion_fracs[8].ion_fracs_new[0]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += OI_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                     nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // OIII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[8]) * CoolingReal(n_and_ion_fracs[8].ion_fracs_new[2]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[8]) * Real(n_and_ion_fracs[8].ion_fracs_new[2]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += OIII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                       nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // NeII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[10]) * CoolingReal(n_and_ion_fracs[10].ion_fracs_new[1]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[10]) * Real(n_and_ion_fracs[10].ion_fracs_new[1]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += NeII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                       nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // SiI cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[14]) * CoolingReal(n_and_ion_fracs[14].ion_fracs_new[0]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[14]) * Real(n_and_ion_fracs[14].ion_fracs_new[0]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += SiI_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                      nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // SiII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[14]) * CoolingReal(n_and_ion_fracs[14].ion_fracs_new[1]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[14]) * Real(n_and_ion_fracs[14].ion_fracs_new[1]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += SiII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                       nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // SI cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[16]) * CoolingReal(n_and_ion_fracs[16].ion_fracs_new[0]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[16]) * Real(n_and_ion_fracs[16].ion_fracs_new[0]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += SI_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                     nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // FeI cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[26]) * CoolingReal(n_and_ion_fracs[26].ion_fracs_new[0]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[26]) * Real(n_and_ion_fracs[26].ion_fracs_new[0]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += FeI_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                      nH2, nHe_I, nHe_II, nHe_III, z, tabData);
 
         // FeII cooling
-        n_ion_fs = CoolingReal(n_and_ion_fracs.n_element_new[26]) * CoolingReal(n_and_ion_fracs[26].ion_fracs_new[1]);
+        n_ion_fs = Real(n_and_ion_fracs.n_element_new[26]) * Real(n_and_ion_fracs[26].ion_fracs_new[1]);
         if (n_ion_fs > MIN_COOL_ION)
             total_fine_structure += FeII_fine_structure(T, n_ion_fs, nH_I, nH_II, ne,
                                                       nH2, nHe_I, nHe_II, nHe_III, z, tabData);
@@ -1552,7 +1544,7 @@ CoolingReal all_cooling(CoolingReal T, CoolingReal ne, CoolingReal aexp, const C
 
     // Dust cooling
     net_cooling -= dust_recombination_cooling(T, G0_local + UV_background_G0, ne, f_dg, nH);
-    net_cooling -= dust_gas_collisional_cooling(T, G0_local + UV_background_G0, xH2*CoolingReal(2.0), aexp, nH, f_dg);
+    net_cooling -= dust_gas_collisional_cooling(T, G0_local + UV_background_G0, xH2*Real(2.0), aexp, nH, f_dg);
 
     // CO cooling
     net_cooling -= CO_cooling_koyama_00(nH, nH2, nH_I, nCO, T);

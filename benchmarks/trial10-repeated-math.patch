@@ -2,50 +2,50 @@ diff --git a/cooling.hpp b/cooling.hpp
 --- a/cooling.hpp
 +++ b/cooling.hpp
 @@ -202 +202,2 @@
--    Real f3 = Real(2.4E-24) * (rtz_math::pow(T3,Real(1.50))) * rtz_math::exp(-Real(2.0) / T3);
-+    const Real T3_15 = rtz_math::pow(T3,Real(1.50));
-+    Real f3 = Real(2.4E-24) * T3_15 * rtz_math::exp(-Real(2.0) / T3);
+-    Real f3 = Real(2.4E-24) * (Kokkos::pow(T3,Real(1.50))) * Kokkos::exp(-Real(2.0) / T3);
++    const Real T3_15 = Kokkos::pow(T3,Real(1.50));
++    Real f3 = Real(2.4E-24) * T3_15 * Kokkos::exp(-Real(2.0) / T3);
 @@ -205 +206 @@
--    Real f4 = Real(1.7E-23) * (rtz_math::pow(T3,Real(1.50))) * rtz_math::exp(-Real(4.0) / T3);
-+    Real f4 = Real(1.7E-23) * T3_15 * rtz_math::exp(-Real(4.0) / T3);
+-    Real f4 = Real(1.7E-23) * (Kokkos::pow(T3,Real(1.50))) * Kokkos::exp(-Real(4.0) / T3);
++    Real f4 = Real(1.7E-23) * T3_15 * Kokkos::exp(-Real(4.0) / T3);
 @@ -1400,0 +1402 @@
-+    const Real vibrational_exp = rtz_math::exp(-T_pivot / T);
++    const Real vibrational_exp = Kokkos::exp(-T_pivot / T);
 @@ -1402 +1404 @@
--    rate += nH2 * nCO * T_pivot * KB * Real(4.3e-14) * T * rtz_math::exp(-rtz_math::pow(Real(3.14e5) / T, Real(0.333))) * rtz_math::exp(-T_pivot / T);
-+    rate += nH2 * nCO * T_pivot * KB * Real(4.3e-14) * T * rtz_math::exp(-rtz_math::pow(Real(3.14e5) / T, Real(0.333))) * vibrational_exp;
+-    rate += nH2 * nCO * T_pivot * KB * Real(4.3e-14) * T * Kokkos::exp(-Kokkos::pow(Real(3.14e5) / T, Real(0.333))) * Kokkos::exp(-T_pivot / T);
++    rate += nH2 * nCO * T_pivot * KB * Real(4.3e-14) * T * Kokkos::exp(-Kokkos::pow(Real(3.14e5) / T, Real(0.333))) * vibrational_exp;
 @@ -1405 +1407 @@
--    rate += nHI * nCO * T_pivot * KB * Real(3.0e-12) * rtz_math::sqrt(T) * rtz_math::exp(-rtz_math::pow(Real(2000.0) / T, Real(3.43))) * rtz_math::exp(-T_pivot / T);
-+    rate += nHI * nCO * T_pivot * KB * Real(3.0e-12) * rtz_math::sqrt(T) * rtz_math::exp(-rtz_math::pow(Real(2000.0) / T, Real(3.43))) * vibrational_exp;
+-    rate += nHI * nCO * T_pivot * KB * Real(3.0e-12) * Kokkos::sqrt(T) * Kokkos::exp(-Kokkos::pow(Real(2000.0) / T, Real(3.43))) * Kokkos::exp(-T_pivot / T);
++    rate += nHI * nCO * T_pivot * KB * Real(3.0e-12) * Kokkos::sqrt(T) * Kokkos::exp(-Kokkos::pow(Real(2000.0) / T, Real(3.43))) * vibrational_exp;
 diff --git a/molecules.hpp b/molecules.hpp
 --- a/molecules.hpp
 +++ b/molecules.hpp
 @@ -243,0 +244,2 @@
-+        const Real logCO_lower = rtz_math::log10(tabData.sco_col2(idxCO));
-+        const Real logNCO_lower = rtz_math::log10(tabData.sco_col1(idxCO));
++        const Real logCO_lower = Kokkos::log10(tabData.sco_col2(idxCO));
++        const Real logNCO_lower = Kokkos::log10(tabData.sco_col1(idxCO));
 @@ -245,4 +247,4 @@
--        Real logsCO = rtz_math::log10(tabData.sco_col2(idxCO))
--                        + (rtz_math::log10(tabData.sco_col2(idxCO+1)) - rtz_math::log10(tabData.sco_col2(idxCO)))
--                        * (logeffcNCO - rtz_math::log10(tabData.sco_col1(idxCO)))
--                        / (rtz_math::log10(tabData.sco_col1(idxCO+1)) - rtz_math::log10(tabData.sco_col1(idxCO)));
+-        Real logsCO = Kokkos::log10(tabData.sco_col2(idxCO))
+-                        + (Kokkos::log10(tabData.sco_col2(idxCO+1)) - Kokkos::log10(tabData.sco_col2(idxCO)))
+-                        * (logeffcNCO - Kokkos::log10(tabData.sco_col1(idxCO)))
+-                        / (Kokkos::log10(tabData.sco_col1(idxCO+1)) - Kokkos::log10(tabData.sco_col1(idxCO)));
 +        Real logsCO = logCO_lower
-+                        + (rtz_math::log10(tabData.sco_col2(idxCO+1)) - logCO_lower)
++                        + (Kokkos::log10(tabData.sco_col2(idxCO+1)) - logCO_lower)
 +                        * (logeffcNCO - logNCO_lower)
-+                        / (rtz_math::log10(tabData.sco_col1(idxCO+1)) - logNCO_lower);
++                        / (Kokkos::log10(tabData.sco_col1(idxCO+1)) - logNCO_lower);
 @@ -265,0 +268,2 @@
-+        const Real logH2_lower = rtz_math::log10(tabData.sh2_col2(idxH2));
-+        const Real logNH2_lower = rtz_math::log10(tabData.sh2_col1(idxH2));
++        const Real logH2_lower = Kokkos::log10(tabData.sh2_col2(idxH2));
++        const Real logNH2_lower = Kokkos::log10(tabData.sh2_col1(idxH2));
 @@ -267,4 +271,4 @@
--        Real logsH2 = rtz_math::log10(tabData.sh2_col2(idxH2))
--                        + (rtz_math::log10(tabData.sh2_col2(idxH2+1)) - rtz_math::log10(tabData.sh2_col2(idxH2)))
--                        * (logeffcNH2 - rtz_math::log10(tabData.sh2_col1(idxH2)))
--                        / (rtz_math::log10(tabData.sh2_col1(idxH2+1)) - rtz_math::log10(tabData.sh2_col1(idxH2)));
+-        Real logsH2 = Kokkos::log10(tabData.sh2_col2(idxH2))
+-                        + (Kokkos::log10(tabData.sh2_col2(idxH2+1)) - Kokkos::log10(tabData.sh2_col2(idxH2)))
+-                        * (logeffcNH2 - Kokkos::log10(tabData.sh2_col1(idxH2)))
+-                        / (Kokkos::log10(tabData.sh2_col1(idxH2+1)) - Kokkos::log10(tabData.sh2_col1(idxH2)));
 +        Real logsH2 = logH2_lower
-+                        + (rtz_math::log10(tabData.sh2_col2(idxH2+1)) - logH2_lower)
++                        + (Kokkos::log10(tabData.sh2_col2(idxH2+1)) - logH2_lower)
 +                        * (logeffcNH2 - logNH2_lower)
-+                        / (rtz_math::log10(tabData.sh2_col1(idxH2+1)) - logNH2_lower);
++                        / (Kokkos::log10(tabData.sh2_col1(idxH2+1)) - logNH2_lower);
 diff --git a/recombination.hpp b/recombination.hpp
 --- a/recombination.hpp
 +++ b/recombination.hpp
 @@ -638 +638 @@
--    Real a1 = rtz_math::pow((Real(1.) + rtz_math::sqrt(T / T0)),(Real(1.) - B));
-+    Real a1 = rtz_math::pow((Real(1.) + a0),(Real(1.) - B));
+-    Real a1 = Kokkos::pow((Real(1.) + Kokkos::sqrt(T / T0)),(Real(1.) - B));
++    Real a1 = Kokkos::pow((Real(1.) + a0),(Real(1.) - B));

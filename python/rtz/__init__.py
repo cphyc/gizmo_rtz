@@ -79,6 +79,62 @@ def _parse_state(state, element_list, ion_list, photon_bands):
     return state
 
 
+def _append_molecular_state(state, element_list, ion_list, molecular_state, include_H2, include_CO):
+    if not isinstance(molecular_state, Mapping):
+        raise TypeError("molecular_state must be a mapping")
+    allowed = {"h2_fraction", "co_density"}
+    extra = set(molecular_state) - allowed
+    if extra:
+        raise ValueError(f"molecular_state has unsupported fields: {sorted(extra)}")
+    if "h2_fraction" in molecular_state and not include_H2:
+        raise ValueError("h2_fraction requires include_H2=True")
+    if "co_density" in molecular_state and not include_CO:
+        raise ValueError("co_density requires include_CO=True")
+    if not include_H2 and not include_CO:
+        raise ValueError("molecular_state requires include_H2=True or include_CO=True")
+
+    n_cells = state.shape[0]
+    columns = []
+    if include_H2:
+        if "h2_fraction" in molecular_state:
+            h2_fraction = _quantity_values(
+                molecular_state["h2_fraction"], "dimensionless", "h2_fraction"
+            )
+        else:
+            hydrogen_columns = [
+                1 + len(element_list) + index
+                for index, (element, _) in enumerate(ion_list)
+                if element == "hydrogen"
+            ]
+            if not hydrogen_columns:
+                raise ValueError("include_H2=True requires hydrogen ion fractions")
+            h2_fraction = np.maximum(0.0, 1.0 - state[:, hydrogen_columns].sum(axis=1))
+        if h2_fraction.ndim == 0 and n_cells == 1:
+            h2_fraction = h2_fraction.reshape(1)
+        if h2_fraction.shape != (n_cells,):
+            raise ValueError(f"h2_fraction must have one value per cell ({n_cells})")
+        if not np.isfinite(h2_fraction).all() or np.any((h2_fraction < 0) | (h2_fraction > 1)):
+            raise ValueError("h2_fraction must be finite and between 0 and 1")
+        columns.append(h2_fraction)
+
+    if include_CO:
+        if "co_density" in molecular_state:
+            co_density = _quantity_values(
+                molecular_state["co_density"], "cm**-3", "co_density"
+            )
+        else:
+            co_density = np.zeros(n_cells, dtype=np.float64)
+        if co_density.ndim == 0 and n_cells == 1:
+            co_density = co_density.reshape(1)
+        if co_density.shape != (n_cells,):
+            raise ValueError(f"co_density must have one value per cell ({n_cells})")
+        if not np.isfinite(co_density).all() or np.any(co_density < 0):
+            raise ValueError("co_density must be finite and nonnegative")
+        columns.append(co_density)
+
+    return np.ascontiguousarray(np.column_stack((state, *columns)), dtype=np.float64)
+
+
 def _parse_times(times):
     if hasattr(times, "to"):
         result = _quantity_values(times, "s", "times")
@@ -146,15 +202,25 @@ def _parse_sed(sed):
     )
 
 
-def _group_history(history, element_list, ion_list, photon_bands):
+def _group_history(history, element_list, ion_list, photon_bands, include_H2, include_CO):
     density_end = 1 + len(element_list)
     ion_end = density_end + len(ion_list)
-    return {
+    result = {
         "temperature": history[:, :, 0] * u.K,
         "densities": history[:, :, 1:density_end] / u.cm**3,
         "ion_fractions": history[:, :, density_end:ion_end],
         "photon_densities": history[:, :, ion_end:ion_end + len(photon_bands)] / u.cm**3,
     }
+    molecular_offset = ion_end + len(photon_bands)
+    if include_H2 or include_CO:
+        molecular_state = {}
+        if include_H2:
+            molecular_state["h2_fraction"] = history[:, :, molecular_offset]
+            molecular_offset += 1
+        if include_CO:
+            molecular_state["co_density"] = history[:, :, molecular_offset] / u.cm**3
+        result["molecular_state"] = molecular_state
+    return result
 
 
 def solve(
@@ -178,6 +244,7 @@ def solve(
     conv_its=20000,
     T_blackbody=1.0e4,
     sed=None,
+    molecular_state=None,
     temperature_is_Tmu=False,
     use_default_depletion=True,
     include_collisional_ionization=True,
@@ -206,6 +273,10 @@ def solve(
     ``state`` may be the legacy float64 matrix or a mapping of unit-aware
     arrays: ``temperature`` (K), ``densities`` (cm**-3),
     ``ion_fractions`` (dimensionless), and ``photon_densities`` (cm**-3).
+    ``molecular_state`` optionally initializes ``h2_fraction`` (fraction of
+    hydrogen nuclei in H2) and ``co_density`` (cm**-3). When molecular physics
+    is enabled, the returned history includes these fields; omitted initial
+    values retain the defaults of residual H2 and zero CO.
     ``times`` may be a unyt array convertible to seconds, and photon band
     bounds may carry energy units convertible to eV.
 
@@ -219,10 +290,15 @@ def solve(
     Returns a dictionary with ``temperature`` (K), ``densities`` (cm**-3),
     ``ion_fractions`` (dimensionless), and ``photon_densities`` (cm**-3).
     Each value has leading axes ``(Ntimes, Ncell)``; the remaining axis
-    indexes elements, ions, or photon bands as appropriate.
+    indexes elements, ions, or photon bands as appropriate. Molecular
+    histories are grouped under ``molecular_state`` when enabled.
     """
     photon_bands = _parse_photon_bands(photon_bands)
     state = _parse_state(state, element_list, ion_list, photon_bands)
+    if molecular_state is not None:
+        state = _append_molecular_state(
+            state, element_list, ion_list, molecular_state, include_H2, include_CO
+        )
     times = _parse_times(times)
     sed_frequency, sed_fnu = _parse_sed(sed)
     T_blackbody = float(_quantity_values(T_blackbody, "K", "T_blackbody"))
@@ -264,7 +340,7 @@ def solve(
         implicit_ions,
         x_pct_rule,
     )
-    return _group_history(history, element_list, ion_list, photon_bands)
+    return _group_history(history, element_list, ion_list, photon_bands, include_H2, include_CO)
 
 
 __all__ = ["solve"]

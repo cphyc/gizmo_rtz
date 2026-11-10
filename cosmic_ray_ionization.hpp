@@ -83,18 +83,13 @@ void initialize_cr_rates(){
 
 }
 
-#ifdef RTZ_FLOAT32_COSMIC_RAY
-using CosmicRayReal = float;
-#else
-using CosmicRayReal = Real;
-#endif
 
 KOKKOS_FUNCTION
-CosmicRayReal secondary_cr_rates(CosmicRayReal xe){
+Real secondary_cr_rates(Real xe){
     /*
     Secondary CR ionization rate
     */
-    CosmicRayReal phi_s = (CosmicRayReal(1.0) - (xe / CosmicRayReal(1.20))) * (CosmicRayReal(0.670) / (CosmicRayReal(1.0) + (xe / CosmicRayReal(0.05))));
+    Real phi_s = (Real(1.0) - (xe / Real(1.20))) * (Real(0.670) / (Real(1.0) + (xe / Real(0.05))));
     return phi_s;
 }
 

@@ -192,21 +192,21 @@ def test_evolves_one_myr_to_golden_state(initial_state):
         bands,
         max_iterations=100000,
         implicit_ions=False,
-        x_pct_rule=1e-4,
+        x_pct_rule=0.01,
     ))
-    # Generated with explicit stepping and x_pct_rule=1e-4; CPU and CUDA differ slightly.
+    # Generated with explicit stepping and x_pct_rule=0.01; CPU and CUDA differ slightly.
     expected = np.array(
         [
-            3.8931047515583123e4,
+            3.9040437158462180e4,
             1.0e1,
             1.0e-1,
-            2.3734290088839316e-8,
-            9.9999997626570991e-1,
-            6.0891624428981994e-2,
-            9.3892356903185092e-1,
-            1.8480653916703294e-4,
-            4.0885923496759230e-1,
-            5.2947722324624340e2,
+            2.3738773613501962e-8,
+            9.9999997626112264e-1,
+            5.9529868640195830e-2,
+            9.4027872004616050e-1,
+            1.9141131364367286e-4,
+            4.0768571367528640e-1,
+            5.2856104366043950e2,
         ]
     )
     assert result.shape == (2, *state.shape)
@@ -252,6 +252,48 @@ def test_constant_temperature_and_fixed_radiation(initial_state):
     assert np.isfinite(fixed).all()
     assert fixed[1, 0, 0] == state[0, 0]
     np.testing.assert_array_equal(fixed[1, 0, -len(bands) :], state[0, -len(bands) :])
+
+
+def test_molecular_state_round_trips_at_zero_time(initial_state):
+    initial, _, initial_ions, bands = initial_state
+    elements = ["hydrogen", "helium", "carbon", "oxygen"]
+    ions = [*initial_ions, ("carbon", 1), ("oxygen", 1)]
+    state = np.array(
+        [[
+            *initial[0, :3],
+            1.0e-4,
+            3.0e-4,
+            0.05,
+            0.85,
+            *initial[0, 5:8],
+            1.0,
+            1.0,
+            *initial[0, 8:],
+        ]],
+        dtype=np.float64,
+    )
+    molecular_state = {
+        "h2_fraction": np.array([0.1]),
+        "co_density": np.array([1.0e-6]),
+    }
+
+    history = rtz.solve(
+        state,
+        np.array([0.0]),
+        elements,
+        ions,
+        bands,
+        include_H2=True,
+        include_CO=True,
+        molecular_state=molecular_state,
+    )
+
+    np.testing.assert_array_equal(
+        history["molecular_state"]["h2_fraction"], [[0.1]]
+    )
+    np.testing.assert_array_equal(
+        history["molecular_state"]["co_density"].to_value("cm**-3"), [[1.0e-6]]
+    )
 
 
 def test_absorbing_radiation_depletes_photons(initial_state):

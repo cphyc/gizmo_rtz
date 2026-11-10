@@ -263,8 +263,8 @@ Real get_dust_mass_and_depletion(
     Real xs = Real(8.69);
     Real y;
 
-    Real loc_z = Real(12.0) + rtz_math::log10((nO + nCO + Real(1E-20)) / (nH + Real(1E-20)));
-    Real x = rtz_math::fmax(loc_z, Real(5.0));
+    Real loc_z = Real(12.0) + Kokkos::log10((nO + nCO + Real(1E-20)) / (nH + Real(1E-20)));
+    Real x = Kokkos::fmax(loc_z, Real(5.0));
 
     // Determine y (gas-to-dust mass ratio)
     if (loc_z > xt)
@@ -272,10 +272,10 @@ Real get_dust_mass_and_depletion(
     else
         y = b + aL * (xs - x);
 
-    Real G2D = rtz_math::exp10(y);
-    Real G2D_sol = rtz_math::exp10(a);
+    Real G2D = Kokkos::pow(10, y);
+    Real G2D_sol = Kokkos::pow(10, a);
 
-    Real y_ratio = rtz_math::fmax(rtz_math::fmin(G2D_sol / G2D, Real(1.0)), Real(0.0));
+    Real y_ratio = Kokkos::fmax(Kokkos::fmin(G2D_sol / G2D, Real(1.0)), Real(0.0));
 
     return y_ratio;
 }
@@ -471,41 +471,36 @@ Real get_mu(Real ne,
 // iteration; each step reads and updates only the fields it owns, and gates
 // itself on its compute_* flag, so the steps can be called unconditionally
 // (and later launched independently, e.g. from CoolingUpdate_PRISM_GPU.cpp).
-#ifdef RTZ_FLOAT32_SUBCYCLE_STATE
-using SubcycleReal = float;
-#else
-using SubcycleReal = Real;
-#endif
 
 struct SubcycleState {
     // Thermal state
-    SubcycleReal TK;                  // Temperature [K]
-    SubcycleReal mu;                  // Mean molecular weight
-    SubcycleReal Tmu_old;             // T/mu
-    SubcycleReal Tmu_new;             // T/mu
+    Real TK;                  // Temperature [K]
+    Real mu;                  // Mean molecular weight
+    Real Tmu_old;             // T/mu
+    Real Tmu_new;             // T/mu
 
     // Electrons
-    SubcycleReal ne;                  // Electron number density
-    SubcycleReal ne_initial;          // Electron number density at iteration start (for convergence)
-    SubcycleReal xe;                  // Electron fraction (n_electron/nH)
+    Real ne;                  // Electron number density
+    Real ne_initial;          // Electron number density at iteration start (for convergence)
+    Real xe;                  // Electron fraction (n_electron/nH)
 
     // Cosmic rays
-    SubcycleReal total_cosmic_ray_ionization_rate;
-    SubcycleReal H2_cosmic_ray_ionization_rate;
-    SubcycleReal cosmic_ray_scale_factor; // only needed for secondary UVs
+    Real total_cosmic_ray_ionization_rate;
+    Real H2_cosmic_ray_ionization_rate;
+    Real cosmic_ray_scale_factor; // only needed for secondary UVs
 
     // Radiation --> set by radiation_step
-    SubcycleReal G0_local;
-    SubcycleReal f_shd_H2;            // H2 self-shielding factor
-    SubcycleReal f_shd_CO;            // CO self-shielding factor
+    Real G0_local;
+    Real f_shd_H2;            // H2 self-shielding factor
+    Real f_shd_CO;            // CO self-shielding factor
 
     // Molecules --> set by molecular_step, consumed by ions_step
-    SubcycleReal alpha_H2_loc;        // H2 formation rate [cm3 s-1]
-    SubcycleReal de_H2;               // H2 destruction rate [s-1]
-    SubcycleReal nCO_new;
+    Real alpha_H2_loc;        // H2 formation rate [cm3 s-1]
+    Real de_H2;               // H2 destruction rate [s-1]
+    Real nCO_new;
 
     // Convergence
-    SubcycleReal max_residual_all;
+    Real max_residual_all;
     int success_counter;
     bool x_percent_rule;
     bool compute_temperature;
@@ -617,15 +612,15 @@ void radiation_step(
                 phot_att[k] = Real(1.0) / (Real(1.0) + ddt * (phAbs + dustAbs));
                 N_phot_new[k] = N_PHOT[k] * phot_att[k];
                 if (rt_smooth)
-                    N_phot_new[k] = rtz_math::fmax(Real(1e-30), (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
+                    N_phot_new[k] = Kokkos::fmax(Real(1e-30), (N_PHOT[k] + ddt * dNpdt[k]) * phot_att[k]);
             }
 
             // Measure the redisual
-            Real residual = rtz_math::fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + Real(1E-13)));
+            Real residual = Kokkos::fabs((N_phot_new[k] - N_PHOT[k]) / (N_PHOT[k] + Real(1E-13)));
             if (rad_residual_floor > Real(0.0) && N_phot_start != nullptr
                 && N_PHOT[k] < rad_residual_floor * (*N_phot_start)[k])
                 residual = Real(0.0); // group is spent: it no longer gates the timestep
-            state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
+            state.max_residual_all = Kokkos::fmax(state.max_residual_all, residual);
 
             if (residual > x_pct_rule){
                 // Reset the success counter
@@ -701,20 +696,20 @@ void cooling_step(
     cooling_rate *= X_nHkb;
     cooling_rate_prime *= X_nHkb * state.mu;
 
-    Real dUU = rtz_math::fabs(rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
-    state.Tmu_new = rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
+    Real dUU = Kokkos::fabs(Kokkos::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
+    state.Tmu_new = Kokkos::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
 
     // ! New T2 value
     state.TK = state.Tmu_new * state.mu;
 
-    Real residual = rtz_math::fmax(dUU, rtz_math::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
-    residual = rtz_math::fmax(residual, rtz_math::fabs(cooling_rate_prime * ddt));
+    Real residual = Kokkos::fmax(dUU, Kokkos::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
+    residual = Kokkos::fmax(residual, Kokkos::fabs(cooling_rate_prime * ddt));
 
     // Convergence
     // X% rule
 
     // Max residual over all elements
-    state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
+    state.max_residual_all = Kokkos::fmax(state.max_residual_all, residual);
 
     if (residual > x_pct_rule){
         // Reset the success counter
@@ -798,20 +793,20 @@ void cooling_update(
     cooling_rate *= X_nHkb;
     cooling_rate_prime *= X_nHkb * state.mu;
 
-    Real dUU = rtz_math::fabs(rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
-    state.Tmu_new = rtz_math::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
+    Real dUU = Kokkos::fabs(Kokkos::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt) - state.Tmu_old);
+    state.Tmu_new = Kokkos::fmax(T_MIN, state.Tmu_old + cooling_rate * ddt/(Real(1.0) - cooling_rate_prime * ddt));
 
     // ! New T2 value
     state.TK = state.Tmu_new * state.mu;
 
-    Real residual = rtz_math::fmax(dUU, rtz_math::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
-    residual = rtz_math::fmax(residual, rtz_math::fabs(cooling_rate_prime * ddt));
+    Real residual = Kokkos::fmax(dUU, Kokkos::fabs(state.Tmu_new - state.Tmu_old)) / (state.Tmu_old + T_MIN);
+    residual = Kokkos::fmax(residual, Kokkos::fabs(cooling_rate_prime * ddt));
 
     // Convergence
     // X% rule
 
     // Max residual over all elements
-    state.max_residual_all = rtz_math::fmax(state.max_residual_all, residual);
+    state.max_residual_all = Kokkos::fmax(state.max_residual_all, residual);
 
     if (residual > x_pct_rule){
         // Reset the success counter
@@ -952,14 +947,14 @@ void molecular_step(
         xH2 = (cr_H2*ddt + xH2)/(Real(1.)+state.de_H2*ddt);
 
         // Store in the struct
-        n_and_ion_fracs[1].ion_fracs_new[2] = Real(2.0) * rtz_math::fmin(rtz_math::fmax(xH2,MIN_XION),Real(0.5));
+        n_and_ion_fracs[1].ion_fracs_new[2] = Real(2.0) * Kokkos::fmin(Kokkos::fmax(xH2,MIN_XION),Real(0.5));
 
         // Convergence
         // X% rule
-        Real residual = rtz_math::fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
+        Real residual = Kokkos::fabs(n_and_ion_fracs[1].ion_fracs_new[2] - n_and_ion_fracs[1].ion_fracs[2]) / (n_and_ion_fracs[1].ion_fracs[2] + X_FM);
 
         // Max residual over all elements
-        state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
+        state.max_residual_all = Kokkos::fmax(state.max_residual_all,residual);
 
         if (residual > x_pct_rule && n_and_ion_fracs[1].ion_fracs[2] > Real(1E-10)){
             // Reset the success counter
@@ -1002,11 +997,11 @@ void molecular_step(
 
                 // Enforce positivity floors: don't destroy more CO than exists,
                 // and don't create more than allowed by available CII and OI
-                Real max_delta_CO = rtz_math::fmax(rtz_math::fmin(nCII - Real(1e-30), nOI - Real(1e-30)), Real(0.0));
-                Real min_delta_CO = rtz_math::fmin(-nCO + Real(1e-30), Real(0.0));
+                Real max_delta_CO = Kokkos::fmax(Kokkos::fmin(nCII - Real(1e-30), nOI - Real(1e-30)), Real(0.0));
+                Real min_delta_CO = Kokkos::fmin(-nCO + Real(1e-30), Real(0.0));
 
                 // Clip delta_CO to enforce physical bounds
-                delta_CO = rtz_math::fmax(rtz_math::fmin(delta_CO, max_delta_CO), min_delta_CO);
+                delta_CO = Kokkos::fmax(Kokkos::fmin(delta_CO, max_delta_CO), min_delta_CO);
 
                 // Apply updates
                 state.nCO_new  = nCO + delta_CO;
@@ -1033,10 +1028,10 @@ void molecular_step(
                 }
 
                 // Check for convergence
-                Real residual = rtz_math::fabs(state.nCO_new - nCO) / (nCO + X_FM);
+                Real residual = Kokkos::fabs(state.nCO_new - nCO) / (nCO + X_FM);
 
                 // Max residual over all elements
-                state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
+                state.max_residual_all = Kokkos::fmax(state.max_residual_all,residual);
 
                 if (residual > x_pct_rule && nCO > Real(1E-10)){
                     // Reset the success counter
@@ -1263,7 +1258,7 @@ void ions_gs_element(
 
             // The update
             n_and_ion_fracs[i].ion_fracs_new[j] = (cr*ddt + n_and_ion_fracs[i].ion_fracs_new[j])/(Real(1.0) + de*ddt);
-            n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),Real(1.0));
+            n_and_ion_fracs[i].ion_fracs_new[j] = Kokkos::fmin(Kokkos::fmax(n_and_ion_fracs[i].ion_fracs_new[j],MIN_XION),Real(1.0));
 
             // Get the new electron fraction
             state.ne += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j]) - (n_and_ion_fracs[i].n_element * n_and_ion_fracs[i].ion_fracs[j])) * (Real)j;
@@ -1286,14 +1281,14 @@ void ions_gs_element(
             //     Convergence     //
             /////////////////////////
             // X% rule
-            Real residual = rtz_math::fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + X_FM);
+            Real residual = Kokkos::fabs(n_and_ion_fracs[i].ion_fracs_new[j] - n_and_ion_fracs[i].ion_fracs[j]) / (n_and_ion_fracs[i].ion_fracs[j] + X_FM);
 
             // electron density residual
-            Real ne_residual = rtz_math::fabs(state.ne - state.ne_initial) / (state.ne + X_FM);
-            residual = rtz_math::fmax(residual,ne_residual);
+            Real ne_residual = Kokkos::fabs(state.ne - state.ne_initial) / (state.ne + X_FM);
+            residual = Kokkos::fmax(residual,ne_residual);
 
             // Max residual over all elements
-            state.max_residual_all = rtz_math::fmax(state.max_residual_all,residual);
+            state.max_residual_all = Kokkos::fmax(state.max_residual_all,residual);
 
             // Check if X percent rule is broken
             if (n_and_ion_fracs[i].ion_fracs[j] > Real(1E-10)){
@@ -1621,7 +1616,7 @@ void metal_ions_step(
             //       Update        //
             /////////////////////////
             Real x_new = (cr*ddt + XS(j))/(Real(1.0) + de*ddt);
-            n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(x_new,MIN_XION),Real(1.0));
+            n_and_ion_fracs[i].ion_fracs_new[j] = Kokkos::fmin(Kokkos::fmax(x_new,MIN_XION),Real(1.0));
 
             s_m1 = s_0;
             s_0  = s_p1;
@@ -1640,8 +1635,8 @@ void metal_ions_step(
         for (int j = 0; j < n_ions; j++) {
             const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
             const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-            const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
-            max_stage_residual = rtz_math::fmax(max_stage_residual, residual);
+            const Real residual = Kokkos::fabs(x_new - x_old) / (x_old + X_FM);
+            max_stage_residual = Kokkos::fmax(max_stage_residual, residual);
             if (x_old > Real(1E-10) && residual > x_pct_rule) violated = 1;
             delta_ne += ((n_and_ion_fracs[i].n_element_new * x_new)
                        - (n_and_ion_fracs[i].n_element * x_old)) * (Real)j;
@@ -1649,9 +1644,9 @@ void metal_ions_step(
     }
 
     const Real ne_new = state.ne + delta_ne;
-    const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
+    const Real ne_residual = Kokkos::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
 
-    state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
+    state.max_residual_all = Kokkos::fmax(state.max_residual_all, Kokkos::fmax(max_stage_residual, ne_residual));
     if (violated > 0 || ne_residual > x_pct_rule) {
         state.success_counter = 0;
         state.x_percent_rule = false;
@@ -2011,7 +2006,7 @@ void metal_ions_step(
 
         // The update
         Real x_new = (cr*ddt + xi_snap[j])/(Real(1.0) + de*ddt);
-        n_and_ion_fracs[i].ion_fracs_new[j] = rtz_math::fmin(rtz_math::fmax(x_new,MIN_XION),Real(1.0));
+        n_and_ion_fracs[i].ion_fracs_new[j] = Kokkos::fmin(Kokkos::fmax(x_new,MIN_XION),Real(1.0));
     });
     // I think the residual reduces below redistribute indices across threads,
     // so they may read an ion_fracs_new[j] written by a different thread above.
@@ -2033,8 +2028,8 @@ void metal_ions_step(
         if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
         const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
         const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-        const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
-        lmax = rtz_math::fmax(lmax, residual);
+        const Real residual = Kokkos::fabs(x_new - x_old) / (x_old + X_FM);
+        lmax = Kokkos::fmax(lmax, residual);
         if (x_old > Real(1e-10) && residual > x_pct_rule) lviol = 1;
         if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
         dne_sum += ((n_and_ion_fracs[i].n_element_new * n_and_ion_fracs[i].ion_fracs_new[j])
@@ -2047,7 +2042,7 @@ void metal_ions_step(
     //     if (n_and_ion_fracs.n_element[i] == Real(0.0)) return;
     //     const Real x_old = n_and_ion_fracs[i].ion_fracs[j];
     //     const Real x_new = n_and_ion_fracs[i].ion_fracs_new[j];
-    //     const Real residual = rtz_math::fabs(x_new - x_old) / (x_old + X_FM);
+    //     const Real residual = Kokkos::fabs(x_new - x_old) / (x_old + X_FM);
     //     if (x_old > Real(1E-10) && residual > x_pct_rule) lviol = 1;
     // }, Kokkos::Max<int>(violated));
 
@@ -2062,10 +2057,10 @@ void metal_ions_step(
     // }, delta_ne);
 
     const Real ne_new = state.ne + delta_ne;
-    const Real ne_residual = rtz_math::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
+    const Real ne_residual = Kokkos::fabs(ne_new - state.ne_initial) / (ne_new + X_FM);
 
     Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        state.max_residual_all = rtz_math::fmax(state.max_residual_all, rtz_math::fmax(max_stage_residual, ne_residual));
+        state.max_residual_all = Kokkos::fmax(state.max_residual_all, Kokkos::fmax(max_stage_residual, ne_residual));
         // The Max reduction identity is INT_MIN, so compare against > 0
         if (violated > 0 || ne_residual > x_pct_rule) {
             // Reset the success counter
@@ -2272,18 +2267,18 @@ KOKKOS_INLINE_FUNCTION void implicit_ions_step(
         if (ions.n_element[i] == 0) return Real(0);
         const int k = ions.offsets[i] + j;
         const Real old = ions.ion_fracs_flat[k];
-        return old > Real(1e-10) ? rtz_math::fabs(system.x[k] - old) / (old + X_FM) : Real(0);
+        return old > Real(1e-10) ? Kokkos::fabs(system.x[k] - old) / (old + X_FM) : Real(0);
     });
     const Real new_ne = exec.sum(n_ion_work, [&](int t) {
         const int i = ion_map[t] >> 8, j = ion_map[t] & 0xFF;
         return ions.n_element[i] == 0 ? Real(0) : ions.n_element_new[i] * system.x[ions.offsets[i]+j] * Real(j);
     });
     exec.single([&]() {
-        const Real ne_residual = rtz_math::fabs(new_ne - state.ne_initial) / (new_ne + X_FM);
-        const Real ion_residual = rtz_math::fmax(residual, ne_residual);
+        const Real ne_residual = Kokkos::fabs(new_ne - state.ne_initial) / (new_ne + X_FM);
+        const Real ion_residual = Kokkos::fmax(residual, ne_residual);
         // Keep temperature/radiation's existing 10% controller unchanged;
         // express the separate ion limit in that controller's residual units.
-        state.max_residual_all = rtz_math::fmax(state.max_residual_all,
+        state.max_residual_all = Kokkos::fmax(state.max_residual_all,
                                               ion_residual);
         if (ion_residual > x_pct_rule) {
             state.x_percent_rule = false;
@@ -2315,13 +2310,13 @@ void subcycle_timestep_control(
         ddt /= Real(2.0);
     } else {
         // TODO(code): allow for choice of aggressive vs conservative timestep
-        ddt = rtz_math::fmin(Real(0.9) * ddt / rtz_math::pow(Real(0.07)+max_residual_over_x_pct,Real(0.3)),Real(2.0) * ddt);
+        ddt = Kokkos::fmin(Real(0.9) * ddt / Kokkos::pow(Real(0.07)+max_residual_over_x_pct,Real(0.3)),Real(2.0) * ddt);
     }
     // TODO(code): Make this a parameter for the timestep limiter
-    // double tlimit = -0.57142857 * rtz_math::log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
-    // rtz_math::pow(10, 20) is a compile-time constant that nvcc will not fold
+    // double tlimit = -0.57142857 * Kokkos::log10(n_and_ion_fracs[1].n_element_new) + 10.85714286;
+    // Kokkos::pow(10, 20) is a compile-time constant that nvcc will not fold
     constexpr Real tlimit = Real(1E20);
-    ddt = rtz_math::fmin(ddt,tlimit);
+    ddt = Kokkos::fmin(ddt,tlimit);
 }
 
 
@@ -2359,7 +2354,7 @@ bool subcycle_commit_and_control(
     if (state.x_percent_rule) {
         if (!constant_temperature) {
             // Update temperature
-            state.Tmu_old = rtz_math::fmin(rtz_math::fmax(state.Tmu_new,T_MIN),T_MAX);
+            state.Tmu_old = Kokkos::fmin(Kokkos::fmax(state.Tmu_new,T_MIN),T_MAX);
         }
         // Update atomic data
         for (int i = 1; i < MAX_ELEMENTS; i++) {
@@ -2391,7 +2386,7 @@ bool subcycle_commit_and_control(
                     F_PHOT[k][dim] *= phot_att[k];
                     fred += F_PHOT[k][dim] * F_PHOT[k][dim];
                 }
-                fred = rtz_math::sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
+                fred = Kokkos::sqrt(fred) / (C_CGS * tabData.c_frac() * N_PHOT[k]);
 
                 // Reduce the flux if needed
                 if (fred > Real(1.0)) {

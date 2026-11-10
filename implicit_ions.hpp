@@ -21,7 +21,7 @@ struct SerialIonExecutor {
     template<class F> KOKKOS_INLINE_FUNCTION void single(F f) const { f(); }
     template<class F> KOKKOS_INLINE_FUNCTION Real maximum(int n, F f) const {
         Real result = 0;
-        for (int i = 0; i < n; ++i) result = rtz_math::fmax(result, f(i));
+        for (int i = 0; i < n; ++i) result = Kokkos::fmax(result, f(i));
         return result;
     }
     KOKKOS_INLINE_FUNCTION void barrier() const {}
@@ -44,8 +44,8 @@ template<class Team> struct TeamIonExecutor {
     template<class F> KOKKOS_INLINE_FUNCTION Real maximum(int n, F f) const {
         Real result = 0;
         Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, n),
-            [&](int i, Real& value) { value = rtz_math::fmax(value, f(i)); }, Kokkos::Max<Real>(result));
-        return rtz_math::fmax(result, Real(0));
+            [&](int i, Real& value) { value = Kokkos::fmax(value, f(i)); }, Kokkos::Max<Real>(result));
+        return Kokkos::fmax(result, Real(0));
     }
     KOKKOS_INLINE_FUNCTION void barrier() const { team.team_barrier(); }
 };
@@ -192,11 +192,11 @@ struct SparseIonSystem {
                 const Real u = up[hi], d = down[hi+1];
                 const Real f = h - old[hi+1] + charge - dt * (u * neutral - d * h);
                 const Real derivative = Real(1) + dcharge + dt * (u + d);
-                const Real scale = rtz_math::fmax(Real(1), rtz_math::fabs(derivative));
+                const Real scale = Kokkos::fmax(Real(1), Kokkos::fabs(derivative));
                 const Real tolerance = nonlinear_tolerance;
                 control[5] = Real(iteration + 1);
                 if (failed != 0 || !Kokkos::isfinite(f)) control[4] = 1;
-                else if (rtz_math::fabs(f) / scale <= tolerance) control[3] = 1;
+                else if (Kokkos::fabs(f) / scale <= tolerance) control[3] = 1;
                 else {
                     if (f < 0) control[0] = h;
                     else control[1] = h;

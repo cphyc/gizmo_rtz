@@ -447,7 +447,7 @@ recombination/collisional coefficients at frozen temperature. Trial08 tests
 reusing those coefficients in shared scratch. Further requested experiments
 will inspect duplicated exp/pow/log10 within hot functions and integer power
 exponents. Candidates will be measured separately; syntactic integer
-exponents alone do not help while the current `rtz_math::pow(Real,Real)`
+exponents alone do not help while the current `Kokkos::pow(Real,Real)`
 wrapper converts them back to Real. Integer overloads may change rounding
 and therefore must pass the exact gate before being retained.
 
@@ -530,7 +530,7 @@ RAM-backed on this machine; persistent experiments use `~/tmp`.
 
 ## Trial 09: integer-exponent overload (float64)
 
-Added `rtz_math::pow(Real,int)` forwarding to `::pow(x,y)` so existing calls
+Added `Kokkos::pow(Real,int)` forwarding to `::pow(x,y)` so existing calls
 such as `pow(two_e4_overT,5)` do not first convert the exponent in our wrapper.
 Full dataset remains bit-for-bit identical to the original float64 GPU
 reference. Five warmed solves: 33.200495, 33.209230, 33.189877, 33.187075,
@@ -757,7 +757,7 @@ benchmark exit status 1; timings/output were saved).
 
 ## Per-file precision, step 1: collisional ionization
 
-Add GIZMO_RTZ_FLOAT32_COLLISIONAL and an independent CollisionalReal scalar
+Add GIZMO_RTZ_FLOAT32_COLLISIONAL and an independent Real scalar
 for device arithmetic in collisional_ionization.hpp, with explicit float
 math overloads. Keep global Real, state, table storage and cooling unchanged.
 The Python extension uses the same definition and reports
@@ -785,7 +785,7 @@ Charge transfer is tested independently with collisional arithmetic float64.
 
 ## Per-file precision, step 2: charge transfer
 
-Charge-transfer arithmetic uses ChargeTransferReal=float and float math,
+Charge-transfer arithmetic uses Real=float and float math,
 with explicit casts at table reads (the underlying CT tables were already
 float32, so casts do not change the generated binary). Collisional arithmetic
 is restored to double. GIZMO_RTZ_FLOAT32_CHARGE_TRANSFER is now ON by default;
@@ -812,7 +812,7 @@ Charge-transfer-only CPU regressions: 18 passed, three long sweeps excluded (0.8
 
 ## Per-file precision, step 3: recombination
 
-Add RecombinationReal with explicit float math and coefficient conversion,
+Add Real with explicit float math and coefficient conversion,
 plus GIZMO_RTZ_FLOAT32_RECOMBINATION and recombination_bytes in rtz_bindings.
 Trial keeps accepted charge transfer float32 and all other files float64.
 Full-dataset cold preflight: 9.724720 s, **fails** at rtol=1e-5: maximum ion
@@ -823,7 +823,7 @@ Artifact: results/per-file-recombination.json. Cooling remains unchanged.
 
 ## Per-file precision, step 4: secondary cosmic-ray arithmetic
 
-CosmicRayReal is independently selectable; cosmic_ray_bytes in rtz_bindings
+Real is independently selectable; cosmic_ray_bytes in rtz_bindings
 confirms 4 bytes. Accepted charge transfer stays float32; collisional and
 recombination calculations stay float64. Full-dataset strict preflight passes:
 max ion relative error 3.70191e-6; temperature 4.42555e-9; zero violations at
@@ -833,7 +833,7 @@ their original types. Artifact: results/per-file-cosmic.json.
 
 ## Per-file precision, step 5: dust recombination
 
-DustRecombinationReal=float, with float math and explicit coefficient casts;
+Real=float, with float math and explicit coefficient casts;
 dust_recombination_bytes=4 is reported by rtz_bindings. Charge-transfer and
 cosmic-ray arithmetic remain float32; collisional/recombination and state
 stay float64. Full 10,000-cell gate passes at 1e-5: max ion 3.70171e-6,
@@ -849,7 +849,7 @@ per-file result commands, replace --require-float64 with --require-float64-state
 
 ## Per-file precision, step 6: molecular helpers
 
-MolecularReal=float with float math and coefficient casts; molecular_bytes=4
+Real=float with float math and coefficient casts; molecular_bytes=4
 is reflected in rtz_bindings. Full atomic dataset passes 1e-5: max ion
 3.70171e-6, T 4.42484e-9 (cold 12.258382 s). Since that dataset disables
 molecules, an additional 42-cell T/nH-stratified probe enables H2/CO and
@@ -867,7 +867,7 @@ The probe covers these sampled cells and 100 years, not all molecular regimes.
 
 ## Per-file precision, step 7: UV background
 
-UVBReal=float converts photoionization_UVB.hpp's loading buffers and redshift
+Real=float converts photoionization_UVB.hpp's loading buffers and redshift
 interpolation together. fscanf uses a matching %f/%lf format selected with
 the type. uvb_bytes=4 is reported in rtz_bindings; this original file used
 explicit double, so OFF retains double even under the global Real option.
@@ -877,7 +877,7 @@ speedup claimed for this setup-only change. Artifact: results/per-file-uvb.json.
 
 ## Per-file precision, step 8: spectrum/cross-section integration
 
-CrossSectionReal=float applies to device spectrum/quadrature/cross-section
+Real=float applies to device spectrum/quadrature/cross-section
 arithmetic and its temporary views; public SED input vectors remain double.
 Physical constants, fit coefficients, and SED values are converted before
 arithmetic. Float32 blackbody uses a reordered prefactor avoiding nu^3
@@ -893,7 +893,7 @@ verified finite as well.
 
 ## Per-file precision, step 9: physical constants
 
-ConstantsReal=float selects float32 KB/C_CGS/H_PLANCK/EV_2_ERG, reflected as
+Real=float selects float32 KB/C_CGS/H_PLANCK/EV_2_ERG, reflected as
 constants_bytes=4 in rtz_bindings. Cross-section arithmetic is back to double;
 all previously accepted file choices remain enabled. Full-dataset preflight
 completes (12.256598 s) but **fails** 1e-5: max ion 1.85472e-3, 30,502
@@ -916,7 +916,7 @@ arithmetic or table types. No warmed speedup claim for the rejected choice.
 
 ## Per-file precision, step 11: solver transient-state fields
 
-Add independently selectable SubcycleReal for the fields of SubcycleState
+Add independently selectable Real for the fields of SubcycleState
 in dyablo_api_GPU.cpp, reflected as subcycle_state_bytes in rtz_bindings.
 Restore chemistry storage to double; all accepted file choices stay enabled.
 This is a transient-storage screen, not a claim to convert every solver local.
@@ -929,7 +929,7 @@ No warmed speedup claimed. Cooling is the final precision trial next.
 
 ## Per-file precision, step 12: cooling (last)
 
-CoolingReal=float covers cooling/heating locals and math, with explicit
+Real=float covers cooling/heating locals and math, with explicit
 constant/table/state-input casts. Public photon arrays retain global Real.
 The float32 Planck prefactor follows the existing overflow-safe branch;
 CT reaction energies use the selected cooling scalar too. cooling_bytes=4
@@ -1484,3 +1484,27 @@ Reproduction uses benchmarks/galaxy_gpu.py with the new extension,
 --implicit-ions --ion-change-limit 0.2 --require-float64 --warmups 1
 --repetitions 5 and --reference benchmarks/results/implicit-newton-tolerance.npz
 --accuracy physical --ion-rtol 1e-5 --temperature-rtol 1e-5.
+
+# Simplifications
+
+The code is now full of AI slop. Let's remove it gradually, while keeping the results exactly the same.
+I'm using
+```bash
+/usr/bin/python3.14 benchmarks/galaxy_gpu.py \
+      --extension build/galaxy-gpu/_rtz.cpython-314-x86_64-linux-gnu.so \
+      --reference benchmarks/results/baseline.npz \
+      --output benchmarks/results/simplify-dtypes \
+      --accuracy physical \
+      --ion-rtol 1e-5 \
+      --temperature-rtol 1e-5 \
+      --require-float64 \
+      --warmups 1 \
+      --repetitions 5 \
+      --implicit-ions --x-pct-rule 0.2
+```
+where the results are those from commit #d97c264
+
+## Simplifications A: Remove all the gizmo_math::
+
+We're back to using Kokkos:: instead of the thin wrapper `gizmo_math::`.
+The timings are 5.449414101000002, 5.484627198999078, 5.524917572001868, 5.419396897999832, 5.361734106001677, median is **5.449414101000002s**.

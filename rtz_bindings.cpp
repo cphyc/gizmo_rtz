@@ -356,7 +356,9 @@ void copy_state_to_matrix(const CellState &cell,
                           const Inputs &inputs,
                           std::size_t density_offset,
                           std::size_t ion_offset,
-                          std::size_t photon_offset) {
+                          std::size_t photon_offset,
+                          bool include_H2,
+                          bool include_CO) {
     row[0] = cell.temperature;
     for (std::size_t column = 0; column < inputs.element_numbers.size(); ++column)
         row[density_offset + column] = cell.chemistry.n_element[inputs.element_numbers[column]];
@@ -366,6 +368,11 @@ void copy_state_to_matrix(const CellState &cell,
     }
     for (std::size_t group = 0; group < inputs.photon_bands.size(); ++group)
         row[photon_offset + group] = cell.photons[group];
+    std::size_t molecular_offset = photon_offset + inputs.photon_bands.size();
+    if (include_H2)
+        row[molecular_offset++] = cell.chemistry[1].ion_fracs[2];
+    if (include_CO)
+        row[molecular_offset] = cell.nCO;
 }
 
 struct SolveParameters {
@@ -373,9 +380,12 @@ struct SolveParameters {
     std::vector<double> times;
     std::size_t n_cells;
     std::size_t n_columns;
+    std::size_t output_n_columns;
     std::size_t density_offset;
     std::size_t ion_offset;
     std::size_t photon_offset;
+    std::size_t molecular_offset;
+    bool has_molecular_state;
 };
 
 struct SolveOptions {
@@ -396,7 +406,7 @@ struct SolveOptions {
     double x_pct_rule;
 };
 
-template <bool include_CO>
+template <bool include_H2, bool include_CO>
 SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                                     nb::ndarray<nb::numpy, const double, nb::ndim<1>> times_arg,
                                     nb::sequence element_list,
@@ -481,9 +491,16 @@ SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndi
     parameters.ion_offset = parameters.density_offset + parameters.inputs.element_numbers.size();
     parameters.photon_offset = parameters.ion_offset + parameters.inputs.ions.size();
     parameters.n_columns = parameters.photon_offset + parameters.inputs.photon_bands.size();
-    if (input.shape(1) != parameters.n_columns)
-        throw std::invalid_argument("state must have columns [temperature, element densities, ion "
-                                    "fractions, photon densities]");
+    parameters.molecular_offset = parameters.n_columns;
+    parameters.output_n_columns =
+        parameters.n_columns + static_cast<std::size_t>(include_H2) +
+        static_cast<std::size_t>(include_CO);
+    parameters.has_molecular_state = input.shape(1) == parameters.output_n_columns &&
+                                     parameters.output_n_columns != parameters.n_columns;
+    if (input.shape(1) != parameters.n_columns && !parameters.has_molecular_state)
+        throw std::invalid_argument(
+            "state must have columns [temperature, element densities, ion fractions, "
+            "photon densities] and may append active molecular state");
 
     return parameters;
 }
@@ -491,7 +508,8 @@ SolveParameters validate_parameters(nb::ndarray<nb::numpy, const double, nb::ndi
 std::vector<CellState>
 validate_state_values(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                       const SolveParameters &parameters,
-                      bool include_H2) {
+                      bool include_H2,
+                      bool include_CO) {
     const Inputs &inputs = parameters.inputs;
     const std::size_t n_elements = inputs.element_numbers.size();
     const std::size_t n_ions = inputs.ions.size();
@@ -534,12 +552,31 @@ validate_state_values(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
             cell.chemistry[ion.atomic_number].ion_fracs_new[ion.stage - 1] = fraction;
             ion_sums[ion.atomic_number] += fraction;
         }
+        std::size_t molecular_offset = parameters.molecular_offset;
+        double h2_fraction = 0.0;
+        if (include_H2 && parameters.has_molecular_state) {
+            h2_fraction = input_value(molecular_offset++);
+            if (!std::isfinite(h2_fraction) || h2_fraction < 0.0 || h2_fraction > 1.0)
+                throw std::invalid_argument("H2 fractions must be finite and between 0 and 1");
+        }
+        double co_density = 0.0;
+        if (include_CO && parameters.has_molecular_state) {
+            co_density = input_value(molecular_offset);
+            if (!std::isfinite(co_density) || co_density < 0.0)
+                throw std::invalid_argument("CO densities must be finite and nonnegative");
+            cell.nCO = co_density;
+        }
         for (int atomic_number : inputs.element_numbers) {
             if (include_H2 && atomic_number == 1) {
                 if (ion_sums[atomic_number] > 1.0 + 1e-8)
                     throw std::invalid_argument(
                         "hydrogen ion fractions must sum to at most one when include_H2=True");
-                const double h2_fraction = std::max(0.0, 1.0 - ion_sums[atomic_number]);
+                if (parameters.has_molecular_state &&
+                    std::abs(ion_sums[atomic_number] + h2_fraction - 1.0) > 1e-8)
+                    throw std::invalid_argument(
+                        "hydrogen ion fractions and H2 fraction must sum to one");
+                if (!parameters.has_molecular_state)
+                    h2_fraction = std::max(0.0, 1.0 - ion_sums[atomic_number]);
                 cell.chemistry[1].ion_fracs[2] = h2_fraction;
                 cell.chemistry[1].ion_fracs_new[2] = h2_fraction;
             } else if (std::abs(ion_sums[atomic_number] - 1.0) > 1e-8) {
@@ -570,7 +607,7 @@ nb::object run_solver(const SolveParameters &parameters,
     const Inputs &inputs = parameters.inputs;
     const std::vector<double> &times = parameters.times;
     const std::size_t n_cells = parameters.n_cells;
-    const std::size_t n_columns = parameters.n_columns;
+    const std::size_t n_columns = parameters.output_n_columns;
     const std::size_t density_offset = parameters.density_offset;
     const std::size_t ion_offset = parameters.ion_offset;
     const std::size_t photon_offset = parameters.photon_offset;
@@ -587,7 +624,9 @@ nb::object run_solver(const SolveParameters &parameters,
                                      inputs,
                                      density_offset,
                                      ion_offset,
-                                     photon_offset);
+                                     photon_offset,
+                                     include_H2,
+                                     include_CO);
             }
         }
         nb::capsule owner(output_data.get(),
@@ -708,7 +747,9 @@ nb::object run_solver(const SolveParameters &parameters,
                                      inputs,
                                      density_offset,
                                      ion_offset,
-                                     photon_offset);
+                                     photon_offset,
+                                     include_H2,
+                                     include_CO);
             }
             previous_time = time;
             continue;
@@ -738,7 +779,7 @@ nb::object run_solver(const SolveParameters &parameters,
                 cell.loc_rho = get_rho(device_elements, cell.chemistry);
                 apply_dust_depletion(device_elements, cell.dust_ratio, cell.chemistry, cell.nCO);
                 if constexpr (include_self_shielding)
-                    cell.ss_factor = rtz_math::exp(-cell.chemistry[1].n_element / Real(1E-2));
+                    cell.ss_factor = Kokkos::exp(-cell.chemistry[1].n_element / Real(1E-2));
                 else
                     cell.ss_factor = Real(1.0);
 
@@ -1010,7 +1051,7 @@ nb::object run_solver(const SolveParameters &parameters,
                     if (equilibrium) {
                         if (cell.subcycle.success_counter > conv_its)
                             cell.done = true;
-                    } else if (rtz_math::fabs(cell.total_time - requested_delta_time) /
+                    } else if (Kokkos::fabs(cell.total_time - requested_delta_time) /
                                    requested_delta_time <
                                Real(1e-6)) {
                         cell.done = true;
@@ -1100,7 +1141,8 @@ nb::object run_solver(const SolveParameters &parameters,
             double *output_row =
                 output_data.get() + (time_index * n_cells + cell_index) * n_columns;
             copy_state_to_matrix(
-                cells[cell_index], output_row, inputs, density_offset, ion_offset, photon_offset);
+                cells[cell_index], output_row, inputs, density_offset, ion_offset, photon_offset,
+                include_H2, include_CO);
         }
         previous_time = time;
     }
@@ -1125,9 +1167,10 @@ nb::object solve_impl(nb::ndarray<nb::numpy, const double, nb::ndim<2>> input,
                       nb::sequence photon_bands,
                       const SolveOptions &options) {
     const SolveParameters parameters =
-        validate_parameters<include_CO>(input, times_arg, element_list, ion_list, photon_bands, options);
+        validate_parameters<include_H2, include_CO>(
+            input, times_arg, element_list, ion_list, photon_bands, options);
     ensure_cell_runtime();
-    std::vector<CellState> cells = validate_state_values(input, parameters, include_H2);
+    std::vector<CellState> cells = validate_state_values(input, parameters, include_H2, include_CO);
     return run_solver<constant_temperature,
                       include_H2,
                       include_CO,
@@ -1246,17 +1289,17 @@ NB_MODULE(_rtz, module) {
     module.def("build_info", []() {
         nb::dict info;
         info["execution_space"] = Kokkos::DefaultExecutionSpace::name();
-        info["cooling_bytes"] = sizeof(prism_gpu::CoolingReal);
-        info["subcycle_state_bytes"] = sizeof(prism_gpu::SubcycleReal);
-        info["constants_bytes"] = sizeof(prism_gpu::ConstantsReal);
-        info["cross_section_bytes"] = sizeof(prism_gpu::CrossSectionReal);
-        info["uvb_bytes"] = sizeof(prism_gpu::UVBReal);
-        info["molecular_bytes"] = sizeof(prism_gpu::MolecularReal);
-        info["dust_recombination_bytes"] = sizeof(prism_gpu::DustRecombinationReal);
-        info["cosmic_ray_bytes"] = sizeof(prism_gpu::CosmicRayReal);
-        info["recombination_bytes"] = sizeof(prism_gpu::RecombinationReal);
-        info["charge_transfer_bytes"] = sizeof(prism_gpu::ChargeTransferReal);
-        info["collisional_ionization_bytes"] = sizeof(prism_gpu::CollisionalReal);
+        info["cooling_bytes"] = sizeof(prism_gpu::Real);
+        info["subcycle_state_bytes"] = sizeof(prism_gpu::Real);
+        info["constants_bytes"] = sizeof(prism_gpu::Real);
+        info["cross_section_bytes"] = sizeof(prism_gpu::Real);
+        info["uvb_bytes"] = sizeof(prism_gpu::Real);
+        info["molecular_bytes"] = sizeof(prism_gpu::Real);
+        info["dust_recombination_bytes"] = sizeof(prism_gpu::Real);
+        info["cosmic_ray_bytes"] = sizeof(prism_gpu::Real);
+        info["recombination_bytes"] = sizeof(prism_gpu::Real);
+        info["charge_transfer_bytes"] = sizeof(prism_gpu::Real);
+        info["collisional_ionization_bytes"] = sizeof(prism_gpu::Real);
         info["real_bytes"] = sizeof(prism_gpu::Real);
         info["density_bytes"] = sizeof(prism_gpu::CompactIonData::ndens_t);
         info["ion_fraction_bytes"] = sizeof(prism_gpu::CompactIonData::xion_t);
